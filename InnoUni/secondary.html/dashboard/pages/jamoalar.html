@@ -1,0 +1,1393 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Jamoalar - O'QIV</title>
+	<link rel="stylesheet" href="/css/bootstrap.min.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+	<style>
+		body {
+			background: linear-gradient(180deg, #020617, #0a2540);
+			color: #fff;
+			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+		}
+
+		.jamoalar-header {
+			background: rgba(48, 48, 48, 0.81);
+			backdrop-filter: blur(20px);
+			border-radius: 15px;
+			padding: 30px;
+			margin-bottom: 30px;
+			border: 1px solid rgba(255, 255, 255, 0.1);
+		}
+
+		.action-buttons {
+			display: flex;
+			gap: 15px;
+			margin-bottom: 25px;
+			flex-wrap: wrap;
+		}
+
+		.btn-create {
+			background: linear-gradient(90deg, #0d6efd, #00d4ff);
+			color: white;
+			border: none;
+			padding: 12px 25px;
+			border-radius: 8px;
+			cursor: pointer;
+			transition: all 0.3s ease;
+		}
+
+		.btn-create:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 5px 15px rgba(0, 123, 255, 0.3);
+		}
+
+		.teams-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+			gap: 25px;
+			margin-bottom: 30px;
+		}
+
+		.team-card {
+			background: rgba(48, 48, 48, 0.81);
+			backdrop-filter: blur(20px);
+			border-radius: 15px;
+			padding: 25px;
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			transition: all 0.3s ease;
+			position: relative;
+			overflow: hidden;
+		}
+
+		.team-card:hover {
+			transform: translateY(-5px);
+			box-shadow: 0 15px 40px rgba(0, 123, 255, 0.2);
+			border-color: #0d6efd;
+		}
+
+		.team-header {
+			display: flex;
+			align-items: center;
+			gap: 15px;
+			margin-bottom: 20px;
+		}
+
+		.team-logo {
+			width: 60px;
+			height: 60px;
+			border-radius: 12px;
+			object-fit: cover;
+			border: 2px solid #0d6efd;
+		}
+
+		.team-info h3 {
+			margin: 0;
+			font-size: 18px;
+			font-weight: bold;
+		}
+
+		.team-info .team-status {
+			color: rgba(255, 255, 255, 0.6);
+			font-size: 14px;
+		}
+
+		.team-description {
+			color: rgba(255, 255, 255, 0.7);
+			line-height: 1.6;
+			margin-bottom: 20px;
+		}
+
+		.team-members {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			margin-bottom: 20px;
+		}
+
+		.member-avatars {
+			display: flex;
+			margin-right: 10px;
+		}
+
+		.member-avatar {
+			width: 32px;
+			height: 32px;
+			border-radius: 50%;
+			border: 2px solid #0d6efd;
+			margin-left: -10px;
+		}
+
+		.member-avatar:first-child {
+			margin-left: 0;
+		}
+
+		.member-count {
+			background: rgba(13, 110, 253, 0.2);
+			border: 1px solid #0d6efd;
+			border-radius: 50%;
+			width: 32px;
+			height: 32px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 12px;
+			font-weight: bold;
+		}
+
+		.team-stats {
+			display: grid;
+			grid-template-columns: repeat(3, 1fr);
+			gap: 15px;
+			margin-bottom: 20px;
+		}
+
+		.stat-item {
+			text-align: center;
+			padding: 15px;
+			background: rgba(255, 255, 255, 0.05);
+			border-radius: 10px;
+		}
+
+		.stat-number {
+			font-size: 20px;
+			font-weight: bold;
+			color: #0d6efd;
+		}
+
+		.stat-label {
+			font-size: 12px;
+			color: rgba(255, 255, 255, 0.6);
+			margin-top: 5px;
+		}
+
+		.team-actions {
+			display: flex;
+			gap: 10px;
+		}
+
+		.btn-join {
+			background: linear-gradient(90deg, #28a745, #5cb85c);
+			color: white;
+			border: none;
+			padding: 10px 20px;
+			border-radius: 8px;
+			cursor: pointer;
+			transition: all 0.3s ease;
+			flex: 1;
+		}
+
+		.btn-view {
+			background: rgba(255, 255, 255, 0.1);
+			color: white;
+			border: 1px solid rgba(255, 255, 255, 0.2);
+			padding: 10px 20px;
+			border-radius: 8px;
+			cursor: pointer;
+			transition: all 0.3s ease;
+		}
+
+		.btn-join:hover, .btn-view:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+		}
+
+		.create-team-card {
+			background: linear-gradient(135deg, rgba(40, 167, 69, 0.1), rgba(92, 184, 92, 0.1));
+			border: 2px dashed rgba(40, 167, 69, 0.5);
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			min-height: 300px;
+			cursor: pointer;
+			transition: all 0.3s ease;
+		}
+
+		.create-team-card:hover {
+			border-color: #28a745;
+			background: linear-gradient(135deg, rgba(40, 167, 69, 0.2), rgba(92, 184, 92, 0.2));
+		}
+
+		.create-icon {
+			font-size: 48px;
+			margin-bottom: 15px;
+			color: #28a745;
+		}
+
+		.create-text {
+			font-size: 16px;
+			font-weight: bold;
+		}
+
+		.progress-bar {
+			width: 100%;
+			height: 6px;
+			background: rgba(255, 255, 255, 0.1);
+			border-radius: 3px;
+			overflow: hidden;
+			margin-top: 5px;
+		}
+
+		.progress-fill {
+			height: 100%;
+			background: linear-gradient(90deg, #0d6efd, #00d4ff);
+			border-radius: 3px;
+			transition: width 0.3s ease;
+		}
+
+		/* Team Chat Interface Styles */
+		.team-chat-modal {
+			display: none;
+			position: fixed;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			background: rgba(0, 0, 0, 0.8);
+			z-index: 2000;
+		}
+
+		.chat-container {
+			height: 90vh;
+			margin: 2vh auto;
+			max-width: 1400px;
+			background: rgba(15, 23, 42, 0.95);
+			border-radius: 15px;
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			display: flex;
+			flex-direction: column;
+		}
+
+		.chat-header {
+			padding: 20px;
+			background: rgba(30, 41, 59, 0.8);
+			border-radius: 15px 15px 0 0;
+			border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+		}
+
+		.chat-tabs {
+			display: flex;
+			gap: 10px;
+		}
+
+		.chat-tab {
+			padding: 10px 20px;
+			background: rgba(255, 255, 255, 0.1);
+			border: none;
+			border-radius: 8px;
+			color: white;
+			cursor: pointer;
+			transition: all 0.3s ease;
+		}
+
+		.chat-tab.active {
+			background: linear-gradient(90deg, #0d6efd, #00d4ff);
+		}
+
+		.chat-content {
+			flex: 1;
+			padding: 20px;
+			overflow-y: auto;
+		}
+
+		/* Text Chat Styles */
+		.text-chat {
+			height: 100%;
+			display: flex;
+			flex-direction: column;
+		}
+
+		.chat-messages {
+			flex: 1;
+			overflow-y: auto;
+			padding: 20px;
+			background: rgba(0, 0, 0, 0.2);
+			border-radius: 10px;
+			margin-bottom: 20px;
+		}
+
+		.message {
+			margin-bottom: 15px;
+			display: flex;
+			align-items: flex-start;
+			gap: 10px;
+		}
+
+		.message.own {
+			flex-direction: row-reverse;
+		}
+
+		.message-avatar {
+			width: 40px;
+			height: 40px;
+			border-radius: 50%;
+			object-fit: cover;
+		}
+
+		.message-content {
+			max-width: 70%;
+		}
+
+		.message-header {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			margin-bottom: 5px;
+		}
+
+		.message-author {
+			font-weight: 600;
+			color: #0d6efd;
+		}
+
+		.message-time {
+			font-size: 0.8rem;
+			color: rgba(255, 255, 255, 0.5);
+		}
+
+		.message-text {
+			background: rgba(255, 255, 255, 0.1);
+			padding: 10px 15px;
+			border-radius: 10px;
+			color: white;
+		}
+
+		.message.own .message-text {
+			background: linear-gradient(90deg, #0d6efd, #00d4ff);
+		}
+
+		.chat-input-container {
+			display: flex;
+			gap: 10px;
+		}
+
+		.chat-input {
+			flex: 1;
+			background: rgba(255, 255, 255, 0.1);
+			border: 1px solid rgba(255, 255, 255, 0.2);
+			border-radius: 10px;
+			padding: 12px;
+			color: white;
+		}
+
+		.chat-send-btn {
+			background: linear-gradient(90deg, #0d6efd, #00d4ff);
+			border: none;
+			border-radius: 10px;
+			padding: 12px 20px;
+			color: white;
+			cursor: pointer;
+		}
+
+		/* Live Stream Chat Styles */
+		.live-stream {
+			height: 100%;
+			display: flex;
+			flex-direction: column;
+		}
+
+		.stream-video {
+			flex: 1;
+			background: black;
+			border-radius: 10px;
+			margin-bottom: 20px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			position: relative;
+		}
+
+		.stream-placeholder {
+			text-align: center;
+			color: rgba(255, 255, 255, 0.5);
+		}
+
+		.stream-controls {
+			position: absolute;
+			bottom: 20px;
+			left: 50%;
+			transform: translateX(-50%);
+			display: flex;
+			gap: 10px;
+		}
+
+		.stream-btn {
+			background: rgba(0, 0, 0, 0.7);
+			border: none;
+			border-radius: 50%;
+			width: 50px;
+			height: 50px;
+			color: white;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.stream-viewers {
+			position: absolute;
+			top: 20px;
+			right: 20px;
+			background: rgba(0, 0, 0, 0.7);
+			padding: 8px 15px;
+			border-radius: 20px;
+			color: white;
+			font-size: 0.9rem;
+		}
+
+		/* Discussion Board Styles */
+		.discussion-board {
+			height: 100%;
+			display: flex;
+			flex-direction: column;
+		}
+
+		.board-canvas {
+			flex: 1;
+			background: white;
+			border-radius: 10px;
+			margin-bottom: 20px;
+			position: relative;
+			overflow: hidden;
+		}
+
+		.board-toolbar {
+			display: flex;
+			gap: 10px;
+			padding: 15px;
+			background: rgba(255, 255, 255, 0.1);
+			border-radius: 10px;
+			margin-bottom: 20px;
+		}
+
+		.tool-btn {
+			background: rgba(255, 255, 255, 0.1);
+			border: 1px solid rgba(255, 255, 255, 0.2);
+			border-radius: 8px;
+			padding: 8px 15px;
+			color: white;
+			cursor: pointer;
+			transition: all 0.3s ease;
+		}
+
+		.tool-btn.active {
+			background: linear-gradient(90deg, #0d6efd, #00d4ff);
+		}
+
+		.board-note {
+			position: absolute;
+			background: rgba(255, 255, 0, 0.9);
+			border: 1px solid #ccc;
+			border-radius: 5px;
+			padding: 10px;
+			min-width: 150px;
+			cursor: move;
+			box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+		}
+
+		.board-main-topic {
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			background: rgba(13, 110, 253, 0.9);
+			color: white;
+			border: 2px solid #0d6efd;
+			border-radius: 10px;
+			padding: 20px;
+			min-width: 300px;
+			text-align: center;
+			font-size: 1.2rem;
+			font-weight: 600;
+		}
+
+		@media (max-width: 768px) {
+			.teams-grid {
+				grid-template-columns: 1fr;
+			}
+
+			.action-buttons {
+				justify-content: center;
+			}
+
+			.team-actions {
+				flex-direction: column;
+			}
+
+			.team-stats {
+				grid-template-columns: 1fr;
+			}
+
+			.chat-container {
+				height: 95vh;
+				margin: 2.5vh 10px;
+			}
+
+			.chat-tabs {
+				flex-wrap: wrap;
+			}
+
+			.message-content {
+				max-width: 85%;
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<div class="container-fluid p-4">
+		<!-- Header -->
+		<div class="jamoalar-header">
+			<div class="row align-items-center">
+				<div class="col-md-8">
+					<h1 class="mb-3">
+						<i class="fas fa-user-group me-3"></i>Jamoalar
+					</h1>
+					<p class="mb-0 text-white-50">O'quvchilar hamkorlikdagi jamoalari va loyihalari</p>
+				</div>
+				<div class="col-md-4 text-md-end">
+					<button class="btn-create">
+						<i class="fas fa-plus me-2"></i>Yangi jamoa
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- Action Buttons -->
+		<div class="action-buttons">
+			<button class="btn-create">
+				<i class="fas fa-graduation-cap me-2"></i>O'quvchi loyihasi
+			</button>
+			<button class="btn-create">
+				<i class="fas fa-code-branch me-2"></i>Kod hamkorligi
+			</button>
+			<button class="btn-create">
+				<i class="fas fa-trophy me-2"></i>Musobaqalar
+			</button>
+		</div>
+
+		<!-- Teams Grid -->
+		<div class="teams-grid">
+			<!-- Create Team Card -->
+			<div class="team-card create-team-card">
+				<div class="create-icon">
+					<i class="fas fa-users"></i>
+				</div>
+				<div class="create-text">Yangi jamoa yaratish</div>
+			</div>
+
+			<!-- Team 1 -->
+			<div class="team-card">
+				<div class="team-header">
+					<img src="https://picsum.photos/seed/team-alpha/60/60" alt="Team Alpha" class="team-logo">
+					<div class="team-info">
+						<h3>Alpha Developers</h3>
+						<div class="team-status">
+							<i class="fas fa-circle text-success me-2"></i>Aktiv - 4 o'quvchi
+						</div>
+					</div>
+				</div>
+				<p class="team-description">
+					E-commerce platformasi uchun o'quvchi jamoasi. Frontend va backend dasturchilar, 
+					dizaynerlar va proekt rahbarlari.
+				</p>
+				<div class="team-members">
+					<div class="member-avatars">
+						<img src="https://picsum.photos/seed/user1/32/32" alt="Member 1" class="member-avatar">
+						<img src="https://picsum.photos/seed/user2/32/32" alt="Member 2" class="member-avatar">
+						<img src="https://picsum.photos/seed/user3/32/32" alt="Member 3" class="member-avatar">
+					</div>
+					<div class="member-count">+5</div>
+				</div>
+				<div class="team-stats">
+					<div class="stat-item">
+						<div class="stat-number">12</div>
+						<div class="stat-label">Loyihalar</div>
+					</div>
+					<div class="stat-item">
+						<div class="stat-number">8</div>
+						<div class="stat-label">Tugatilgan</div>
+					</div>
+					<div class="stat-item">
+						<div class="stat-number">4</div>
+						<div class="stat-label">Jarayonda</div>
+					</div>
+				</div>
+				<div class="team-actions">
+					<button class="btn-join">
+						<i class="fas fa-sign-in-alt me-2"></i>Qo'shilish
+					</button>
+					<button class="btn-view">
+						<i class="fas fa-eye me-2"></i>Ko'rish
+					</button>
+				</div>
+			</div>
+
+			<!-- Team 2 -->
+			<div class="team-card">
+				<div class="team-header">
+					<img src="https://picsum.photos/seed/team-beta/60/60" alt="Team Beta" class="team-logo">
+					<div class="team-info">
+						<h3>Beta Innovations</h3>
+						<div class="team-status">
+							<i class="fas fa-circle text-warning me-2"></i>Rivojlanishda - 3 o'quvchi
+						</div>
+					</div>
+				</div>
+				<p class="team-description">
+					Mobil ilovalar va AI yechimlari bo'yicha o'quvchi jamoasi. React Native, 
+					Flutter va machine learning texnologiyalari.
+				</p>
+				<div class="team-members">
+					<div class="member-avatars">
+						<img src="https://picsum.photos/seed/user4/32/32" alt="Member 4" class="member-avatar">
+						<img src="https://picsum.photos/seed/user5/32/32" alt="Member 5" class="member-avatar">
+						<img src="https://picsum.photos/seed/user6/32/32" alt="Member 6" class="member-avatar">
+					</div>
+					<div class="member-count">+3</div>
+				</div>
+				<div class="team-stats">
+					<div class="stat-item">
+						<div class="stat-number">7</div>
+						<div class="stat-label">Loyihalar</div>
+					</div>
+					<div class="stat-item">
+						<div class="stat-number">5</div>
+						<div class="stat-label">Tugatilgan</div>
+					</div>
+					<div class="stat-item">
+						<div class="stat-number">2</div>
+						<div class="stat-label">Jarayonda</div>
+					</div>
+				</div>
+				<div class="team-actions">
+					<button class="btn-join">
+						<i class="fas fa-sign-in-alt me-2"></i>Qo'shilish
+					</button>
+					<button class="btn-view">
+						<i class="fas fa-eye me-2"></i>Ko'rish
+					</button>
+				</div>
+			</div>
+
+			<!-- Team 3 -->
+			<div class="team-card">
+				<div class="team-header">
+					<img src="https://picsum.photos/seed/team-gamma/60/60" alt="Team Gamma" class="team-logo">
+					<div class="team-info">
+						<h3>Gamma Design</h3>
+						<div class="team-status">
+							<i class="fas fa-circle text-success me-2"></i>Aktiv - 4 o'quvchi
+						</div>
+					</div>
+				</div>
+				<p class="team-description">
+					UI/UX dizayn va brending bo'yicha o'quvchi jamoasi. Figma, Adobe Creative Suite 
+					va zamonaviy dizayn usullari.
+				</p>
+				<div class="team-members">
+					<div class="member-avatars">
+						<img src="https://picsum.photos/seed/user7/32/32" alt="Member 7" class="member-avatar">
+						<img src="https://picsum.photos/seed/user8/32/32" alt="Member 8" class="member-avatar">
+						<img src="https://picsum.photos/seed/user9/32/32" alt="Member 9" class="member-avatar">
+					</div>
+					<div class="member-count">+4</div>
+				</div>
+				<div class="team-stats">
+					<div class="stat-item">
+						<div class="stat-number">15</div>
+						<div class="stat-label">Loyihalar</div>
+					</div>
+					<div class="stat-item">
+						<div class="stat-number">11</div>
+						<div class="stat-label">Tugatilgan</div>
+					</div>
+					<div class="stat-item">
+						<div class="stat-number">4</div>
+						<div class="stat-label">Jarayonda</div>
+					</div>
+				</div>
+				<div class="team-actions">
+					<button class="btn-join">
+						<i class="fas fa-sign-in-alt me-2"></i>Qo'shilish
+					</button>
+					<button class="btn-view">
+						<i class="fas fa-eye me-2"></i>Ko'rish
+					</button>
+				</div>
+			</div>
+
+			<!-- Team 4 -->
+			<div class="team-card">
+				<div class="team-header">
+					<img src="https://picsum.photos/seed/team-delta/60/60" alt="Team Delta" class="team-logo">
+					<div class="team-info">
+						<h3>Delta Analytics</h3>
+						<div class="team-status">
+							<i class="fas fa-circle text-info me-2"></i>Tadqiqotda - 6 o'quvchi
+						</div>
+					</div>
+				</div>
+				<p class="team-description">
+					Ma'lumotlar tahlili va biznes intellekti bo'yicha o'quvchi jamoasi. Python, R, 
+					va zamonaviy analitik instrumentlar.
+				</p>
+				<div class="team-members">
+					<div class="member-avatars">
+						<img src="https://picsum.photos/seed/user10/32/32" alt="Member 10" class="member-avatar">
+						<img src="https://picsum.photos/seed/user11/32/32" alt="Member 11" class="member-avatar">
+					</div>
+					<div class="member-count">+6</div>
+				</div>
+				<div class="team-stats">
+					<div class="stat-item">
+						<div class="stat-number">9</div>
+						<div class="stat-label">Loyihalar</div>
+					</div>
+					<div class="stat-item">
+						<div class="stat-number">6</div>
+						<div class="stat-label">Tugatilgan</div>
+					</div>
+					<div class="stat-item">
+						<div class="stat-number">3</div>
+						<div class="stat-label">Jarayonda</div>
+					</div>
+				</div>
+				<div class="team-actions">
+					<button class="btn-join">
+						<i class="fas fa-sign-in-alt me-2"></i>Qo'shilish
+					</button>
+					<button class="btn-view">
+						<i class="fas fa-eye me-2"></i>Ko'rish
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Team Chat Modal -->
+	<div class="team-chat-modal" id="teamChatModal">
+		<div class="chat-container">
+			<div class="chat-header">
+				<div>
+					<h3 class="mb-0">Alpha Developers Jamoasi</h3>
+					<small class="text-white-50">4 ta a'zo faol</small>
+				</div>
+				<div class="chat-tabs">
+					<button class="chat-tab active" onclick="switchChatTab('text')">
+						<i class="fas fa-comments me-2"></i>Chat
+					</button>
+					<button class="chat-tab" onclick="switchChatTab('live')">
+						<i class="fas fa-video me-2"></i>Jonli efir
+					</button>
+					<button class="chat-tab" onclick="switchChatTab('board')">
+						<i class="fas fa-chalkboard me-2"></i>Muhokama doskasi
+					</button>
+				</div>
+				<button class="btn btn-sm btn-outline-light" onclick="closeTeamChat()">
+					<i class="fas fa-times"></i>
+				</button>
+			</div>
+			
+			<div class="chat-content">
+				<!-- Text Chat -->
+				<div id="textChat" class="text-chat">
+					<div class="chat-messages">
+						<div class="message">
+							<img src="https://picsum.photos/seed/user1/40/40" alt="User" class="message-avatar">
+							<div class="message-content">
+								<div class="message-header">
+									<span class="message-author">Ali Valiyev</span>
+									<span class="message-time">10:30</span>
+								</div>
+								<div class="message-text">
+									Salom hammaga! Bugungi meeting qachon bo'ladi?
+								</div>
+							</div>
+						</div>
+						
+						<div class="message own">
+							<img src="https://picsum.photos/seed/currentuser/40/40" alt="You" class="message-avatar">
+							<div class="message-content">
+								<div class="message-header">
+									<span class="message-author">Siz</span>
+									<span class="message-time">10:32</span>
+								</div>
+								<div class="message-text">
+									2:00 da bo'lishi kerak, tayyorlaning!
+								</div>
+							</div>
+						</div>
+						
+						<div class="message">
+							<img src="https://picsum.photos/seed/user2/40/40" alt="User" class="message-avatar">
+							<div class="message-content">
+								<div class="message-header">
+									<span class="message-author">Karim Sobirov</span>
+									<span class="message-time">10:35</span>
+								</div>
+								<div class="message-text">
+									Men tayyor, backend qismi to'g'ri kelyapti
+								</div>
+							</div>
+						</div>
+					</div>
+					
+					<div class="chat-input-container">
+						<input type="text" class="chat-input" placeholder="Xabar yozing..." id="chatInput">
+						<button class="chat-send-btn" onclick="sendMessage()">
+							<i class="fas fa-paper-plane"></i>
+						</button>
+					</div>
+				</div>
+				
+				<!-- Live Stream -->
+				<div id="liveStream" class="live-stream" style="display: none;">
+					<div class="stream-video">
+						<div class="stream-placeholder">
+							<i class="fas fa-video fa-3x mb-3"></i>
+							<p>Jonli efir hali boshlanmadi</p>
+						</div>
+						<div class="stream-viewers">
+							<i class="fas fa-eye me-2"></i>0 tomoshabin
+						</div>
+						<div class="stream-controls">
+							<button class="stream-btn" onclick="startStream()">
+								<i class="fas fa-play"></i>
+							</button>
+							<button class="stream-btn" onclick="pauseStream()">
+								<i class="fas fa-pause"></i>
+							</button>
+							<button class="stream-btn" onclick="stopStream()">
+								<i class="fas fa-stop"></i>
+							</button>
+							<button class="stream-btn" onclick="toggleMute()">
+								<i class="fas fa-microphone"></i>
+							</button>
+						</div>
+					</div>
+					
+					<div class="chat-messages" style="height: 200px;">
+						<div class="message">
+							<img src="https://picsum.photos/seed/user3/40/40" alt="User" class="message-avatar">
+							<div class="message-content">
+								<div class="message-header">
+									<span class="message-author">Nodira Karimova</span>
+									<span class="message-time">10:40</span>
+								</div>
+								<div class="message-text">
+									Efiringizni kutamiz! 
+								</div>
+							</div>
+						</div>
+					</div>
+					
+					<div class="chat-input-container">
+						<input type="text" class="chat-input" placeholder="Jonli efirga xabar yozing..." id="streamInput">
+						<button class="chat-send-btn" onclick="sendStreamMessage()">
+							<i class="fas fa-paper-plane"></i>
+						</button>
+					</div>
+				</div>
+				
+				<!-- Discussion Board -->
+				<div id="discussionBoard" class="discussion-board" style="display: none;">
+					<div class="board-toolbar">
+						<button class="tool-btn active" onclick="selectTool('note')">
+							<i class="fas fa-sticky-note me-2"></i>Note
+						</button>
+						<button class="tool-btn" onclick="selectTool('text')">
+							<i class="fas fa-font me-2"></i>Matn
+						</button>
+						<button class="tool-btn" onclick="selectTool('draw')">
+							<i class="fas fa-pencil-alt me-2"></i>Chizish
+						</button>
+						<button class="tool-btn" onclick="selectTool('erase')">
+							<i class="fas fa-eraser me-2"></i>O'chirish
+						</button>
+						<button class="tool-btn" onclick="clearBoard()">
+							<i class="fas fa-trash me-2"></i>Tozalash
+						</button>
+					</div>
+					
+					<div class="board-canvas" id="boardCanvas">
+						<div class="board-main-topic" contenteditable="true">
+							Asosiy masala: E-commerce platformasi arxitekturasi
+						</div>
+						
+						<div class="board-note" style="top: 100px; left: 200px;" contenteditable="true">
+							<strong>Frontend:</strong><br>
+							- React.js<br>
+							- Redux<br>
+							- Tailwind CSS
+						</div>
+						
+						<div class="board-note" style="top: 100px; right: 200px;" contenteditable="true">
+							<strong>Backend:</strong><br>
+							- Node.js<br>
+							- Express<br>
+							- MongoDB
+						</div>
+						
+						<div class="board-note" style="bottom: 150px; left: 350px;" contenteditable="true">
+							<strong>Authentication:</strong><br>
+							- JWT<br>
+							- OAuth 2.0<br>
+							- Session management
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Create Team Modal -->
+	<div class="modal fade" id="createTeamModal" tabindex="-1" aria-labelledby="createTeamModalLabel" aria-hidden="true">
+		<div class="modal-dialog modal-lg">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="createTeamModalLabel">
+						<i class="fas fa-users me-2"></i>Yangi jamoa yaratish
+					</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+				<div class="modal-body">
+					<form id="createTeamForm">
+						<div class="row">
+							<div class="col-md-6 mb-3">
+								<label for="teamName" class="form-label">Jamoa nomi</label>
+								<input type="text" class="form-control" id="teamName" placeholder="Jamoa nomini kiriting" required>
+							</div>
+							<div class="col-md-6 mb-3">
+								<label for="teamType" class="form-label">Jamoa turi</label>
+								<select class="form-select" id="teamType" required>
+									<option value="">Turini tanlang</option>
+									<option value="project">Loyiha jamoasi</option>
+									<option value="study">O'quv jamoasi</option>
+									<option value="competition">Musobaqa jamoasi</option>
+									<option value="research">Tadqiqot jamoasi</option>
+								</select>
+							</div>
+						</div>
+						
+						<div class="mb-3">
+							<label for="teamDescription" class="form-label">Tavsif</label>
+							<textarea class="form-control" id="teamDescription" rows="3" placeholder="Jamoa haqida qisqacha ma'lumot" required></textarea>
+						</div>
+						
+						<div class="row">
+							<div class="col-md-6 mb-3">
+								<label for="maxMembers" class="form-label">Maksimal a'zolar soni</label>
+								<input type="number" class="form-control" id="maxMembers" min="2" max="20" value="6" required>
+							</div>
+							<div class="col-md-6 mb-3">
+								<label for="teamCategory" class="form-label">Yo'nalish</label>
+								<select class="form-select" id="teamCategory" required>
+									<option value="">Yo'nalishni tanlang</option>
+									<option value="web">Web dasturlash</option>
+									<option value="mobile">Mobil dasturlash</option>
+									<option value="backend">Backend dasturlash</option>
+									<option value="design">UI/UX Dizayn</option>
+									<option value="data">Data Science</option>
+									<option value="other">Boshqa</option>
+								</select>
+							</div>
+						</div>
+						
+						<div class="mb-3">
+							<label for="teamAvatar" class="form-label">Jamoa logotipi</label>
+							<input type="file" class="form-control" id="teamAvatar" accept="image/*">
+							<div class="form-text">Rasm hajmi: maksimal 3MB. Format: JPG, PNG</div>
+						</div>
+						
+						<div class="mb-3">
+							<div class="form-check">
+								<input class="form-check-input" type="checkbox" id="isPublic" checked>
+								<label class="form-check-label" for="isPublic">
+									Ommaviy jamoa (barcha qo'shila oladi)
+								</label>
+							</div>
+							<div class="form-check">
+								<input class="form-check-input" type="checkbox" id="requireApproval">
+								<label class="form-check-label" for="requireApproval">
+									Qo'shilish uchun tasdiqlash talab qilinsin
+								</label>
+							</div>
+						</div>
+					</form>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Bekor qilish</button>
+					<button type="button" class="btn btn-primary" onclick="createTeam()">
+						<i class="fas fa-save me-2"></i>Jamoani yaratish
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+	<script>
+		// Team action handlers
+		document.querySelectorAll('.btn-join, .btn-view').forEach(btn => {
+			btn.addEventListener('click', function() {
+				const action = this.textContent.trim();
+				if (action === 'Qo\'shilish' || action === 'Ko\'rish') {
+					openTeamChat();
+				}
+			});
+		});
+
+		// Create team handler
+		document.querySelector('.create-team-card').addEventListener('click', function() {
+			const modal = new bootstrap.Modal(document.getElementById('createTeamModal'));
+			modal.show();
+		});
+
+		// Action button handlers
+		document.querySelectorAll('.btn-create').forEach(btn => {
+			btn.addEventListener('click', function() {
+				const action = this.textContent.trim();
+				console.log('Action clicked:', action);
+			});
+		});
+
+		// Create team function
+		function createTeam() {
+			const form = document.getElementById('createTeamForm');
+			
+			if (!form.checkValidity()) {
+				form.reportValidity();
+				return;
+			}
+
+			const teamData = {
+				name: document.getElementById('teamName').value,
+				type: document.getElementById('teamType').value,
+				description: document.getElementById('teamDescription').value,
+				maxMembers: document.getElementById('maxMembers').value,
+				category: document.getElementById('teamCategory').value,
+				isPublic: document.getElementById('isPublic').checked,
+				requireApproval: document.getElementById('requireApproval').checked
+			};
+
+			console.log('Creating team:', teamData);
+			
+			const createModal = bootstrap.Modal.getInstance(document.getElementById('createTeamModal'));
+			createModal.hide();
+			form.reset();
+			
+			// Add new team card to the grid
+			addNewTeamCard(teamData);
+		}
+
+		// Add new team card to the grid
+		function addNewTeamCard(teamData) {
+			const teamsGrid = document.querySelector('.teams-grid');
+			const createCard = document.querySelector('.create-team-card');
+			
+			const typeLabels = {
+				'project': 'Loyiha jamoasi',
+				'study': 'O\'quv jamoasi',
+				'competition': 'Musobaqa jamoasi',
+				'research': 'Tadqiqot jamoasi'
+			};
+
+			const categoryLabels = {
+				'web': 'Web dasturlash',
+				'mobile': 'Mobil dasturlash',
+				'backend': 'Backend dasturlash',
+				'design': 'UI/UX Dizayn',
+				'data': 'Data Science',
+				'other': 'Boshqa'
+			};
+
+			const newTeamCard = document.createElement('div');
+			newTeamCard.className = 'team-card';
+			newTeamCard.innerHTML = `
+				<div class="team-header">
+					<img src="https://picsum.photos/seed/${Date.now()}/60/60" alt="${teamData.name}" class="team-logo">
+					<div class="team-info">
+						<h3>${teamData.name}</h3>
+						<div class="team-status">
+							<i class="fas fa-circle text-success me-2"></i>Yangi - 1 a'zo
+						</div>
+					</div>
+				</div>
+				<p class="team-description">
+					${teamData.description}
+				</p>
+				<div class="team-members">
+					<div class="member-avatars">
+						<img src="https://picsum.photos/seed/currentuser/32/32" alt="You" class="member-avatar">
+					</div>
+					<div class="member-count">+0</div>
+				</div>
+				<div class="team-stats">
+					<div class="stat-item">
+						<div class="stat-number">0</div>
+						<div class="stat-label">Loyihalar</div>
+					</div>
+					<div class="stat-item">
+						<div class="stat-number">0</div>
+						<div class="stat-label">Tugatilgan</div>
+					</div>
+					<div class="stat-item">
+						<div class="stat-number">0</div>
+						<div class="stat-label">Jarayonda</div>
+					</div>
+				</div>
+				<div class="team-actions">
+					<button class="btn-join">
+						<i class="fas fa-sign-in-alt me-2"></i>Qo'shilish
+					</button>
+					<button class="btn-view">
+						<i class="fas fa-eye me-2"></i>Ko'rish
+					</button>
+				</div>
+			`;
+			
+			createCard.parentNode.insertBefore(newTeamCard, createCard.nextSibling);
+			
+			// Add event listeners to new buttons
+			newTeamCard.querySelectorAll('.btn-join, .btn-view').forEach(btn => {
+				btn.addEventListener('click', function() {
+					openTeamChat();
+				});
+			});
+		}
+
+		// Team Chat Functions
+		function openTeamChat() {
+			document.getElementById('teamChatModal').style.display = 'block';
+		}
+
+		function closeTeamChat() {
+			document.getElementById('teamChatModal').style.display = 'none';
+		}
+
+		function switchChatTab(tab) {
+			// Hide all chat tabs
+			document.getElementById('textChat').style.display = 'none';
+			document.getElementById('liveStream').style.display = 'none';
+			document.getElementById('discussionBoard').style.display = 'none';
+			
+			// Remove active class from all tabs
+			document.querySelectorAll('.chat-tab').forEach(t => t.classList.remove('active'));
+			
+			// Show selected tab and add active class
+			if (tab === 'text') {
+				document.getElementById('textChat').style.display = 'flex';
+				document.querySelectorAll('.chat-tab')[0].classList.add('active');
+			} else if (tab === 'live') {
+				document.getElementById('liveStream').style.display = 'flex';
+				document.querySelectorAll('.chat-tab')[1].classList.add('active');
+			} else if (tab === 'board') {
+				document.getElementById('discussionBoard').style.display = 'flex';
+				document.querySelectorAll('.chat-tab')[2].classList.add('active');
+			}
+		}
+
+		// Text Chat Functions
+		function sendMessage() {
+			const input = document.getElementById('chatInput');
+			const message = input.value.trim();
+			
+			if (message) {
+				const messagesContainer = document.querySelector('#textChat .chat-messages');
+				const time = new Date().toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
+				
+				const newMessage = document.createElement('div');
+				newMessage.className = 'message own';
+				newMessage.innerHTML = `
+					<img src="https://picsum.photos/seed/currentuser/40/40" alt="You" class="message-avatar">
+					<div class="message-content">
+						<div class="message-header">
+							<span class="message-author">Siz</span>
+							<span class="message-time">${time}</span>
+						</div>
+						<div class="message-text">${message}</div>
+					</div>
+				`;
+				
+				messagesContainer.appendChild(newMessage);
+				messagesContainer.scrollTop = messagesContainer.scrollHeight;
+				input.value = '';
+			}
+		}
+
+		// Live Stream Functions
+		let streamActive = false;
+		let viewerCount = 0;
+
+		function startStream() {
+			streamActive = true;
+			viewerCount = Math.floor(Math.random() * 50) + 10;
+			updateStreamStatus();
+		}
+
+		function pauseStream() {
+			streamActive = false;
+			updateStreamStatus();
+		}
+
+		function stopStream() {
+			streamActive = false;
+			viewerCount = 0;
+			updateStreamStatus();
+		}
+
+		function toggleMute() {
+			console.log('Toggle mute');
+		}
+
+		function updateStreamStatus() {
+			const placeholder = document.querySelector('.stream-placeholder');
+			const viewersElement = document.querySelector('.stream-viewers');
+			
+			if (streamActive) {
+				placeholder.innerHTML = `
+					<i class="fas fa-video fa-3x mb-3 text-success"></i>
+					<p>Jonli efir faol</p>
+				`;
+			} else {
+				placeholder.innerHTML = `
+					<i class="fas fa-video fa-3x mb-3"></i>
+					<p>Jonli efir hali boshlanmadi</p>
+				`;
+			}
+			
+			viewersElement.innerHTML = `<i class="fas fa-eye me-2"></i>${viewerCount} tomoshabin`;
+		}
+
+		function sendStreamMessage() {
+			const input = document.getElementById('streamInput');
+			const message = input.value.trim();
+			
+			if (message) {
+				const messagesContainer = document.querySelector('#liveStream .chat-messages');
+				const time = new Date().toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
+				
+				const newMessage = document.createElement('div');
+				newMessage.className = 'message own';
+				newMessage.innerHTML = `
+					<img src="https://picsum.photos/seed/currentuser/40/40" alt="You" class="message-avatar">
+					<div class="message-content">
+						<div class="message-header">
+							<span class="message-author">Siz</span>
+							<span class="message-time">${time}</span>
+						</div>
+						<div class="message-text">${message}</div>
+					</div>
+				`;
+				
+				messagesContainer.appendChild(newMessage);
+				messagesContainer.scrollTop = messagesContainer.scrollHeight;
+				input.value = '';
+			}
+		}
+
+		// Discussion Board Functions
+		let selectedTool = 'note';
+		let isDragging = false;
+		let currentNote = null;
+		let offset = { x: 0, y: 0 };
+
+		function selectTool(tool) {
+			selectedTool = tool;
+			document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+			event.target.classList.add('active');
+		}
+
+		function clearBoard() {
+			if (confirm('Doskani tozalashni xohlaysizmi?')) {
+				const canvas = document.getElementById('boardCanvas');
+				const notes = canvas.querySelectorAll('.board-note:not(.board-main-topic)');
+				notes.forEach(note => note.remove());
+			}
+		}
+
+		// Initialize drag and drop for notes
+		document.addEventListener('DOMContentLoaded', function() {
+			const canvas = document.getElementById('boardCanvas');
+			
+			canvas.addEventListener('mousedown', function(e) {
+				if (e.target.classList.contains('board-note') && selectedTool === 'note') {
+					isDragging = true;
+					currentNote = e.target;
+					const rect = currentNote.getBoundingClientRect();
+					const canvasRect = canvas.getBoundingClientRect();
+					offset.x = e.clientX - rect.left;
+					offset.y = e.clientY - rect.top;
+					currentNote.style.zIndex = 1000;
+				}
+			});
+
+			document.addEventListener('mousemove', function(e) {
+				if (isDragging && currentNote) {
+					const canvas = document.getElementById('boardCanvas');
+					const canvasRect = canvas.getBoundingClientRect();
+					
+					let x = e.clientX - canvasRect.left - offset.x;
+					let y = e.clientY - canvasRect.top - offset.y;
+					
+					// Keep note within canvas bounds
+					x = Math.max(0, Math.min(x, canvasRect.width - currentNote.offsetWidth));
+					y = Math.max(0, Math.min(y, canvasRect.height - currentNote.offsetHeight));
+					
+					currentNote.style.left = x + 'px';
+					currentNote.style.top = y + 'px';
+				}
+			});
+
+			document.addEventListener('mouseup', function() {
+				if (currentNote) {
+					currentNote.style.zIndex = '';
+				}
+				isDragging = false;
+				currentNote = null;
+			});
+
+			// Add new notes on double click
+			canvas.addEventListener('dblclick', function(e) {
+				if (selectedTool === 'note' && e.target === canvas) {
+					const canvasRect = canvas.getBoundingClientRect();
+					const x = e.clientX - canvasRect.left - 75;
+					const y = e.clientY - canvasRect.top - 25;
+					
+					const newNote = document.createElement('div');
+					newNote.className = 'board-note';
+					newNote.style.left = x + 'px';
+					newNote.style.top = y + 'px';
+					newNote.contentEditable = true;
+					newNote.innerHTML = 'Yangi note';
+					
+					canvas.appendChild(newNote);
+				}
+			});
+
+			// Enter key to send messages
+			document.getElementById('chatInput').addEventListener('keypress', function(e) {
+				if (e.key === 'Enter') {
+					sendMessage();
+				}
+			});
+
+			document.getElementById('streamInput').addEventListener('keypress', function(e) {
+				if (e.key === 'Enter') {
+					sendStreamMessage();
+				}
+			});
+		});
+	</script>
+</body>
+
+</html>

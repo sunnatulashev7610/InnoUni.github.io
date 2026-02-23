@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Guruhlar - O'QIV</title>
+	<link rel="stylesheet" href="/css/bootstrap.min.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+	<style>
+		body {
+			background: linear-gradient(180deg, #020617, #0a2540);
+			color: #fff;
+			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+		}
+
+		.groups-header {
+			background: rgba(48, 48, 48, 0.81);
+			backdrop-filter: blur(20px);
+			border-radius: 15px;
+			padding: 30px;
+			margin-bottom: 30px;
+			border: 1px solid rgba(255, 255, 255, 0.1);
+		}
+
+		.search-bar {
+			background: rgba(255, 255, 255, 0.05);
+			border: 1px solid rgba(255, 255, 255, 0.2);
+			border-radius: 25px;
+			padding: 12px 20px;
+			color: #fff;
+			width: 100%;
+			max-width: 400px;
+			transition: all 0.3s ease;
+		}
+
+		.search-bar:focus {
+			outline: none;
+			border-color: #0d6efd;
+			background: rgba(255, 255, 255, 0.1);
+		}
+
+		.filter-tabs {
+			display: flex;
+			gap: 10px;
+			margin-bottom: 25px;
+			flex-wrap: wrap;
+		}
+
+		.filter-tab {
+			padding: 10px 20px;
+			border-radius: 25px;
+			border: 1px solid rgba(255, 255, 255, 0.2);
+			background: rgba(255, 255, 255, 0.05);
+			color: #fff;
+			cursor: pointer;
+			transition: all 0.3s ease;
+		}
+
+		.filter-tab:hover, .filter-tab.active {
+			background: linear-gradient(90deg, #0d6efd, #00d4ff);
+			border-color: transparent;
+			transform: translateY(-2px);
+		}
+
+		.groups-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+			gap: 25px;
+			margin-bottom: 30px;
+		}
+
+		.group-card {
+			background: rgba(48, 48, 48, 0.81);
+			backdrop-filter: blur(20px);
+			border-radius: 15px;
+			padding: 25px;
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			transition: all 0.3s ease;
+			position: relative;
+			overflow: hidden;
+		}
+
+		.group-card:hover {
+			transform: translateY(-5px);
+			box-shadow: 0 15px 40px rgba(0, 123, 255, 0.2);
+			border-color: #0d6efd;
+		}
+
+		.group-header {
+			display: flex;
+			align-items: center;
+			gap: 15px;
+			margin-bottom: 20px;
+		}
+
+		.group-avatar {
+			width: 60px;
+			height: 60px;
+			border-radius: 12px;
+			object-fit: cover;
+			border: 2px solid #0d6efd;
+		}
+
+		.group-info h3 {
+			margin: 0;
+			font-size: 18px;
+			font-weight: bold;
+		}
+
+		.group-info .group-category {
+			color: rgba(255, 255, 255, 0.6);
+			font-size: 14px;
+		}
+
+		.group-description {
+			color: rgba(255, 255, 255, 0.7);
+			line-height: 1.6;
+			margin-bottom: 20px;
+		}
+
+		.group-stats {
+			display: flex;
+			justify-content: space-between;
+			margin-bottom: 20px;
+			padding: 15px 0;
+			border-top: 1px solid rgba(255, 255, 255, 0.1);
+			border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+		}
+
+		.stat-item {
+			text-align: center;
+		}
+
+		.stat-number {
+			font-size: 24px;
+			font-weight: bold;
+			color: #0d6efd;
+		}
+
+		.stat-label {
+			font-size: 12px;
+			color: rgba(255, 255, 255, 0.6);
+		}
+
+		.group-actions {
+			display: flex;
+			gap: 10px;
+		}
+
+		.btn-join {
+			background: linear-gradient(90deg, #0d6efd, #00d4ff);
+			color: white;
+			border: none;
+			padding: 10px 20px;
+			border-radius: 8px;
+			cursor: pointer;
+			transition: all 0.3s ease;
+			flex: 1;
+		}
+
+		.btn-view {
+			background: rgba(255, 255, 255, 0.1);
+			color: white;
+			border: 1px solid rgba(255, 255, 255, 0.2);
+			padding: 10px 20px;
+			border-radius: 8px;
+			cursor: pointer;
+			transition: all 0.3s ease;
+		}
+
+		.btn-join:hover, .btn-view:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+		}
+
+		.create-group-card {
+			background: linear-gradient(135deg, rgba(13, 110, 253, 0.1), rgba(0, 212, 255, 0.1));
+			border: 2px dashed rgba(13, 110, 253, 0.5);
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			min-height: 280px;
+			cursor: pointer;
+			transition: all 0.3s ease;
+		}
+
+		.create-group-card:hover {
+			border-color: #0d6efd;
+			background: linear-gradient(135deg, rgba(13, 110, 253, 0.2), rgba(0, 212, 255, 0.2));
+		}
+
+		.create-icon {
+			font-size: 48px;
+			margin-bottom: 15px;
+			color: #0d6efd;
+		}
+
+		.create-text {
+			font-size: 16px;
+			font-weight: bold;
+		}
+
+		.progress-bar {
+			width: 100%;
+			height: 6px;
+			background: rgba(255, 255, 255, 0.1);
+			border-radius: 3px;
+			overflow: hidden;
+			margin-top: 5px;
+		}
+
+		.progress-fill {
+			height: 100%;
+			background: linear-gradient(90deg, #0d6efd, #00d4ff);
+			border-radius: 3px;
+			transition: width 0.3s ease;
+		}
+
+		@media (max-width: 768px) {
+			.groups-grid {
+				grid-template-columns: 1fr;
+			}
+
+			.filter-tabs {
+				justify-content: center;
+			}
+
+			.group-actions {
+				flex-direction: column;
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<div class="container-fluid p-4">
+		<!-- Header -->
+		<div class="groups-header">
+			<div class="row align-items-center">
+				<div class="col-md-6">
+					<h1 class="mb-3">
+						<i class="fas fa-chalkboard-teacher me-3"></i>Darslar
+					</h1>
+					<p class="mb-0 text-white-50">O'qituvchilar boshqaradigan darslar va kurslar</p>
+				</div>
+				<div class="col-md-6">
+					<input type="text" class="search-bar" placeholder="Darslarni qidirish...">
+				</div>
+			</div>
+		</div>
+
+		<!-- Filter Tabs -->
+		<div class="filter-tabs">
+			<button class="filter-tab active">Barchasi</button>
+			<button class="filter-tab">Mening guruhlarim</button>
+			<button class="filter-tab">Dasturiyotish</button>
+			<button class="filter-tab">Matematika</button>
+			<button class="filter-tab">Ingliz tili</button>
+		</div>
+
+		<!-- Groups Grid -->
+		<div class="groups-grid">
+			<!-- Create Group Card -->
+			<div class="group-card create-group-card">
+				<div class="create-icon">
+					<i class="fas fa-plus-circle"></i>
+				</div>
+				<div class="create-text">Yangi dars yaratish</div>
+			</div>
+
+			<!-- Group 1 -->
+			<div class="group-card">
+				<div class="group-header">
+					<img src="https://picsum.photos/seed/react-group/60/60" alt="React Group" class="group-avatar">
+					<div class="group-info">
+						<h3>React.js va Next.js</h3>
+						<div class="group-category">Web dasturlash - O'qituvchi: Ali Valiyev</div>
+					</div>
+				</div>
+				<p class="group-description">
+					Modern web dasturlashni o'rganing. React.js, Next.js va zamonaviy texnologiyalar 
+					bo'yicha chuqur bilim beriladi.
+				</p>
+				<div class="group-stats">
+					<div class="stat-item">
+						<div class="stat-number">156</div>
+						<div class="stat-label">A'zolar</div>
+					</div>
+					<div class="stat-item">
+						<div class="stat-number">42</div>
+						<div class="stat-label">Kurslar</div>
+					</div>
+					<div class="stat-item">
+						<div class="stat-number">89%</div>
+						<div class="stat-label">Tugatilgan</div>
+						<div class="progress-bar">
+							<div class="progress-fill" style="width: 89%"></div>
+						</div>
+					</div>
+				</div>
+				<div class="group-actions">
+					<button class="btn-join">
+						<i class="fas fa-plus me-2"></i>Qo'shilish
+					</button>
+					<button class="btn-view">
+						<i class="fas fa-eye me-2"></i>Ko'rish
+					</button>
+				</div>
+			</div>
+
+			<!-- Group 2 -->
+			<div class="group-card">
+				<div class="group-header">
+					<img src="https://picsum.photos/seed/python-group/60/60" alt="Python Group" class="group-avatar">
+					<div class="group-info">
+						<h3>Python dasturlash</h3>
+						<div class="group-category">Backend dasturlash - O'qituvchi: Karim Sobirov</div>
+					</div>
+				</div>
+				<p class="group-description">
+					Python dasturlash tilini chuqur o'rganish. Django, FastAPI va ma'lumotlar bazasi 
+					bilish ishlari.
+				</p>
+				<div class="group-stats">
+					<div class="stat-item">
+						<div class="stat-number">203</div>
+						<div class="stat-label">A'zolar</div>
+					</div>
+					<div class="stat-item">
+						<div class="stat-number">38</div>
+						<div class="stat-label">Kurslar</div>
+					</div>
+					<div class="stat-item">
+						<div class="stat-number">76%</div>
+						<div class="stat-label">Tugatilgan</div>
+						<div class="progress-bar">
+							<div class="progress-fill" style="width: 76%"></div>
+						</div>
+					</div>
+				</div>
+				<div class="group-actions">
+					<button class="btn-join">
+						<i class="fas fa-plus me-2"></i>Qo'shilish
+					</button>
+					<button class="btn-view">
+						<i class="fas fa-eye me-2"></i>Ko'rish
+					</button>
+				</div>
+			</div>
+
+			<!-- Group 3 -->
+			<div class="group-card">
+				<div class="group-header">
+					<img src="https://picsum.photos/seed/design-group/60/60" alt="Design Group" class="group-avatar">
+					<div class="group-info">
+						<h3>UI/UX Dizayn</h3>
+						<div class="group-category">Dizayn - O'qituvchi: Nodira Karimova</div>
+					</div>
+				</div>
+				<p class="group-description">
+					Figma, Adobe XD va Sketch yordamida zamonaviy interfeyslar yaratishni o'rganing. 
+					Portfolio yaratish ko'nikmalari.
+				</p>
+				<div class="group-stats">
+					<div class="stat-item">
+						<div class="stat-number">89</div>
+						<div class="stat-label">A'zolar</div>
+					</div>
+					<div class="stat-item">
+						<div class="stat-number">25</div>
+						<div class="stat-label">Kurslar</div>
+					</div>
+					<div class="stat-item">
+						<div class="stat-number">92%</div>
+						<div class="stat-label">Tugatilgan</div>
+						<div class="progress-bar">
+							<div class="progress-fill" style="width: 92%"></div>
+						</div>
+					</div>
+				</div>
+				<div class="group-actions">
+					<button class="btn-join">
+						<i class="fas fa-plus me-2"></i>Qo'shilish
+					</button>
+					<button class="btn-view">
+						<i class="fas fa-eye me-2"></i>Ko'rish
+					</button>
+				</div>
+			</div>
+
+			<!-- Group 4 -->
+			<div class="group-card">
+				<div class="group-header">
+					<img src="https://picsum.photos/seed/mobile-group/60/60" alt="Mobile Group" class="group-avatar">
+					<div class="group-info">
+						<h3>Mobil dasturlash</h3>
+						<div class="group-category">Mobile dev - O'qituvchi: Bekzod Tursunov</div>
+					</div>
+				</div>
+				<p class="group-description">
+					React Native va Flutter yordamida mobil ilovalar yaratish. iOS va Android 
+					platformlari uchun dasturlash.
+				</p>
+				<div class="group-stats">
+					<div class="stat-item">
+						<div class="stat-number">124</div>
+						<div class="stat-label">A'zolar</div>
+					</div>
+					<div class="stat-item">
+						<div class="stat-number">31</div>
+						<div class="stat-label">Kurslar</div>
+					</div>
+					<div class="stat-item">
+						<div class="stat-number">68%</div>
+						<div class="stat-label">Tugatilgan</div>
+						<div class="progress-bar">
+							<div class="progress-fill" style="width: 68%"></div>
+						</div>
+					</div>
+				</div>
+				<div class="group-actions">
+					<button class="btn-join">
+						<i class="fas fa-plus me-2"></i>Qo'shilish
+					</button>
+					<button class="btn-view">
+						<i class="fas fa-eye me-2"></i>Ko'rish
+					</button>
+				</div>
+			</div>
+
+			<!-- Group 5 -->
+			<div class="group-card">
+				<div class="group-header">
+					<img src="https://picsum.photos/seed/data-group/60/60" alt="Data Science Group" class="group-avatar">
+					<div class="group-info">
+						<h3>Data Science</h3>
+						<div class="group-category">Ma'lumotlar tahlili - O'qituvchi: Zuhra Azizova</div>
+					</div>
+				</div>
+				<p class="group-description">
+					Machine Learning, AI va ma'lumotlar tahlili. Python, TensorFlow va 
+					zamonaviy analitik usullar.
+				</p>
+				<div class="group-stats">
+					<div class="stat-item">
+						<div class="stat-number">178</div>
+						<div class="stat-label">A'zolar</div>
+					</div>
+					<div class="stat-item">
+						<div class="stat-number">45</div>
+						<div class="stat-label">Kurslar</div>
+					</div>
+					<div class="stat-item">
+						<div class="stat-number">81%</div>
+						<div class="stat-label">Tugatilgan</div>
+						<div class="progress-bar">
+							<div class="progress-fill" style="width: 81%"></div>
+						</div>
+					</div>
+				</div>
+				<div class="group-actions">
+					<button class="btn-join">
+						<i class="fas fa-plus me-2"></i>Qo'shilish
+					</button>
+					<button class="btn-view">
+						<i class="fas fa-eye me-2"></i>Ko'rish
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Create Group Modal -->
+		<div class="modal fade" id="createGroupModal" tabindex="-1" aria-labelledby="createGroupModalLabel" aria-hidden="true">
+			<div class="modal-dialog modal-lg">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title" id="createGroupModalLabel">
+							<i class="fas fa-plus-circle me-2"></i>Yangi guruh yaratish
+						</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+					</div>
+					<div class="modal-body">
+						<form id="createGroupForm">
+							<div class="row">
+								<div class="col-md-6 mb-3">
+									<label for="groupName" class="form-label">Guruh nomi</label>
+									<input type="text" class="form-control" id="groupName" placeholder="Guruh nomini kiriting" required>
+								</div>
+								<div class="col-md-6 mb-3">
+									<label for="groupCategory" class="form-label">Kategoriya</label>
+									<select class="form-select" id="groupCategory" required>
+										<option value="">Kategoriyani tanlang</option>
+										<option value="web">Web dasturlash</option>
+										<option value="mobile">Mobil dasturlash</option>
+										<option value="backend">Backend dasturlash</option>
+										<option value="design">UI/UX Dizayn</option>
+										<option value="data">Data Science</option>
+										<option value="math">Matematika</option>
+										<option value="english">Ingliz tili</option>
+										<option value="other">Boshqa</option>
+									</select>
+								</div>
+							</div>
+							
+							<div class="mb-3">
+								<label for="groupDescription" class="form-label">Tavsif</label>
+								<textarea class="form-control" id="groupDescription" rows="3" placeholder="Guruh haqida qisqacha ma'lumot" required></textarea>
+							</div>
+							
+							<div class="row">
+								<div class="col-md-6 mb-3">
+									<label for="maxStudents" class="form-label">Maksimal o'quvchilar soni</label>
+									<input type="number" class="form-control" id="maxStudents" min="5" max="500" value="50" required>
+								</div>
+								<div class="col-md-6 mb-3">
+									<label for="groupLanguage" class="form-label">Til</label>
+									<select class="form-select" id="groupLanguage" required>
+										<option value="uz">O'zbekcha</option>
+										<option value="ru">Ruscha</option>
+										<option value="en">Inglizcha</option>
+									</select>
+								</div>
+							</div>
+							
+							<div class="mb-3">
+								<label for="groupAvatar" class="form-label">Guruh rasmi</label>
+								<input type="file" class="form-control" id="groupAvatar" accept="image/*">
+								<div class="form-text">Rasm hajmi: maksimal 5MB. Format: JPG, PNG, GIF</div>
+							</div>
+							
+							<div class="row">
+								<div class="col-md-6 mb-3">
+									<label for="startDate" class="form-label">Boshlanish sanasi</label>
+									<input type="date" class="form-control" id="startDate" required>
+								</div>
+								<div class="col-md-6 mb-3">
+									<label for="endDate" class="form-label">Tugash sanasi</label>
+									<input type="date" class="form-control" id="endDate" required>
+								</div>
+							</div>
+							
+							<div class="mb-3">
+								<div class="form-check">
+									<input class="form-check-input" type="checkbox" id="isPublic" checked>
+									<label class="form-check-label" for="isPublic">
+										Ommaviy guruh (barcha qo'shila oladi)
+									</label>
+								</div>
+								<div class="form-check">
+									<input class="form-check-input" type="checkbox" id="requireApproval">
+									<label class="form-check-label" for="requireApproval">
+										Qo'shilish uchun tasdiqlash talab qilinsin
+									</label>
+								</div>
+							</div>
+						</form>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Bekor qilish</button>
+						<button type="button" class="btn btn-primary" onclick="createGroup()">
+							<i class="fas fa-save me-2"></i>Guruhni yaratish
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Success Modal -->
+		<div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-body text-center py-4">
+						<div class="mb-3">
+							<i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+						</div>
+						<h5 class="modal-title" id="successModalLabel">Guruh muvaffaqiyatli yaratildi!</h5>
+						<p class="text-muted mt-2">Sizning guruhingiz tizimga muvaffaqiyatli qo'shildi.</p>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-primary" data-bs-dismiss="modal">Yopish</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+	<script>
+		// Filter functionality
+		document.querySelectorAll('.filter-tab').forEach(tab => {
+			tab.addEventListener('click', function() {
+				document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+				this.classList.add('active');
+			});
+		});
+
+		// Group action handlers
+		document.querySelectorAll('.btn-join, .btn-view').forEach(btn => {
+			btn.addEventListener('click', function() {
+				const action = this.textContent.trim();
+				console.log('Action clicked:', action);
+			});
+		});
+
+		// Create group handler
+		document.querySelector('.create-group-card').addEventListener('click', function() {
+			const modal = new bootstrap.Modal(document.getElementById('createGroupModal'));
+			modal.show();
+		});
+
+		// Create group function
+		function createGroup() {
+			const form = document.getElementById('createGroupForm');
+			
+			// Basic validation
+			if (!form.checkValidity()) {
+				form.reportValidity();
+				return;
+			}
+
+			// Get form data
+			const groupData = {
+				name: document.getElementById('groupName').value,
+				category: document.getElementById('groupCategory').value,
+				description: document.getElementById('groupDescription').value,
+				maxStudents: document.getElementById('maxStudents').value,
+				language: document.getElementById('groupLanguage').value,
+				startDate: document.getElementById('startDate').value,
+				endDate: document.getElementById('endDate').value,
+				isPublic: document.getElementById('isPublic').checked,
+				requireApproval: document.getElementById('requireApproval').checked
+			};
+
+			// Handle avatar file
+			const avatarFile = document.getElementById('groupAvatar').files[0];
+			if (avatarFile) {
+				// In a real application, you would upload the file to server
+				console.log('Avatar file:', avatarFile);
+			}
+
+			// Simulate API call
+			console.log('Creating group:', groupData);
+			
+			// Close create modal
+			const createModal = bootstrap.Modal.getInstance(document.getElementById('createGroupModal'));
+			createModal.hide();
+			
+			// Reset form
+			form.reset();
+			
+			// Show success modal
+			setTimeout(() => {
+				const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+				successModal.show();
+				
+				// Add new group card to the grid (simulation)
+				addNewGroupCard(groupData);
+			}, 500);
+		}
+
+		// Add new group card to the grid
+		function addNewGroupCard(groupData) {
+			const groupsGrid = document.querySelector('.groups-grid');
+			const createCard = document.querySelector('.create-group-card');
+			
+			const categoryLabels = {
+				'web': 'Web dasturlash',
+				'mobile': 'Mobil dasturlash',
+				'backend': 'Backend dasturlash',
+				'design': 'UI/UX Dizayn',
+				'data': 'Data Science',
+				'math': 'Matematika',
+				'english': 'Ingliz tili',
+				'other': 'Boshqa'
+			};
+
+			const newGroupCard = document.createElement('div');
+			newGroupCard.className = 'group-card';
+			newGroupCard.innerHTML = `
+				<div class="group-header">
+					<img src="https://picsum.photos/seed/${Date.now()}/60/60" alt="${groupData.name}" class="group-avatar">
+					<div class="group-info">
+						<h3>${groupData.name}</h3>
+						<div class="group-category">${categoryLabels[groupData.category]} - O'qituvchi: Siz</div>
+					</div>
+				</div>
+				<p class="group-description">
+					${groupData.description}
+				</p>
+				<div class="group-stats">
+					<div class="stat-item">
+						<div class="stat-number">0</div>
+						<div class="stat-label">A'zolar</div>
+					</div>
+					<div class="stat-item">
+						<div class="stat-number">0</div>
+						<div class="stat-label">Kurslar</div>
+					</div>
+					<div class="stat-item">
+						<div class="stat-number">0%</div>
+						<div class="stat-label">Tugatilgan</div>
+						<div class="progress-bar">
+							<div class="progress-fill" style="width: 0%"></div>
+						</div>
+					</div>
+				</div>
+				<div class="group-actions">
+					<button class="btn-join">
+						<i class="fas fa-plus me-2"></i>Qo'shilish
+					</button>
+					<button class="btn-view">
+						<i class="fas fa-eye me-2"></i>Ko'rish
+					</button>
+				</div>
+			`;
+			
+			// Insert after the create card
+			createCard.parentNode.insertBefore(newGroupCard, createCard.nextSibling);
+			
+			// Add event listeners to new buttons
+			newGroupCard.querySelectorAll('.btn-join, .btn-view').forEach(btn => {
+				btn.addEventListener('click', function() {
+					const action = this.textContent.trim();
+					console.log('Action clicked:', action);
+				});
+			});
+		}
+
+		// Set minimum date to today
+		document.addEventListener('DOMContentLoaded', function() {
+			const today = new Date().toISOString().split('T')[0];
+			document.getElementById('startDate').setAttribute('min', today);
+			document.getElementById('endDate').setAttribute('min', today);
+			
+			// Update end date minimum when start date changes
+			document.getElementById('startDate').addEventListener('change', function() {
+				document.getElementById('endDate').setAttribute('min', this.value);
+			});
+		});
+	</script>
+</body>
+
+</html>

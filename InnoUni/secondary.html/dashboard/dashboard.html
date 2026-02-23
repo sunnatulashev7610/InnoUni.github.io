@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>O'QIV Professional Dashboard</title>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+	
+	<style>
+		:root {
+			--primary-color: #6366f1;
+			--secondary-color: #8b5cf6;
+			--accent-color: #14b8a6;
+			--dark-bg: #0f172a;
+			--sidebar-bg: #1e293b;
+			--card-bg: rgba(30, 41, 59, 0.8);
+			--text-primary: #f1f5f9;
+			--text-secondary: #94a3b8;
+			--border-color: rgba(148, 163, 184, 0.1);
+			--success-color: #10b981;
+			--warning-color: #f59e0b;
+			--danger-color: #ef4444;
+		}
+
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+
+		body {
+			font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+			background: linear-gradient(135deg, var(--dark-bg) 0%, #1a1f3a 100%);
+			color: var(--text-primary);
+			min-height: 100vh;
+			overflow-x: hidden;
+		}
+
+		/* HEADER */
+		.header {
+			position: fixed;
+			top: 0;
+			left: 0;
+			right: 0;
+			height: 70px;
+			background: rgba(15, 23, 42, 0.95);
+			backdrop-filter: blur(20px);
+			border-bottom: 1px solid var(--border-color);
+			z-index: 1000;
+			display: flex;
+			align-items: center;
+			padding: 0 30px;
+		}
+
+		.header-content {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			width: 100%;
+		}
+
+		.logo {
+			font-size: 1.8rem;
+			font-weight: 700;
+			background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+			background-clip: text;
+			-webkit-background-clip: text;
+			-webkit-text-fill-color: transparent;
+			display: flex;
+			align-items: center;
+			gap: 10px;
+		}
+
+		.logo i {
+			background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+			background-clip: text;
+			-webkit-background-clip: text;
+			-webkit-text-fill-color: transparent;
+		}
+
+		.header-actions {
+			display: flex;
+			align-items: center;
+			gap: 20px;
+		}
+
+		.search-bar {
+			position: relative;
+			display: flex;
+			align-items: center;
+		}
+
+		.search-bar input {
+			background: var(--card-bg);
+			border: 1px solid var(--border-color);
+			border-radius: 12px;
+			padding: 10px 40px 10px 15px;
+			color: var(--text-primary);
+			width: 300px;
+			transition: all 0.3s ease;
+		}
+
+		.search-bar input:focus {
+			outline: none;
+			border-color: var(--primary-color);
+			box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+		}
+
+		.search-bar i {
+			position: absolute;
+			right: 15px;
+			color: var(--text-secondary);
+		}
+
+		.user-menu {
+			display: flex;
+			align-items: center;
+			gap: 15px;
+		}
+
+		.notification-btn {
+			position: relative;
+			background: var(--card-bg);
+			border: 1px solid var(--border-color);
+			border-radius: 12px;
+			width: 45px;
+			height: 45px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			color: var(--text-secondary);
+			cursor: pointer;
+			transition: all 0.3s ease;
+		}
+
+		.notification-btn:hover {
+			border-color: var(--primary-color);
+			color: var(--primary-color);
+		}
+
+		.notification-badge {
+			position: absolute;
+			top: -5px;
+			right: -5px;
+			background: var(--danger-color);
+			color: white;
+			border-radius: 50%;
+			width: 20px;
+			height: 20px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 0.7rem;
+			font-weight: 600;
+		}
+
+		.user-profile {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			padding: 8px 15px;
+			background: var(--card-bg);
+			border: 1px solid var(--border-color);
+			border-radius: 12px;
+			cursor: pointer;
+			transition: all 0.3s ease;
+		}
+
+		.user-profile:hover {
+			border-color: var(--primary-color);
+		}
+
+		.user-avatar {
+			width: 35px;
+			height: 35px;
+			border-radius: 50%;
+			object-fit: cover;
+		}
+
+		.user-info {
+			text-align: right;
+		}
+
+		.user-name {
+			font-weight: 600;
+			font-size: 0.9rem;
+			color: var(--text-primary);
+		}
+
+		.user-role {
+			font-size: 0.8rem;
+			color: var(--text-secondary);
+		}
+
+		/* SIDEBAR */
+		.sidebar {
+			position: fixed;
+			top: 70px;
+			left: 0;
+			width: 280px;
+			height: calc(100vh - 70px);
+			background: var(--sidebar-bg);
+			padding: 30px 20px;
+			overflow-y: auto;
+			border-right: 1px solid var(--border-color);
+		}
+
+		.sidebar-section {
+			margin-bottom: 30px;
+		}
+
+		.sidebar-title {
+			font-size: 0.8rem;
+			font-weight: 600;
+			color: var(--text-secondary);
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+			margin-bottom: 15px;
+		}
+
+		.nav-item {
+			display: flex;
+			align-items: center;
+			padding: 12px 15px;
+			margin-bottom: 5px;
+			background: transparent;
+			border: none;
+			border-radius: 10px;
+			color: var(--text-secondary);
+			text-decoration: none;
+			cursor: pointer;
+			transition: all 0.3s ease;
+			width: 100%;
+			text-align: left;
+			font-size: 0.95rem;
+		}
+
+		.nav-item:hover {
+			background: rgba(99, 102, 241, 0.1);
+			color: var(--text-primary);
+			transform: translateX(5px);
+		}
+
+		.nav-item.active {
+			background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+			color: white;
+			box-shadow: 0 5px 15px rgba(99, 102, 241, 0.3);
+		}
+
+		.nav-item i {
+			width: 20px;
+			margin-right: 12px;
+			font-size: 1.1rem;
+		}
+
+		.nav-badge {
+			margin-left: auto;
+			background: var(--danger-color);
+			color: white;
+			border-radius: 12px;
+			padding: 2px 8px;
+			font-size: 0.7rem;
+			font-weight: 600;
+		}
+
+		/* MAIN CONTENT */
+		.main {
+			margin-left: 280px;
+			margin-top: 70px;
+			padding: 30px;
+			min-height: calc(100vh - 70px);
+		}
+
+		.page-header {
+			margin-bottom: 30px;
+		}
+
+		.page-title {
+			font-size: 2rem;
+			font-weight: 700;
+			color: var(--text-primary);
+			margin-bottom: 8px;
+		}
+
+		.page-subtitle {
+			color: var(--text-secondary);
+			font-size: 1rem;
+		}
+
+		/* STATS GRID */
+		.stats-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+			gap: 25px;
+			margin-bottom: 30px;
+		}
+
+		.stat-card {
+			background: var(--card-bg);
+			backdrop-filter: blur(20px);
+			border: 1px solid var(--border-color);
+			border-radius: 16px;
+			padding: 25px;
+			position: relative;
+			overflow: hidden;
+			transition: all 0.3s ease;
+		}
+
+		.stat-card::before {
+			content: '';
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			height: 3px;
+			background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+		}
+
+		.stat-card:hover {
+			transform: translateY(-5px);
+			box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+			border-color: var(--primary-color);
+		}
+
+		.stat-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: 20px;
+		}
+
+		.stat-icon {
+			width: 50px;
+			height: 50px;
+			border-radius: 12px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 1.3rem;
+		}
+
+		.stat-icon.primary {
+			background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+			color: white;
+		}
+
+		.stat-icon.success {
+			background: linear-gradient(135deg, var(--success-color), #059669);
+			color: white;
+		}
+
+		.stat-icon.warning {
+			background: linear-gradient(135deg, var(--warning-color), #d97706);
+			color: white;
+		}
+
+		.stat-icon.danger {
+			background: linear-gradient(135deg, var(--danger-color), #dc2626);
+			color: white;
+		}
+
+		.stat-value {
+			font-size: 2.2rem;
+			font-weight: 700;
+			color: var(--text-primary);
+			margin-bottom: 5px;
+		}
+
+		.stat-label {
+			color: var(--text-secondary);
+			font-size: 0.9rem;
+		}
+
+		.stat-change {
+			display: inline-flex;
+			align-items: center;
+			gap: 5px;
+			font-size: 0.8rem;
+			font-weight: 600;
+			padding: 4px 8px;
+			border-radius: 6px;
+		}
+
+		.stat-change.positive {
+			color: var(--success-color);
+			background: rgba(16, 185, 129, 0.1);
+		}
+
+		.stat-change.negative {
+			color: var(--danger-color);
+			background: rgba(239, 68, 68, 0.1);
+		}
+
+		/* CONTENT AREA */
+		.content-area {
+			background: var(--card-bg);
+			backdrop-filter: blur(20px);
+			border: 1px solid var(--border-color);
+			border-radius: 16px;
+			padding: 30px;
+			min-height: 400px;
+		}
+
+		/* LOADING SPINNER */
+		.loading {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			height: 200px;
+		}
+
+		.spinner {
+			width: 40px;
+			height: 40px;
+			border: 3px solid var(--border-color);
+			border-top: 3px solid var(--primary-color);
+			border-radius: 50%;
+			animation: spin 1s linear infinite;
+		}
+
+		@keyframes spin {
+			0% { transform: rotate(0deg); }
+			100% { transform: rotate(360deg); }
+		}
+
+		/* RESPONSIVE */
+		@media (max-width: 1024px) {
+			.sidebar {
+				width: 250px;
+			}
+			.main {
+				margin-left: 250px;
+			}
+		}
+
+		@media (max-width: 768px) {
+			.sidebar {
+				transform: translateX(-100%);
+				transition: transform 0.3s ease;
+			}
+			
+			.sidebar.open {
+				transform: translateX(0);
+			}
+			
+			.main {
+				margin-left: 0;
+			}
+			
+			.search-bar input {
+				width: 200px;
+			}
+		}
+
+		@media (max-width: 576px) {
+			.header {
+				padding: 0 15px;
+			}
+			
+			.search-bar {
+				display: none;
+			}
+			
+			.main {
+				padding: 20px 15px;
+			}
+			
+			.stats-grid {
+				grid-template-columns: 1fr;
+			}
+		}
+	</style>
+</head>
+
+<body>
+
+	<!-- HEADER -->
+	<header class="header">
+		<div class="header-content">
+			<div class="logo">
+				<i class="fas fa-graduation-cap"></i>
+				O'QIV
+			</div>
+			
+			<div class="header-actions">
+				<div class="search-bar">
+					<input type="text" placeholder="Qidirish...">
+					<i class="fas fa-search"></i>
+				</div>
+				
+				<div class="user-menu">
+					<div class="notification-btn">
+						<i class="fas fa-bell"></i>
+						<span class="notification-badge">3</span>
+					</div>
+					
+					<div class="user-profile">
+						<div class="user-info">
+							<div class="user-name">Sunnat Ulashev</div>
+							<div class="user-role">O'qituvchi</div>
+						</div>
+						<img src="https://picsum.photos/seed/user/35/35" alt="User" class="user-avatar">
+					</div>
+				</div>
+			</div>
+		</div>
+	</header>
+
+	<!-- SIDEBAR -->
+	<nav class="sidebar">
+		<div class="sidebar-section">
+			<div class="sidebar-title">Asosiy</div>
+			<button class="nav-item active" onclick="loadPage('main.dashboard', this)">
+				<i class="fas fa-home"></i>
+				Boshqaruv paneli
+			</button>
+			<button class="nav-item" onclick="loadPage('groups', this)">
+				<i class="fas fa-users"></i>
+				Guruhlar
+				<span class="nav-badge">5</span>
+			</button>
+			<button class="nav-item" onclick="loadPage('jamoalar', this)">
+				<i class="fas fa-user-friends"></i>
+				Jamoalar
+			</button>
+		</div>
+		
+		<div class="sidebar-section">
+			<div class="sidebar-title">O'qituvchi</div>
+			<button class="nav-item" onclick="loadPage('vazifalar', this)">
+				<i class="fas fa-tasks"></i>
+				Vazifalar
+				<span class="nav-badge">12</span>
+			</button>
+			<button class="nav-item" onclick="loadPage('courses', this)">
+				<i class="fas fa-book"></i>
+				Kurslar
+			</button>
+			<button class="nav-item" onclick="loadPage('library', this)">
+				<i class="fas fa-folder"></i>
+				Kutubxona
+			</button>
+		</div>
+		
+		<div class="sidebar-section">
+			<div class="sidebar-title">Sozlamalar</div>
+			<button class="nav-item" onclick="loadPage('profile', this)">
+				<i class="fas fa-user"></i>
+				Profil
+			</button>
+			<button class="nav-item" onclick="loadPage('settings', this)">
+				<i class="fas fa-cog"></i>
+				Sozlamalar
+			</button>
+		</div>
+	</nav>
+
+	<!-- MAIN CONTENT -->
+	<main class="main">
+		<div class="page-header">
+			<h1 class="page-title">Boshqaruv paneli</h1>
+			<p class="page-subtitle">Xush kelibsiz! O'qituvchi paneliga</p>
+		</div>
+
+		<!-- STATS GRID -->
+		<div class="stats-grid">
+			<div class="stat-card">
+				<div class="stat-header">
+					<div>
+						<div class="stat-value">24</div>
+						<div class="stat-label">Faol kurslar</div>
+					</div>
+					<div class="stat-icon primary">
+						<i class="fas fa-book"></i>
+					</div>
+				</div>
+				<div class="stat-change positive">
+					<i class="fas fa-arrow-up"></i>
+					12% o'sish
+				</div>
+			</div>
+
+			<div class="stat-card">
+				<div class="stat-header">
+					<div>
+						<div class="stat-value">156</div>
+						<div class="stat-label">O'quvchilar</div>
+					</div>
+					<div class="stat-icon success">
+						<i class="fas fa-users"></i>
+					</div>
+				</div>
+				<div class="stat-change positive">
+					<i class="fas fa-arrow-up"></i>
+					8% o'sish
+				</div>
+			</div>
+
+			<div class="stat-card">
+				<div class="stat-header">
+					<div>
+						<div class="stat-value">89</div>
+						<div class="stat-label">Bajarilgan vazifalar</div>
+					</div>
+					<div class="stat-icon warning">
+						<i class="fas fa-check-circle"></i>
+					</div>
+				</div>
+				<div class="stat-change positive">
+					<i class="fas fa-arrow-up"></i>
+					23% o'sish
+				</div>
+			</div>
+
+			<div class="stat-card">
+				<div class="stat-header">
+					<div>
+						<div class="stat-value">4.8</div>
+						<div class="stat-label">O'rtacha baholash</div>
+					</div>
+					<div class="stat-icon danger">
+						<i class="fas fa-star"></i>
+					</div>
+				</div>
+				<div class="stat-change negative">
+					<i class="fas fa-arrow-down"></i>
+					2% kamayish
+				</div>
+			</div>
+		</div>
+
+		<!-- CONTENT AREA -->
+		<div class="content-area" id="content">
+			<div class="loading">
+				<div class="spinner"></div>
+			</div>
+		</div>
+	</main>
+
+	<script>
+		// Enhanced loadPage function with loading states
+		function loadPage(page, element) {
+			// Update active state
+			document.querySelectorAll(".nav-item")
+				.forEach(btn => btn.classList.remove("active"));
+			element.classList.add("active");
+
+			// Show loading state
+			const contentArea = document.getElementById("content");
+			contentArea.innerHTML = `
+				<div class="loading">
+					<div class="spinner"></div>
+				</div>
+			`;
+
+			// Load page content
+			fetch("pages/" + page + ".html")
+				.then(res => {
+					if (!res.ok) {
+						throw new Error('Page not found');
+					}
+					return res.text();
+				})
+				.then(data => {
+					contentArea.innerHTML = data;
+				})
+				.catch(error => {
+					console.error('Error loading page:', error);
+					contentArea.innerHTML = `
+						<div class="text-center py-5">
+							<i class="fas fa-exclamation-triangle text-warning" style="font-size: 3rem;"></i>
+							<h3 class="mt-3">Sahifa topilmadi</h3>
+							<p class="text-secondary">Kechirasiz, bu sahifa mavjud emas</p>
+						</div>
+					`;
+				});
+		}
+
+		// Initialize dashboard
+		document.addEventListener('DOMContentLoaded', function() {
+			// Load default page
+			loadPage("main.dashboard", document.querySelector(".nav-item.active"));
+			
+			// Add search functionality
+			const searchInput = document.querySelector('.search-bar input');
+			if (searchInput) {
+				searchInput.addEventListener('input', function(e) {
+					console.log('Searching for:', e.target.value);
+					// Implement search functionality here
+				});
+			}
+
+			// Add notification functionality
+			const notificationBtn = document.querySelector('.notification-btn');
+			if (notificationBtn) {
+				notificationBtn.addEventListener('click', function() {
+					console.log('Notifications clicked');
+					// Implement notification panel here
+				});
+			}
+
+			// Add user profile functionality
+			const userProfile = document.querySelector('.user-profile');
+			if (userProfile) {
+				userProfile.addEventListener('click', function() {
+					console.log('User profile clicked');
+					// Implement user menu here
+				});
+			}
+		});
+
+		// Mobile menu toggle
+		function toggleSidebar() {
+			const sidebar = document.querySelector('.sidebar');
+			sidebar.classList.toggle('open');
+		}
+	</script>
+</body>

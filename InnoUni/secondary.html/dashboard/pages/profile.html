@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Profil - O'QIV</title>
+	<link rel="stylesheet" href="/css/bootstrap.min.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+	<style>
+		body {
+			background: linear-gradient(180deg, #020617, #0a2540);
+			color: #fff;
+			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+		}
+
+		.profile-container {
+			max-width: 1200px;
+			margin: 0 auto;
+			padding: 20px;
+		}
+
+		.profile-header {
+			background: rgba(48, 48, 48, 0.81);
+			backdrop-filter: blur(20px);
+			border-radius: 20px;
+			padding: 40px;
+			margin-bottom: 30px;
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			position: relative;
+			overflow: hidden;
+		}
+
+		.profile-header::before {
+			content: '';
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			height: 5px;
+			background: linear-gradient(90deg, #0d6efd, #00d4ff, #28a745);
+		}
+
+		.profile-info {
+			display: flex;
+			align-items: center;
+			gap: 30px;
+			flex-wrap: wrap;
+		}
+
+		.avatar-container {
+			position: relative;
+		}
+
+		.avatar {
+			width: 120px;
+			height: 120px;
+			border-radius: 50%;
+			border: 4px solid #0d6efd;
+			object-fit: cover;
+		}
+
+		.avatar-edit {
+			position: absolute;
+			bottom: 5px;
+			right: 5px;
+			width: 35px;
+			height: 35px;
+			border-radius: 50%;
+			background: linear-gradient(90deg, #0d6efd, #00d4ff);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			cursor: pointer;
+			transition: all 0.3s ease;
+		}
+
+		.avatar-edit:hover {
+			transform: scale(1.1);
+		}
+
+		.user-details h2 {
+			margin-bottom: 10px;
+			font-size: 28px;
+			font-weight: bold;
+		}
+
+		.user-details .user-role {
+			color: rgba(255, 255, 255, 0.7);
+			font-size: 16px;
+			margin-bottom: 15px;
+		}
+
+		.user-details .user-bio {
+			color: rgba(255, 255, 255, 0.6);
+			line-height: 1.6;
+			max-width: 500px;
+		}
+
+		.stats-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+			gap: 20px;
+			margin-bottom: 30px;
+		}
+
+		.stat-card {
+			background: rgba(48, 48, 48, 0.81);
+			backdrop-filter: blur(20px);
+			border-radius: 15px;
+			padding: 25px;
+			text-align: center;
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			transition: all 0.3s ease;
+		}
+
+		.stat-card:hover {
+			transform: translateY(-5px);
+			border-color: #0d6efd;
+			box-shadow: 0 15px 40px rgba(0, 123, 255, 0.2);
+		}
+
+		.stat-icon {
+			font-size: 36px;
+			margin-bottom: 15px;
+			background: linear-gradient(270deg, #00690e, #09c0ee, #0800ff);
+			background-size: 600% 600%;
+			-webkit-background-clip: text;
+			background-clip: text;
+			-webkit-text-fill-color: transparent;
+			animation: gradientMove 5s ease infinite;
+		}
+
+		@keyframes gradientMove {
+			0% { background-position: 0% 50%; }
+			50% { background-position: 100% 50%; }
+			100% { background-position: 0% 50%; }
+		}
+
+		.stat-number {
+			font-size: 32px;
+			font-weight: bold;
+			margin-bottom: 5px;
+		}
+
+		.stat-label {
+			color: rgba(255, 255, 255, 0.6);
+			font-size: 14px;
+		}
+
+		.content-section {
+			background: rgba(48, 48, 48, 0.81);
+			backdrop-filter: blur(20px);
+			border-radius: 15px;
+			padding: 30px;
+			margin-bottom: 20px;
+			border: 1px solid rgba(255, 255, 255, 0.1);
+		}
+
+		.section-title {
+			font-size: 22px;
+			font-weight: bold;
+			margin-bottom: 20px;
+			display: flex;
+			align-items: center;
+			gap: 10px;
+		}
+
+		.achievement-list {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+			gap: 15px;
+		}
+
+		.achievement-item {
+			background: rgba(255, 255, 255, 0.05);
+			border-radius: 12px;
+			padding: 20px;
+			text-align: center;
+			transition: all 0.3s ease;
+			border: 1px solid rgba(255, 255, 255, 0.1);
+		}
+
+		.achievement-item:hover {
+			transform: translateY(-3px);
+			background: rgba(255, 255, 255, 0.1);
+		}
+
+		.achievement-icon {
+			font-size: 32px;
+			margin-bottom: 10px;
+			color: #ffc107;
+		}
+
+		.achievement-title {
+			font-weight: bold;
+			margin-bottom: 5px;
+		}
+
+		.achievement-desc {
+			font-size: 12px;
+			color: rgba(255, 255, 255, 0.6);
+		}
+
+		.settings-form {
+			display: grid;
+			gap: 20px;
+		}
+
+		.form-group {
+			display: grid;
+			grid-template-columns: 150px 1fr;
+			align-items: center;
+			gap: 15px;
+		}
+
+		.form-group label {
+			font-weight: 500;
+			color: rgba(255, 255, 255, 0.8);
+		}
+
+		.form-control {
+			background: rgba(255, 255, 255, 0.05);
+			border: 1px solid rgba(255, 255, 255, 0.2);
+			border-radius: 8px;
+			padding: 12px 15px;
+			color: #fff;
+			transition: all 0.3s ease;
+		}
+
+		.form-control:focus {
+			outline: none;
+			border-color: #0d6efd;
+			background: rgba(255, 255, 255, 0.1);
+		}
+
+		.btn-save {
+			background: linear-gradient(90deg, #0d6efd, #00d4ff);
+			color: white;
+			border: none;
+			padding: 12px 30px;
+			border-radius: 8px;
+			font-weight: 500;
+			cursor: pointer;
+			transition: all 0.3s ease;
+		}
+
+		.btn-save:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 5px 15px rgba(0, 123, 255, 0.3);
+		}
+
+		.progress-bar {
+			width: 100%;
+			height: 8px;
+			background: rgba(255, 255, 255, 0.1);
+			border-radius: 4px;
+			overflow: hidden;
+			margin-top: 10px;
+		}
+
+		.progress-fill {
+			height: 100%;
+			background: linear-gradient(90deg, #0d6efd, #00d4ff);
+			border-radius: 4px;
+			transition: width 0.3s ease;
+		}
+
+		@media (max-width: 768px) {
+			.profile-info {
+				flex-direction: column;
+				text-align: center;
+			}
+
+			.user-details .user-bio {
+				max-width: 100%;
+			}
+
+			.form-group {
+				grid-template-columns: 1fr;
+				gap: 10px;
+			}
+
+			.stats-grid {
+				grid-template-columns: 1fr;
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<div class="profile-container">
+		<!-- Profile Header -->
+		<div class="profile-header">
+			<div class="profile-info">
+				<div class="avatar-container">
+					<img src="https://picsum.photos/seed/user-avatar/120/120" alt="User Avatar" class="avatar">
+					<div class="avatar-edit">
+						<i class="fas fa-camera text-white"></i>
+					</div>
+				</div>
+				<div class="user-details">
+					<h2>Sunnat Ulashev</h2>
+					<div class="user-role">
+						<i class="fas fa-graduation-cap me-2"></i>Full Stack Developer
+					</div>
+					<div class="user-bio">
+						Passionate about creating innovative web solutions and helping others learn programming. 
+						5+ years of experience in web development and teaching.
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Statistics Grid -->
+		<div class="stats-grid">
+			<div class="stat-card">
+				<div class="stat-icon">
+					<i class="fas fa-book-open"></i>
+				</div>
+				<div class="stat-number text-primary">42</div>
+				<div class="stat-label">Bajarilgan kurslar</div>
+				<div class="progress-bar">
+					<div class="progress-fill" style="width: 85%"></div>
+				</div>
+			</div>
+			<div class="stat-card">
+				<div class="stat-icon">
+					<i class="fas fa-trophy"></i>
+				</div>
+				<div class="stat-number text-warning">15</div>
+				<div class="stat-label">Sertifikatlar</div>
+				<div class="progress-bar">
+					<div class="progress-fill" style="width: 60%; background: linear-gradient(90deg, #ffc107, #ffdb4d);"></div>
+				</div>
+			</div>
+			<div class="stat-card">
+				<div class="stat-icon">
+					<i class="fas fa-clock"></i>
+				</div>
+				<div class="stat-number text-info">256</div>
+				<div class="stat-label">O'rganish soatlari</div>
+				<div class="progress-bar">
+					<div class="progress-fill" style="width: 70%; background: linear-gradient(90deg, #17a2b8, #5bc0de);"></div>
+				</div>
+			</div>
+			<div class="stat-card">
+				<div class="stat-icon">
+					<i class="fas fa-fire"></i>
+				</div>
+				<div class="stat-number text-danger">28</div>
+				<div class="stat-label">Ketma-ket kunlar</div>
+				<div class="progress-bar">
+					<div class="progress-fill" style="width: 95%; background: linear-gradient(90deg, #dc3545, #ff6b6b);"></div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Achievements Section -->
+		<div class="content-section">
+			<h3 class="section-title">
+				<i class="fas fa-medal"></i>
+				Yutuqlar
+			</h3>
+			<div class="achievement-list">
+				<div class="achievement-item">
+					<div class="achievement-icon">
+						<i class="fas fa-star"></i>
+					</div>
+					<div class="achievement-title">Tezkor o'rganuvchi</div>
+					<div class="achievement-desc">30 kun ketma-ket o'rganish</div>
+				</div>
+				<div class="achievement-item">
+					<div class="achievement-icon">
+						<i class="fas fa-code"></i>
+					</div>
+					<div class="achievement-title">Kod ustasi</div>
+					<div class="achievement-desc">100+ vazifa bajardi</div>
+				</div>
+				<div class="achievement-item">
+					<div class="achievement-icon">
+						<i class="fas fa-users"></i>
+					</div>
+					<div class="achievement-title">Jamoa a'zosi</div>
+					<div class="achievement-desc">5+ guruhda faol</div>
+				</div>
+				<div class="achievement-item">
+					<div class="achievement-icon">
+						<i class="fas fa-certificate"></i>
+					</div>
+					<div class="achievement-title">Sertifikatli</div>
+					<div class="achievement-desc">10+ kurs tugatdi</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Settings Section -->
+		<div class="content-section">
+			<h3 class="section-title">
+				<i class="fas fa-cog"></i>
+				Sozlamalar
+			</h3>
+			<form class="settings-form">
+				<div class="form-group">
+					<label for="fullName">To'liq ism</label>
+					<input type="text" id="fullName" class="form-control" value="Sunnat Ulashev">
+				</div>
+				<div class="form-group">
+					<label for="email">Email</label>
+					<input type="email" id="email" class="form-control" value="sunnat@oqiv.uz">
+				</div>
+				<div class="form-group">
+					<label for="phone">Telefon</label>
+					<input type="tel" id="phone" class="form-control" value="+998 94 674 11 76">
+				</div>
+				<div class="form-group">
+					<label for="bio">Bio</label>
+					<textarea id="bio" class="form-control" rows="3">Passionate about creating innovative web solutions and helping others learn programming.</textarea>
+				</div>
+				<div class="form-group">
+					<label for="language">Til</label>
+					<select id="language" class="form-control">
+						<option value="uz" selected>O'zbekcha</option>
+						<option value="ru">Русский</option>
+						<option value="en">English</option>
+					</select>
+				</div>
+				<div class="text-end mt-4">
+					<button type="submit" class="btn-save">
+						<i class="fas fa-save me-2"></i>Saqlash
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+
+	<script>
+		// Avatar edit functionality
+		document.querySelector('.avatar-edit').addEventListener('click', function() {
+			alert('Avatar yangilash funksiyasi tez orada qo\'shiladi');
+		});
+
+		// Settings form submission
+		document.querySelector('.settings-form').addEventListener('submit', function(e) {
+			e.preventDefault();
+			alert('Sozlamalar saqlandi!');
+		});
+
+		// Achievement interactions
+		document.querySelectorAll('.achievement-item').forEach(item => {
+			item.addEventListener('click', function() {
+				this.style.transform = 'scale(0.95)';
+				setTimeout(() => {
+					this.style.transform = '';
+				}, 200);
+			});
+		});
+	</script>
+</body>
+
+</html>

@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "../slider"
+		},
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "Inno Uni"
+	}
+}

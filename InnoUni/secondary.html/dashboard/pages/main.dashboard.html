@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Boshqaruv paneli - O'QIV</title>
+	<link rel="stylesheet" href="/css/bootstrap.min.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+	<style>
+		body {
+			background: linear-gradient(180deg, #020617, #0a2540);
+			color: #fff;
+			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+		}
+
+		.dashboard-header {
+			background: rgba(48, 48, 48, 0.81);
+			backdrop-filter: blur(20px);
+			border-radius: 15px;
+			padding: 30px;
+			margin-bottom: 30px;
+			border: 1px solid rgba(255, 255, 255, 0.1);
+		}
+
+		.search-bar {
+			background: rgba(255, 255, 255, 0.05);
+			border: 1px solid rgba(255, 255, 255, 0.2);
+			border-radius: 25px;
+			padding: 12px 20px;
+			color: #fff;
+			width: 100%;
+			max-width: 400px;
+			transition: all 0.3s ease;
+		}
+
+		.search-bar:focus {
+			outline: none;
+			border-color: #0d6efd;
+			background: rgba(255, 255, 255, 0.1);
+		}
+
+		.user-info {
+			display: flex;
+			align-items: center;
+			gap: 15px;
+		}
+
+		.user-avatar {
+			width: 40px;
+			height: 40px;
+			border-radius: 50%;
+			border: 2px solid #0d6efd;
+		}
+
+		.stats-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+			gap: 20px;
+			margin-bottom: 30px;
+		}
+
+		.stat-card {
+			background: rgba(48, 48, 48, 0.81);
+			backdrop-filter: blur(20px);
+			border-radius: 15px;
+			padding: 25px;
+			text-align: center;
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			transition: all 0.3s ease;
+		}
+
+		.stat-card:hover {
+			transform: translateY(-5px);
+			box-shadow: 0 15px 40px rgba(0, 123, 255, 0.2);
+			border-color: #0d6efd;
+		}
+
+		.stat-icon {
+			font-size: 36px;
+			margin-bottom: 15px;
+			background: linear-gradient(270deg, #00690e, #09c0ee, #0800ff);
+			background-size: 600% 600%;
+			-webkit-background-clip: text;
+			background-clip: text;
+			-webkit-text-fill-color: transparent;
+			animation: gradientMove 5s ease infinite;
+		}
+
+		@keyframes gradientMove {
+			0% { background-position: 0% 50%; }
+			50% { background-position: 100% 50%; }
+			100% { background-position: 0% 50%; }
+		}
+
+		.stat-number {
+			font-size: 32px;
+			font-weight: bold;
+			margin-bottom: 5px;
+		}
+
+		.stat-label {
+			color: rgba(255, 255, 255, 0.6);
+			font-size: 14px;
+		}
+
+		.progress-bar {
+			width: 100%;
+			height: 8px;
+			background: rgba(255, 255, 255, 0.1);
+			border-radius: 4px;
+			overflow: hidden;
+			margin-top: 10px;
+		}
+
+		.progress-fill {
+			height: 100%;
+			background: linear-gradient(90deg, #0d6efd, #00d4ff);
+			border-radius: 4px;
+			transition: width 0.3s ease;
+		}
+
+		.content-section {
+			background: rgba(48, 48, 48, 0.81);
+			backdrop-filter: blur(20px);
+			border-radius: 15px;
+			padding: 30px;
+			margin-bottom: 20px;
+			border: 1px solid rgba(255, 255, 255, 0.1);
+		}
+
+		.section-title {
+			font-size: 22px;
+			font-weight: bold;
+			margin-bottom: 20px;
+			display: flex;
+			align-items: center;
+			gap: 10px;
+		}
+
+		.activity-list {
+			max-height: 400px;
+			overflow-y: auto;
+		}
+
+		.activity-item {
+			display: flex;
+			align-items: center;
+			gap: 15px;
+			padding: 15px;
+			border-radius: 10px;
+			margin-bottom: 15px;
+			background: rgba(255, 255, 255, 0.05);
+			transition: all 0.3s ease;
+		}
+
+		.activity-item:hover {
+			background: rgba(255, 255, 255, 0.1);
+		}
+
+		.activity-icon {
+			width: 40px;
+			height: 40px;
+			border-radius: 10px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 16px;
+		}
+
+		.activity-icon.course {
+			background: linear-gradient(135deg, #0d6efd, #00d4ff);
+		}
+
+		.activity-icon.achievement {
+			background: linear-gradient(135deg, #ffc107, #ffdb4d);
+		}
+
+		.activity-icon.team {
+			background: linear-gradient(135deg, #28a745, #5cb85c);
+		}
+
+		.activity-details {
+			flex: 1;
+		}
+
+		.activity-title {
+			font-weight: bold;
+			margin-bottom: 5px;
+		}
+
+		.activity-time {
+			color: rgba(255, 255, 255, 0.6);
+			font-size: 12px;
+		}
+
+		.quick-actions {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+			gap: 15px;
+		}
+
+		.action-card {
+			background: rgba(48, 48, 48, 0.81);
+			backdrop-filter: blur(20px);
+			border-radius: 15px;
+			padding: 20px;
+			text-align: center;
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			transition: all 0.3s ease;
+			cursor: pointer;
+		}
+
+		.action-card:hover {
+			transform: translateY(-3px);
+			border-color: #0d6efd;
+		}
+
+		.action-icon {
+			font-size: 32px;
+			margin-bottom: 10px;
+			color: #0d6efd;
+		}
+
+		.action-title {
+			font-weight: bold;
+			margin-bottom: 5px;
+		}
+
+		.action-desc {
+			color: rgba(255, 255, 255, 0.6);
+			font-size: 14px;
+		}
+
+		@media (max-width: 768px) {
+			.stats-grid {
+				grid-template-columns: 1fr;
+			}
+
+			.quick-actions {
+				grid-template-columns: 1fr;
+			}
+
+			.user-info {
+				flex-direction: column;
+				align-items: flex-start;
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<div class="container-fluid p-4">
+		<!-- Header -->
+		<div class="dashboard-header">
+			<div class="row align-items-center">
+				<div class="col-md-6">
+					<div class="user-info">
+						<img src="https://picsum.photos/seed/dashboard-user/40/40" alt="User" class="user-avatar">
+						<div>
+							<h3 class="mb-1">Xush kelibsiz, Sunnat!</h3>
+							<p class="mb-0 text-white-50">Bugungi o'rganishni boshlang</p>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-6">
+					<input type="text" class="search-bar" placeholder="Kurslar, guruhlar, vazifalarni qidirish...">
+				</div>
+			</div>
+		</div>
+
+		<!-- Statistics Grid -->
+		<div class="stats-grid">
+			<div class="stat-card">
+				<div class="stat-icon">
+					<i class="fas fa-book-open"></i>
+				</div>
+				<div class="stat-number text-primary">42</div>
+				<div class="stat-label">Faol kurslar</div>
+				<div class="progress-bar">
+					<div class="progress-fill" style="width: 85%"></div>
+				</div>
+			</div>
+			<div class="stat-card">
+				<div class="stat-icon">
+					<i class="fas fa-tasks"></i>
+				</div>
+				<div class="stat-number text-warning">15</div>
+				<div class="stat-label">Muddati yaqin vazifalar</div>
+				<div class="progress-bar">
+					<div class="progress-fill" style="width: 60%; background: linear-gradient(90deg, #ffc107, #ffdb4d);"></div>
+				</div>
+			</div>
+			<div class="stat-card">
+				<div class="stat-icon">
+					<i class="fas fa-users"></i>
+				</div>
+				<div class="stat-number text-success">8</div>
+				<div class="stat-label">Faol guruhlar</div>
+				<div class="progress-bar">
+					<div class="progress-fill" style="width: 75%; background: linear-gradient(90deg, #28a745, #5cb85c);"></div>
+				</div>
+			</div>
+			<div class="stat-card">
+				<div class="stat-icon">
+					<i class="fas fa-fire"></i>
+				</div>
+				<div class="stat-number text-danger">28</div>
+				<div class="stat-label">Ketma-ket kunlar</div>
+				<div class="progress-bar">
+					<div class="progress-fill" style="width: 95%; background: linear-gradient(90deg, #dc3545, #ff6b6b);"></div>
+				</div>
+			</div>
+		</div>
+
+		<div class="row">
+			<!-- Recent Activity -->
+			<div class="col-md-8">
+				<div class="content-section">
+					<h3 class="section-title">
+						<i class="fas fa-clock-rotate-left"></i>
+						So'nggi faoliyat
+					</h3>
+					<div class="activity-list">
+						<div class="activity-item">
+							<div class="activity-icon course">
+								<i class="fas fa-graduation-cap"></i>
+							</div>
+							<div class="activity-details">
+								<div class="activity-title">React.js kursini boshladingiz</div>
+								<div class="activity-time">2 soat oldin</div>
+							</div>
+						</div>
+						<div class="activity-item">
+							<div class="activity-icon achievement">
+								<i class="fas fa-trophy"></i>
+							</div>
+							<div class="activity-details">
+								<div class="activity-title">"Tezkor o'rganuvchi" yutuqini oldingiz</div>
+								<div class="activity-time">5 soat oldin</div>
+							</div>
+						</div>
+						<div class="activity-item">
+							<div class="activity-icon team">
+								<i class="fas fa-user-plus"></i>
+							</div>
+							<div class="activity-details">
+								<div class="activity-title">"Alpha Developers" jamoasiga qo'shildingiz</div>
+								<div class="activity-time">1 kun oldin</div>
+							</div>
+						</div>
+						<div class="activity-item">
+							<div class="activity-icon course">
+								<i class="fas fa-check-circle"></i>
+							</div>
+							<div class="activity-details">
+								<div class="activity-title">Python dasturlash vazifasini tugatdingiz</div>
+								<div class="activity-time">2 kun oldin</div>
+							</div>
+						</div>
+						<div class="activity-item">
+							<div class="activity-icon achievement">
+								<i class="fas fa-medal"></i>
+							</div>
+							<div class="activity-details">
+								<div class="activity-title">"Kod ustasi" sertifikatini oldingiz</div>
+								<div class="activity-time">3 kun oldin</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Quick Actions -->
+			<div class="col-md-4">
+				<div class="content-section">
+					<h3 class="section-title">
+						<i class="fas fa-bolt"></i>
+						Tezkor amallar
+					</h3>
+					<div class="quick-actions">
+						<div class="action-card">
+							<div class="action-icon">
+								<i class="fas fa-plus-circle"></i>
+							</div>
+							<div class="action-title">Yangi kurs</div>
+							<div class="action-desc">Yangi kurs yarating</div>
+						</div>
+						<div class="action-card">
+							<div class="action-icon">
+								<i class="fas fa-users"></i>
+							</div>
+							<div class="action-title">Guruh yaratish</div>
+							<div class="action-desc">Jamoa tuzing</div>
+						</div>
+						<div class="action-card">
+							<div class="action-icon">
+								<i class="fas fa-tasks"></i>
+							</div>
+							<div class="action-title">Vazifa qo'shish</div>
+							<div class="action-desc">Yangi vazifa yarating</div>
+						</div>
+						<div class="action-card">
+							<div class="action-icon">
+								<i class="fas fa-chart-line"></i>
+							</div>
+							<div class="action-title">Statistika</div>
+							<div class="action-desc">Batafsil ko'rish</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<script>
+		// Search functionality
+		document.querySelector('.search-bar').addEventListener('keypress', function(e) {
+			if (e.key === 'Enter') {
+				const searchTerm = this.value.trim();
+				if (searchTerm) {
+					console.log('Searching for:', searchTerm);
+					// Implement search functionality
+				}
+			}
+		});
+
+		// Quick action handlers
+		document.querySelectorAll('.action-card').forEach(card => {
+			card.addEventListener('click', function() {
+				const title = this.querySelector('.action-title').textContent;
+				console.log('Quick action clicked:', title);
+			});
+		});
+	</script>
+</body>
+
+</html>

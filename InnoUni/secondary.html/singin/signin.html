@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Inno Uni</title>
+
+	<link href="/css/bootstrap.min.css" rel="stylesheet">
+
+	<style>
+		.btn {
+			background: linear-gradient(90deg, #14b8a6, #0ea5e9);
+			color: white;
+		}
+
+		body {
+			height: 100vh;
+		}
+
+		/* chap panel */
+		.left-panel {
+
+			background: linear-gradient(180deg, #020617, #0a2540);
+
+			color: white;
+
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			flex-direction: column;
+		}
+
+		.left-panel-btn {
+
+			/* background: linear-gradient(180deg, #020617, #0a2540); */
+
+			color: white;
+
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			flex-direction: column;
+		}
+
+		/* icon box */
+		.icon-box {
+
+			width: 80px;
+			height: 80px;
+
+			background: linear-gradient(135deg, #06b6d4, #0891b2);
+
+			border-radius: 20px;
+
+			display: flex;
+			justify-content: center;
+			align-items: center;
+
+			font-size: 40px;
+
+			margin-bottom: 20px;
+		}
+
+		/* input */
+		.form-control {
+			padding: 12px;
+		}
+
+		.main {
+			flex: 1;
+			padding: 30px;
+			background: #f1f5f9;
+		}
+
+		.card {
+			background: white;
+			padding: 20px;
+			border-radius: 12px;
+			box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+		}
+
+		.sidebar {
+			width: 50%;
+		}
+
+		/* botoon */
+	</style>
+</head>
+
+<body>
+	<div class="container-fluid h-100">
+		<div class="row h-100">
+			<!-- LEFT -->
+			<div class="col-md-6 left-panel d-none d-md-flex gap-3">
+				<div class="text-center">
+					<div class="icon-box" style="position: relative; top: 0; left: 80px;">
+						🎓
+					</div>
+					<h2>Foydalanuvchi</h2>
+					<p class=" text-light">
+						O'z faloliyatingizni davom etiring
+					</p>
+				</div>
+
+
+			</div>
+
+			<!-- RIGHT -->
+			<div class="main  col-md-6 right-panel">
+				<div id="content" style="height: 100%;">
+					<div class="container-fluid h-100">
+						<div class="row w-100 h-100">
+							<div class=" right-panel d-flex justify-content-center align-items-center h-100">
+								<div class="form-box" style="max-width: 500px;">
+									<h2 class="mb-2">
+										Shaxsiy profilinggizga kiring
+									</h2>
+									<form>
+										<div class="mb-3">
+											<label class="form-label">
+												Email
+											</label>
+											<input type="email" class="form-control" placeholder="email@misol.uz">
+										</div>
+										<div class="mb-4">
+											<label class="form-label">
+												Parol
+											</label>
+											<input type="password" class="form-control" placeholder="Kamida 6 ta belgi">
+										</div>
+										<button class="btn btn-custom w-100"
+											style="    background: linear-gradient(90deg, #14b8a6, #0ea5e9);">
+											Ro'yxatdan o'tish →
+										</button>
+										<div class="text-center mt-4">
+											<a href="/index.html" class="text-decoration-none me-2">
+												← Orqaga qaytish
+											</a>
+											|
+											<a href="/secondary.html/login/login.html" class="text-decoration-none ms-2">
+												Ro'yxatdan o'ting
+											</a>
+										</div>
+									</form>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+
+</html>

@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>O'quvchi boshqaruv paneli - O'QIV</title>
+	<link rel="stylesheet" href="/css/bootstrap.min.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+	<link rel="stylesheet" href="../css/style.css">
+	<style>
+		.student-dashboard {
+			background: linear-gradient(180deg, #020617, #0a2540);
+			color: #fff;
+			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+			min-height: 100vh;
+		}
+
+		.dashboard-container {
+			max-width: 1400px;
+			margin: 0 auto;
+			padding: 20px;
+		}
+
+		.stats-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+			gap: 20px;
+			margin-bottom: 30px;
+		}
+
+		.content-section {
+			background: rgba(48, 48, 48, 0.81);
+			backdrop-filter: blur(20px);
+			border-radius: 15px;
+			padding: 30px;
+			margin-bottom: 20px;
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			}
+
+		.section-title {
+			font-size: 22px;
+			font-weight: bold;
+			margin-bottom: 20px;
+			display: flex;
+			align-items: center;
+			gap: 10px;
+		}
+
+		.courses-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+			gap: 25px;
+		}
+
+		.course-card {
+			background: rgba(48, 48, 48, 0.81);
+			backdrop-filter: blur(20px);
+			border-radius: 15px;
+			padding: 25px;
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			transition: all 0.3s ease;
+			cursor: pointer;
+		}
+
+		.course-card:hover {
+			transform: translateY(-5px);
+			box-shadow: 0 15px 40px rgba(0, 123, 255, 0.2);
+			border-color: #0d6efd;
+		}
+
+		.course-header {
+			display: flex;
+			align-items: center;
+			gap: 15px;
+			margin-bottom: 20px;
+		}
+
+		.course-avatar {
+			width: 60px;
+			height: 60px;
+			border-radius: 12px;
+			object-fit: cover;
+			border: 2px solid #0d6efd;
+		}
+
+		.course-info h4 {
+			margin: 0;
+			font-size: 18px;
+			font-weight: bold;
+			color: #fff;
+		}
+
+		.course-meta {
+			display: flex;
+			flex-direction: column;
+			gap: 5px;
+		}
+
+		.course-category {
+			background: linear-gradient(90deg, #0d6efd, #00d4ff);
+			color: white;
+			padding: 4px 8px;
+			border-radius: 12px;
+			font-size: 12px;
+			width: fit-content;
+		}
+
+		.course-teacher {
+			color: rgba(255, 255, 255, 0.7);
+			font-size: 14px;
+		}
+
+		.course-progress {
+			margin-bottom: 20px;
+		}
+
+		.progress-info {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: 10px;
+		}
+
+		.progress-bar {
+			width: 100%;
+			height: 8px;
+			background: rgba(255, 255, 255, 0.1);
+			border-radius: 4px;
+			overflow: hidden;
+		}
+
+		.progress-fill {
+			height: 100%;
+			background: linear-gradient(90deg, #0d6efd, #00d4ff);
+			border-radius: 4px;
+			transition: width 0.3s ease;
+		}
+
+		.course-stats {
+			display: grid;
+			grid-template-columns: repeat(2, 1fr);
+			gap: 15px;
+		}
+
+		.stat-item {
+			text-align: center;
+			padding: 15px;
+			background: rgba(255, 255, 255, 0.05);
+			border-radius: 10px;
+		}
+
+		.stat-number {
+			font-size: 20px;
+			font-weight: bold;
+			color: #0d6efd;
+		}
+
+		.stat-label {
+			color: rgba(255, 255, 255, 0.7);
+			font-size: 12px;
+			margin-top: 5px;
+		}
+
+		.course-actions {
+			display: flex;
+			gap: 10px;
+		}
+
+		.action-btn {
+			padding: 10px 20px;
+			border-radius: 8px;
+			border: none;
+			cursor: pointer;
+			font-size: 14px;
+			transition: all 0.3s ease;
+		}
+
+		.btn-view {
+			background: rgba(255, 255, 255, 0.1);
+			color: white;
+			border: 1px solid rgba(255, 255, 255, 0.2);
+		}
+
+		.btn-primary {
+			background: linear-gradient(90deg, #0d6efd, #00d4ff);
+			color: white;
+		}
+
+		.action-btn:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+		}
+
+		.groups-container {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+			gap: 25px;
+		}
+
+		.group-card {
+			background: rgba(48, 48, 48, 0.81);
+			backdrop-filter: blur(20px);
+			border-radius: 15px;
+			padding: 25px;
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			transition: all 0.3s ease;
+			cursor: pointer;
+		}
+
+		.group-card:hover {
+			transform: translateY(-5px);
+			box-shadow: 0 15px 40px rgba(0, 123, 255, 0.2);
+			border-color: #0d6efd;
+		}
+
+		.group-header {
+			display: flex;
+			align-items: center;
+			gap: 15px;
+			margin-bottom: 20px;
+		}
+
+		.group-avatar {
+			width: 60px;
+			height: 60px;
+			border-radius: 12px;
+			object-fit: cover;
+			border: 2px solid #0d6efd;
+		}
+
+		.group-info h4 {
+			margin: 0;
+			font-size: 18px;
+			font-weight: bold;
+			color: #fff;
+		}
+
+		.group-meta {
+			display: flex;
+			flex-direction: column;
+			gap: 5px;
+		}
+
+		.group-role {
+			background: linear-gradient(90deg, #28a745, #5cb85c);
+			color: white;
+			padding: 4px 8px;
+			border-radius: 12px;
+			font-size: 12px;
+			width: fit-content;
+			}
+
+		.member-count {
+			color: rgba(255, 255, 255, 0.7);
+			font-size: 14px;
+		}
+
+		.group-description {
+			color: rgba(255, 255, 255, 0.7);
+			line-height: 1.6;
+			margin-bottom: 20px;
+			}
+
+		.group-stats {
+			display: grid;
+			grid-template-columns: repeat(2, 1fr);
+			gap: 15px;
+		}
+
+		.tasks-container {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+			gap: 25px;
+		}
+
+		.task-card {
+			background: rgba(48, 48, 48, 0.81);
+			backdrop-filter: blur(20px);
+			border-radius: 15px;
+			padding: 25px;
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			transition: all 0.3s ease;
+			position: relative;
+			overflow: hidden;
+		}
+
+		.task-card:hover {
+			transform: translateY(-5px);
+			box-shadow: 0 15px 40px rgba(0, 123, 255, 0.2);
+			border-color: #0d6efd;
+		}
+
+		.task-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: flex-start;
+			margin-bottom: 15px;
+			}
+
+		.task-header h4 {
+			margin: 0;
+			font-size: 18px;
+			font-weight: bold;
+			color: #fff;
+			flex: 1;
+		}
+
+		.task-meta {
+			display: flex;
+			flex-direction: column;
+			gap: 8px;
+			align-items: flex-start;
+		}
+
+		.task-priority {
+			padding: 4px 8px;
+			border-radius: 12px;
+			font-size: 12px;
+			font-weight: bold;
+		}
+
+		.priority-high {
+			background: linear-gradient(90deg, #dc3545, #ff6b6b);
+		}
+
+		.priority-medium {
+			background: linear-gradient(90deg, #ffc107, #ffdb4d);
+		}
+
+		.priority-low {
+			background: linear-gradient(90deg, #28a745, #5cb85c);
+		}
+
+		.task-course {
+			color: rgba(255, 255, 255, 0.7);
+			font-size: 14px;
+		}
+
+		.task-due-date {
+			color: rgba(255, 255, 255, 0.7);
+			font-size: 14px;
+		}
+
+		.task-due-date.overdue {
+			color: #dc3545;
+		}
+
+		.task-description {
+			color: rgba(255, 255, 255, 0.7);
+			line-height: 1.6;
+			margin-bottom: 20px;
+			}
+
+		.task-actions {
+			display: flex;
+			gap: 10px;
+		}
+
+		.achievements-container {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+			gap: 20px;
+		}
+
+		.achievement-item {
+			background: rgba(48, 48, 48, 0.81);
+			backdrop-filter: blur(20px);
+			border-radius: 15px;
+			padding: 20px;
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			text-align: center;
+			transition: all 0.3s ease;
+		}
+
+		.achievement-item:hover {
+			transform: translateY(-3px);
+			border-color: #0d6efd;
+		}
+
+		.achievement-icon {
+			font-size: 32px;
+			margin-bottom: 15px;
+			color: #ffc107;
+		}
+
+		.achievement-details h5 {
+			margin: 0 0 10px 0;
+			font-size: 16px;
+			font-weight: bold;
+			color: #fff;
+		}
+
+		.achievement-details p {
+			color: rgba(255, 255, 255, 0.7);
+			margin: 0;
+			font-size: 14px;
+		}
+
+		.achievement-date {
+			color: rgba(255, 255, 255, 0.5);
+			font-size: 12px;
+			margin-top: 10px;
+		}
+
+		.recommendations-container {
+			background: rgba(48, 48, 48, 0.81);
+			backdrop-filter: blur(20px);
+			border-radius: 15px;
+			padding: 30px;
+			border: 1px solid rgba(255, 255, 255, 0.1);
+		}
+
+		.recommendations-section h3 {
+			margin-bottom: 20px;
+			color: #0d6efd;
+		}
+
+		.recommended-courses {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+			gap: 20px;
+			margin-bottom: 30px;
+		}
+
+		.recommended-course {
+			background: rgba(255, 255, 255, 0.05);
+			border-radius: 10px;
+			padding: 20px;
+			text-align: center;
+			transition: all 0.3s ease;
+		}
+
+		.recommended-course:hover {
+			background: rgba(255, 255, 255, 0.1);
+			transform: translateY(-2px);
+		}
+
+		.recommended-course h4 {
+			margin: 0 0 10px 0;
+			color: #fff;
+		}
+
+		.recommended-course p {
+			color: rgba(255, 255, 255, 0.7);
+			margin: 0;
+		}
+
+		.enroll-btn, .join-group-btn {
+			background: linear-gradient(90deg, #0d6efd, #00d4ff);
+			color: white;
+			border: none;
+			padding: 10px 20px;
+			border-radius: 8px;
+			cursor: pointer;
+			transition: all 0.3s ease;
+		}
+
+		.enroll-btn:hover, .join-group-btn:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 5px 15px rgba(0, 123, 255, 0.3);
+		}
+
+		.available-groups {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+			gap: 20px;
+		}
+
+		.available-group {
+			background: rgba(255, 255, 255, 0.05);
+			border-radius: 10px;
+			padding: 20px;
+			text-align: center;
+			transition: all 0.3s ease;
+		}
+
+		.available-group:hover {
+			background: rgba(255, 255, 255, 0.1);
+			transform: translateY(-2px);
+		}
+
+		.available-group h4 {
+			margin: 0 0 10px 0;
+			color: #fff;
+		}
+
+		.available-group p {
+			color: rgba(255, 255, 255, 0.7);
+			margin: 0;
+		}
+
+		@media (max-width: 768px) {
+			.stats-grid {
+				grid-template-columns: repeat(2, 1fr);
+			}
+
+			.courses-grid,
+			.groups-container,
+			.tasks-container {
+				grid-template-columns: 1fr;
+			}
+
+			.course-stats,
+			.group-stats {
+				grid-template-columns: 1fr;
+			}
+
+			.achievements-container {
+				grid-template-columns: 1fr;
+			}
+
+			.recommended-courses,
+			.available-groups {
+				grid-template-columns: 1fr;
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<div class="student-dashboard">
+		<div class="dashboard-container">
+			<!-- Header with search -->
+			<div class="content-section">
+				<div class="row align-items-center">
+					<div class="col-md-8">
+						<div class="user-info">
+							<!-- User info will be populated by JS -->
+						</div>
+					</div>
+					<div class="col-md-4">
+						<input type="text" class="form-control search-bar" placeholder="Kurslar, guruhlar, vazifalarni qidirish...">
+					</div>
+				</div>
+			</div>
+
+			<!-- Statistics Grid -->
+			<div class="stats-grid">
+				<!-- Stats will be populated by JS -->
+			</div>
+
+			<!-- Enrolled Courses -->
+			<div class="content-section">
+				<h2 class="section-title">
+					<i class="fas fa-book-open me-2"></i>
+					Yozilgan kurslarim
+				</h2>
+				<div class="courses-container">
+					<!-- Courses will be populated by JS -->
+				</div>
+			</div>
+
+			<!-- Student Groups -->
+			<div class="content-section">
+				<h2 class="section-title">
+					<i class="fas fa-users me-2"></i>
+					Jamoalarim
+				</h2>
+				<div class="groups-container">
+					<!-- Groups will be populated by JS -->
+				</div>
+			</div>
+
+			<!-- Tasks -->
+			<div class="content-section">
+				<h2 class="section-title">
+					<i class="fas fa-tasks me-2"></i>
+					Vazifalarim
+				</h2>
+				<div class="tasks-container">
+					<!-- Tasks will be populated by JS -->
+				</div>
+			</div>
+
+			<!-- Achievements -->
+			<div class="content-section">
+				<h2 class="section-title">
+					<i class="fas fa-trophy me-2"></i>
+					Yutuqlarim
+				</h2>
+				<div class="achievements-container">
+					<!-- Achievements will be populated by JS -->
+				</div>
+			</div>
+
+			<!-- Recommendations -->
+			<div class="recommendations-container">
+				<!-- Recommendations will be populated by JS -->
+			</div>
+		</div>
+	</div>
+
+	<script src="../js/api.js"></script>
+	<script src="../js/studentDashboard.js"></script>
+</body>
+
+</html>

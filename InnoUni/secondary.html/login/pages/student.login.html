@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Inno Uni</title>
+
+	<link href="/css/bootstrap.min.css" rel="stylesheet">
+
+	<style>
+		body {
+			height: 100vh;
+		}
+
+		/* right panel */
+		.right-panel {
+
+			display: flex;
+			justify-content: center;
+			align-items: center;
+
+			background: #f8fafc;
+		}
+
+		/* form container */
+		.form-box {
+
+			width: 100%;
+			max-width: 900px;
+		}
+
+		/* button */
+		.btn-custom {
+
+			background: linear-gradient(90deg, #14b8a6, #0ea5e9);
+
+			border: none;
+
+			padding: 12px;
+
+			color: white;
+
+			font-weight: 500;
+		}
+
+		.btn-custom:hover {
+
+			opacity: 0.9;
+		}
+
+		/* input */
+		.form-control {
+
+			padding: 12px;
+		}
+	</style>
+</head>
+
+<body>
+	<div class="container-fluid h-100">
+		<div class="row w-100 h-100">
+
+			<div class=" right-panel">
+				<div class="form-box">
+					<h2 class="mb-2">
+						O'quvchi sifatida ro'yxatdan o'ting
+					</h2>
+					<p class="text-muted mb-4">
+						O'QIV platformasiga qo'shiling va o'rganing
+					</p>
+					<form>
+						<div class="mb-3">
+							<label class="form-label">
+								To'liq ism
+							</label>
+							<input type="text" class="form-control" placeholder="Ismingiz">
+						</div>
+						<div class="mb-3">
+							<label class="form-label">
+								Email
+							</label>
+							<input type="email" class="form-control" placeholder="email@misol.uz">
+						</div>
+						<div class="mb-4">
+							<label class="form-label">
+								Parol
+							</label>
+							<input type="password" class="form-control" placeholder="Kamida 6 ta belgi">
+						</div>
+						<button class="btn btn-custom w-100">
+							Ro'yxatdan o'tish →
+						</button>
+						<div class="text-center mt-4">
+							<a href="/index.html" class="text-decoration-none me-2">
+								← Asosiy sahifaga qaytish
+							</a>
+							|
+							<a href="/secondary.html/singin/signin.html" class="text-decoration-none ms-2">
+								Kirish
+							</a>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+
+</html>
