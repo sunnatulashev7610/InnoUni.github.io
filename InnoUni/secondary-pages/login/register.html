@@ -491,7 +491,11 @@
             hideMessages();
 
             try {
-                const response = await fetch('http://localhost:3000/api/auth/register', {
+                // Same API address logic as frontend/js/api.js: local server while developing, same origin otherwise
+                const API_BASE = (window.config && window.config.apiBaseUrl) ||
+                    (['localhost', '127.0.0.1'].includes(window.location.hostname) ? 'http://localhost:3000/api' : '/api');
+
+                const response = await fetch(`${API_BASE}/auth/register`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -514,7 +518,7 @@
                     // Auto-login after successful registration
                     setTimeout(async () => {
                         try {
-                            const loginResponse = await fetch('/api/auth/login', {
+                            const loginResponse = await fetch(`${API_BASE}/auth/login`, {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',

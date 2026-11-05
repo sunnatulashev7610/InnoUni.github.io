@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { studentOnly, authenticateToken } = require('../middleware/roleBased');
+const { studentOnly, authenticateToken, requireSelf } = require('../middleware/roleBased');
 
 // Get student dashboard data
-router.get('/dashboard/:userId', authenticateToken, studentOnly, async (req, res) => {
+router.get('/dashboard/:userId', authenticateToken, studentOnly, requireSelf(), async (req, res) => {
     try {
         const db = req.db;
         const userId = req.params.userId;
@@ -33,7 +33,7 @@ router.get('/dashboard/:userId', authenticateToken, studentOnly, async (req, res
                 COUNT(gm2.user_id) as total_members,
                 COUNT(p.id) as active_projects
             FROM group_members gm
-            JOIN groups g ON gm.group_id = g.id
+            JOIN \`groups\` g ON gm.group_id = g.id
             LEFT JOIN group_members gm2 ON g.id = gm2.group_id
             LEFT JOIN projects p ON g.id = p.group_id AND p.status = 'active'
             WHERE gm.user_id = ? AND g.status = 'active'
@@ -121,7 +121,7 @@ router.get('/dashboard/:userId', authenticateToken, studentOnly, async (req, res
                 g.id, g.name, g.description, g.logo,
                 COUNT(gm.user_id) as current_members,
                 COUNT(p.id) as active_projects
-            FROM groups g
+            FROM \`groups\` g
             LEFT JOIN group_members gm ON g.id = gm.group_id
             LEFT JOIN projects p ON g.id = p.group_id AND p.status = 'active'
             WHERE g.status = 'active' 
@@ -203,7 +203,7 @@ router.post('/groups', authenticateToken, studentOnly, async (req, res) => {
 
         // Create group
         const [result] = await db.execute(
-            'INSERT INTO groups (name, description, created_by) VALUES (?, ?, ?)',
+            'INSERT INTO `groups` (name, description, created_by) VALUES (?, ?, ?)',
             [name.trim(), description, createdBy]
         );
 
@@ -242,7 +242,7 @@ router.post('/groups/:groupId/join', authenticateToken, studentOnly, async (req,
 
         // Check if group exists and is active
         const [group] = await db.execute(
-            'SELECT id FROM groups WHERE id = ? AND status = "active"',
+            'SELECT id FROM `groups` WHERE id = ? AND status = "active"',
             [groupId]
         );
 

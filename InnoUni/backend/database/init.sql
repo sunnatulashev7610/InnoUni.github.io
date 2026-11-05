@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS courses (
 );
 
 -- Groups table (for student teams)
-CREATE TABLE IF NOT EXISTS groups (
+CREATE TABLE IF NOT EXISTS `groups` (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS group_members (
     user_id INT,
     role ENUM('member', 'leader') DEFAULT 'member',
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+    FOREIGN KEY (group_id) REFERENCES `groups`(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE KEY unique_group_user (group_id, user_id),
     INDEX idx_group_id (group_id),
@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS projects (
     group_id INT,
     status ENUM('active', 'completed', 'in_progress') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+    FOREIGN KEY (group_id) REFERENCES `groups`(id) ON DELETE CASCADE,
     INDEX idx_group_id (group_id),
     INDEX idx_status (status)
 );
@@ -159,7 +159,7 @@ INSERT INTO achievements (title, description, icon, type) VALUES
 ('Dasturlash chempioni', 'Barcha dasturlash vazifalarini tugatdi', 'fa-trophy', 'course'),
 ('Loyihalar ustasi', '5+ loyiha muvaffaqiyatli yakunladi', 'fa-project-diagram', 'team');
 
-INSERT INTO groups (name, description, created_by) VALUES 
+INSERT INTO `groups` (name, description, created_by) VALUES
 ('Alpha Developers', 'E-commerce platformasi uchun o''quvchi jamoasi. Frontend va backend dasturchilar, dizaynerlar va proekt rahbarlari.', 4),
 ('Beta Innovations', 'Mobil ilovalar va AI yechimlari bo''yicha o''quvchi jamoasi. React Native, Flutter va machine learning texnologiyalari.', 4),
 ('Gamma Design', 'UI/UX dizayn va brending bo''yicha o''quvchi jamoasi. Figma, Adobe Creative Suite va zamonaviy dizayn usullari.', 4),
@@ -212,7 +212,7 @@ FROM users u
 LEFT JOIN course_enrollments ce ON u.id = ce.user_id AND ce.status = 'active'
 LEFT JOIN tasks t ON u.id = t.assigned_to
 LEFT JOIN group_members gm ON u.id = gm.user_id
-LEFT JOIN groups g ON gm.group_id = g.id AND g.status = 'active'
+LEFT JOIN `groups` g ON gm.group_id = g.id AND g.status = 'active'
 LEFT JOIN user_achievements ua ON u.id = ua.user_id
 GROUP BY u.id, u.full_name;
 

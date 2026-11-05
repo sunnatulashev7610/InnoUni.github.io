@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { teacherOnly, authenticateToken } = require('../middleware/roleBased');
+const { teacherOnly, authenticateToken, requireSelf } = require('../middleware/roleBased');
 
 // Get teacher dashboard data
-router.get('/dashboard/:userId', authenticateToken, teacherOnly, async (req, res) => {
+router.get('/dashboard/:userId', authenticateToken, teacherOnly, requireSelf(), async (req, res) => {
     try {
         const db = req.db;
         const userId = req.params.userId;
@@ -80,7 +80,7 @@ router.get('/dashboard/:userId', authenticateToken, teacherOnly, async (req, res
 });
 
 // Get teacher's courses with detailed analytics
-router.get('/courses/:userId', authenticateToken, teacherOnly, async (req, res) => {
+router.get('/courses/:userId', authenticateToken, teacherOnly, requireSelf(), async (req, res) => {
     try {
         const db = req.db;
         const userId = req.params.userId;
@@ -278,7 +278,7 @@ router.post('/tasks', authenticateToken, teacherOnly, async (req, res) => {
 });
 
 // Get all tasks created by teacher
-router.get('/tasks/:userId', authenticateToken, teacherOnly, async (req, res) => {
+router.get('/tasks/:userId', authenticateToken, teacherOnly, requireSelf(), async (req, res) => {
     try {
         const db = req.db;
         const userId = req.params.userId;
@@ -349,7 +349,7 @@ router.post('/tasks/:taskId/grade', authenticateToken, teacherOnly, async (req, 
 });
 
 // Get teacher's library (uploaded materials)
-router.get('/library/:userId', authenticateToken, teacherOnly, async (req, res) => {
+router.get('/library/:userId', authenticateToken, teacherOnly, requireSelf(), async (req, res) => {
     try {
         const userId = req.params.userId;
 
@@ -366,7 +366,7 @@ router.get('/library/:userId', authenticateToken, teacherOnly, async (req, res) 
 });
 
 // Get analytics for teacher's courses
-router.get('/analytics/:userId', authenticateToken, teacherOnly, async (req, res) => {
+router.get('/analytics/:userId', authenticateToken, teacherOnly, requireSelf(), async (req, res) => {
     try {
         const db = req.db;
         const userId = req.params.userId;

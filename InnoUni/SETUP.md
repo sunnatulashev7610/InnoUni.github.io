@@ -8,7 +8,8 @@
 # Loyiha papkasidan backend papkasiga o'ting
 cd backend
 
-# Sozlamalar faylini yarating va qiymatlarni to'ldiring
+# Sozlamalar faylini yarating va qiymatlarni to'ldiring.
+# JWT_SECRET majburiy (kamida 16 belgi): to'ldirilmasa server ishga tushmaydi.
 cp .env.example .env
 
 # Package larni o'rnating (agar o'rnatilmagan bo'lsa)

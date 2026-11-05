@@ -1,8 +1,12 @@
 const express = require('express');
 const router = express.Router();
+const { requireSelf } = require('../middleware/roleBased');
+
+// All routes here are mounted behind authenticateToken (see server.js);
+// requireSelf makes sure users only read their own data.
 
 // Get dashboard statistics for a user
-router.get('/stats/:userId', async (req, res) => {
+router.get('/stats/:userId', requireSelf(), async (req, res) => {
     try {
         const db = req.db;
         const userId = req.params.userId;
@@ -37,7 +41,7 @@ router.get('/stats/:userId', async (req, res) => {
                 COUNT(CASE WHEN gm.role = 'leader' THEN 1 END) as groups_leading,
                 COUNT(CASE WHEN gm.joined_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) THEN 1 END) as new_groups_this_month
             FROM group_members gm
-            JOIN groups g ON gm.group_id = g.id
+            JOIN \`groups\` g ON gm.group_id = g.id
             WHERE gm.user_id = ? AND g.status = 'active'
         `, [userId]);
 
@@ -110,7 +114,7 @@ router.get('/stats/:userId', async (req, res) => {
 });
 
 // Get recent activity for a user
-router.get('/activity/:userId', async (req, res) => {
+router.get('/activity/:userId', requireSelf(), async (req, res) => {
     try {
         const db = req.db;
         const userId = req.params.userId;
@@ -151,7 +155,7 @@ router.get('/activity/:userId', async (req, res) => {
                 g.name as title,
                 'joined' as action
             FROM group_members gm
-            JOIN groups g ON gm.group_id = g.id
+            JOIN \`groups\` g ON gm.group_id = g.id
             WHERE gm.user_id = ?
             ORDER BY gm.joined_at DESC
             LIMIT ?
@@ -193,7 +197,7 @@ router.get('/activity/:userId', async (req, res) => {
 });
 
 // Get learning progress over time
-router.get('/progress/:userId', async (req, res) => {
+router.get('/progress/:userId', requireSelf(), async (req, res) => {
     try {
         const db = req.db;
         const userId = req.params.userId;
@@ -218,7 +222,7 @@ router.get('/progress/:userId', async (req, res) => {
 });
 
 // Get quick actions/recommendations
-router.get('/recommendations/:userId', async (req, res) => {
+router.get('/recommendations/:userId', requireSelf(), async (req, res) => {
     try {
         const db = req.db;
         const userId = req.params.userId;
@@ -247,7 +251,7 @@ router.get('/recommendations/:userId', async (req, res) => {
         // Get groups the user can join
         const [availableGroups] = await db.execute(`
             SELECT g.id, g.name, g.description, COUNT(gm.user_id) as member_count
-            FROM groups g
+            FROM \`groups\` g
             LEFT JOIN group_members gm ON g.id = gm.group_id
             WHERE g.status = 'active' 
             AND g.id NOT IN (
