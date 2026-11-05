@@ -30,7 +30,12 @@ let db;
 
 async function initDB() {
     try {
-        db = await mysql.createConnection(dbConfig);
+        db = mysql.createPool({
+            ...dbConfig,
+            waitForConnections: true,
+            connectionLimit: 10
+        });
+        await db.query('SELECT 1'); // fail fast if the database is unreachable
         console.log('Database connected successfully');
         
         // Create tables if they don't exist
@@ -177,24 +182,6 @@ async function createTables() {
     }
 }
 
-// JWT Middleware
-function authenticateToken(req, res, next) {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (!token) {
-        return res.status(401).json({ error: 'Access token required' });
-    }
-
-    jwt.verify(token, JWT_SECRET, (err, user) => {
-        if (err) {
-            return res.status(403).json({ error: 'Invalid token' });
-        }
-        req.user = user;
-        next();
-    });
-}
-
 // Middleware to pass database to routes
 app.use((req, res, next) => {
     req.db = db;
@@ -202,7 +189,8 @@ app.use((req, res, next) => {
 });
 
 // Import route handlers
-const { router: authRouter, authenticateToken } = require('./api/auth');
+const { authenticateToken } = require('./middleware/roleBased');
+const { router: authRouter } = require('./api/auth');
 const studentRouter = require('./api/student');
 const teacherRouter = require('./api/teacher');
 const dashboardRouter = require('./api/dashboard');

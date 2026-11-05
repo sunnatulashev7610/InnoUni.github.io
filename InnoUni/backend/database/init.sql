@@ -149,7 +149,7 @@ INSERT INTO courses (title, description, category, teacher_id) VALUES
 ('Python dasturlash', 'Python dasturlash tilini chuqur o''rganish. Django, FastAPI va ma''lumotlar bazasi bilish ishlari.', 'Backend dasturlash', 2),
 ('UI/UX Dizayn', 'Figma, Adobe XD va Sketch yordamida zamonaviy interfeyslar yaratishni o''rganing. Portfolio yaratish ko''nikmalari.', 'Dizayn', 3),
 ('Mobil dasturlash', 'React Native va Flutter yordamida mobil ilovalar yaratish. iOS va Android platformlari uchun dasturlash.', 'Mobile dev', 1),
-('Data Science', 'Machine Learning, AI va ma''lumotlar tahlili. Python, TensorFlow va zamonaviy analitik usullar.', 'Ma''lumotlar tahlili', 4);
+('Data Science', 'Machine Learning, AI va ma''lumotlar tahlili. Python, TensorFlow va zamonaviy analitik usullar.', 'Ma''lumotlar tahlili', 2);
 
 INSERT INTO achievements (title, description, icon, type) VALUES 
 ('Tezkor o''rganuvchi', '30 kun ketma-ket o''rganish', 'fa-star', 'personal'),

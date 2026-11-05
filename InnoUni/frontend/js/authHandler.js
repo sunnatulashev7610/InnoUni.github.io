@@ -66,11 +66,11 @@ class AuthHandler {
             }
 
             // Redirect to login page
-            window.location.href = '/secondary.html/login/login.html';
+            window.location.href = '/secondary-pages/login/login.html';
         } catch (error) {
             console.error('Logout error:', error);
             // Fallback redirect
-            window.location.href = '/secondary.html/login/login.html';
+            window.location.href = '/secondary-pages/login/login.html';
         }
     }
 
@@ -138,7 +138,7 @@ class AuthHandler {
     // Method to protect routes
     protectRoute(requiredRole = null) {
         if (!this.isAuthenticated()) {
-            window.location.href = '/secondary.html/login/login.html';
+            window.location.href = '/secondary-pages/login/login.html';
             return false;
         }
 
@@ -181,7 +181,7 @@ class AuthHandler {
                     <p style="margin-bottom: 20px; color: rgba(255, 255, 255, 0.8);">
                         Ushbu sahifaga kirish uchun ruxsat etishingiz yo'q.
                     </p>
-                    <button onclick="window.location.href='/secondary.html/login/login.html'" style="
+                    <button onclick="window.location.href='/secondary-pages/login/login.html'" style="
                         background: linear-gradient(90deg, #0d6efd, #00d4ff);
                         color: white;
                         border: none;

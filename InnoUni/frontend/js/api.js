@@ -287,7 +287,7 @@ class ApiClient {
         } catch (error) {
             if (error.message.includes('token')) {
                 this.logout();
-                window.location.href = '/secondary.html/login/login.html';
+                window.location.href = '/secondary-pages/login/login.html';
             }
             throw error;
         }

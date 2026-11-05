@@ -2,7 +2,7 @@
 echo Inno Uni Backend Server ishga tushirilmoqda...
 echo.
 
-cd /d "c:\Users\Sunnatjon\Desktop\Open university\backend"
+cd /d "%~dp0backend"
 
 echo Package larni tekshiramiz...
 if not exist node_modules (

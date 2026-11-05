@@ -15,7 +15,7 @@ class TeacherDashboard {
             this.renderTeacherDashboard();
         } catch (error) {
             console.error('Teacher dashboard initialization error:', error);
-            window.location.href = '/secondary.html/login/login.html';
+            window.location.href = '/secondary-pages/login/login.html';
         }
     }
 
@@ -314,7 +314,7 @@ class TeacherDashboard {
                     await this.showCreateCourseModal();
                     break;
                 case 'manage-tasks':
-                    window.location.href = '/secondary.html/dashboard/pages/vazifalar.html';
+                    window.location.href = '/secondary-pages/dashboard/pages/vazifalar.html';
                     break;
                 case 'view-analytics':
                     await this.showAnalyticsModal();
