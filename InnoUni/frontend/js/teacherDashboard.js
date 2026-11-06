@@ -1,3 +1,4 @@
+// Requires js/utils.js (escapeHtml, safeUrl) to be loaded first.
 // Teacher Dashboard JavaScript
 class TeacherDashboard {
     constructor() {
@@ -117,9 +118,9 @@ class TeacherDashboard {
         const userInfo = document.querySelector('.user-info');
         if (userInfo && this.currentUser) {
             userInfo.innerHTML = `
-                <img src="${this.currentUser.avatar || 'https://picsum.photos/seed/teacher-avatar/40/40'}" alt="User" class="user-avatar">
+                <img src="${escapeHtml(safeUrl(this.currentUser.avatar, 'https://picsum.photos/seed/teacher-avatar/40/40'))}" alt="User" class="user-avatar">
                 <div>
-                    <h3 class="mb-1">Xush kelibsiz, ${this.currentUser.full_name}!</h3>
+                    <h3 class="mb-1">Xush kelibsiz, ${escapeHtml(this.currentUser.full_name)}!</h3>
                     <p class="mb-0 text-white-50">O'qituvchi boshqaruv paneli</p>
                 </div>
             `;
@@ -191,12 +192,12 @@ class TeacherDashboard {
                 ${courses.map(course => `
                     <div class="course-card" data-course-id="${course.id}">
                         <div class="course-header">
-                            <img src="${course.avatar || 'https://picsum.photos/seed/course-' + course.id + '/60/60'}" alt="${course.title}" class="course-avatar">
+                            <img src="${escapeHtml(safeUrl(course.avatar, 'https://picsum.photos/seed/course-' + course.id + '/60/60'))}" alt="${escapeHtml(course.title)}" class="course-avatar">
                             <div class="course-info">
-                                <h4>${course.title}</h4>
+                                <h4>${escapeHtml(course.title)}</h4>
                                 <div class="course-meta">
-                                    <span class="course-category">${course.category}</span>
-                                    <span class="course-status ${course.status}">${this.getStatusLabel(course.status)}</span>
+                                    <span class="course-category">${escapeHtml(course.category)}</span>
+                                    <span class="course-status ${escapeHtml(course.status)}">${this.getStatusLabel(course.status)}</span>
                                 </div>
                             </div>
                         </div>
@@ -246,12 +247,12 @@ class TeacherDashboard {
             <div class="activity-list">
                 ${activities.map(activity => `
                     <div class="activity-item">
-                        <div class="activity-icon ${activity.activity_type}">
+                        <div class="activity-icon ${escapeHtml(activity.activity_type)}">
                             <i class="fas ${this.getActivityIcon(activity.activity_type)}"></i>
                         </div>
                         <div class="activity-details">
                             <div class="activity-title">
-                                ${activity.student_name} ${this.getActivityLabel(activity.activity_type)} "${activity.course_title}"
+                                ${escapeHtml(activity.student_name)} ${this.getActivityLabel(activity.activity_type)} "${escapeHtml(activity.course_title)}"
                             </div>
                             <div class="activity-time">${this.formatDate(activity.timestamp)}</div>
                             ${activity.student_progress ? `
@@ -465,7 +466,7 @@ class TeacherDashboard {
         modal.innerHTML = `
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3>${course.title}</h3>
+                    <h3>${escapeHtml(course.title)}</h3>
                     <button class="close-btn" onclick="this.parentElement.parentElement.remove()">
                         <i class="fas fa-times"></i>
                     </button>
@@ -529,11 +530,11 @@ class TeacherDashboard {
                         ${students.map(student => `
                             <div class="student-item">
                                 <div class="student-info">
-                                    <img src="${student.avatar || 'https://picsum.photos/seed/student-' + student.id + '/40/40'}" alt="${student.full_name}" class="student-avatar">
+                                    <img src="${escapeHtml(safeUrl(student.avatar, 'https://picsum.photos/seed/student-' + student.id + '/40/40'))}" alt="${escapeHtml(student.full_name)}" class="student-avatar">
                                     <div class="student-details">
-                                        <h4>${student.full_name}</h4>
-                                        <p>${student.email}</p>
-                                        <p>${student.phone}</p>
+                                        <h4>${escapeHtml(student.full_name)}</h4>
+                                        <p>${escapeHtml(student.email)}</p>
+                                        <p>${escapeHtml(student.phone)}</p>
                                     </div>
                                 </div>
                                 <div class="student-progress">
@@ -580,7 +581,7 @@ class TeacherDashboard {
             'active': 'Faol',
             'inactive': 'Faol emas'
         };
-        return labels[status] || status;
+        return escapeHtml(labels[status] || status);
     }
 
     getActivityIcon(type) {
@@ -623,7 +624,7 @@ class TeacherDashboard {
         notification.className = `notification notification-${type}`;
         notification.innerHTML = `
             <i class="fas ${type === 'error' ? 'fa-exclamation-circle' : type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}"></i>
-            <span>${message}</span>
+            <span>${escapeHtml(message)}</span>
         `;
 
         notification.innerHTML += `

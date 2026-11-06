@@ -429,7 +429,9 @@
 			submitBtn.disabled = true;
 			
 			try {
-				const response = await fetch('http://localhost:3000/api/contact', {
+				// config.js picks http://localhost:3000/api locally and /api in production
+				const apiBase = (window.config && window.config.apiBaseUrl) || '/api';
+				const response = await fetch(`${apiBase}/contact`, {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
@@ -465,10 +467,13 @@
 			messageDiv.style.top = '20px';
 			messageDiv.style.right = '20px';
 			messageDiv.style.zIndex = '9999';
-			messageDiv.innerHTML = `
-				${message}
-				<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-			`;
+			// The message can contain server text (data.error): insert it as text, never as HTML
+			messageDiv.appendChild(document.createTextNode(message));
+			const closeBtn = document.createElement('button');
+			closeBtn.type = 'button';
+			closeBtn.className = 'btn-close';
+			closeBtn.setAttribute('data-bs-dismiss', 'alert');
+			messageDiv.appendChild(closeBtn);
 			
 			document.body.appendChild(messageDiv);
 			

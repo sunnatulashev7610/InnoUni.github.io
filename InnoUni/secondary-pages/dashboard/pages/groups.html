@@ -677,18 +677,22 @@
 				'other': 'Boshqa'
 			};
 
+			// Escape user input before putting it into innerHTML
+			const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g,
+				(c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
 			const newGroupCard = document.createElement('div');
 			newGroupCard.className = 'group-card';
 			newGroupCard.innerHTML = `
 				<div class="group-header">
-					<img src="https://picsum.photos/seed/${Date.now()}/60/60" alt="${groupData.name}" class="group-avatar">
+					<img src="https://picsum.photos/seed/${Date.now()}/60/60" alt="${esc(groupData.name)}" class="group-avatar">
 					<div class="group-info">
-						<h3>${groupData.name}</h3>
-						<div class="group-category">${categoryLabels[groupData.category]} - O'qituvchi: Siz</div>
+						<h3>${esc(groupData.name)}</h3>
+						<div class="group-category">${esc(categoryLabels[groupData.category])} - O'qituvchi: Siz</div>
 					</div>
 				</div>
 				<p class="group-description">
-					${groupData.description}
+					${esc(groupData.description)}
 				</p>
 				<div class="group-stats">
 					<div class="stat-item">

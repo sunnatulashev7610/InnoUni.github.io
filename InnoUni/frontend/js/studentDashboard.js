@@ -1,3 +1,4 @@
+// Requires js/utils.js (escapeHtml, safeUrl) to be loaded first.
 // Student Dashboard JavaScript
 class StudentDashboard {
     constructor() {
@@ -123,9 +124,9 @@ class StudentDashboard {
         const userInfo = document.querySelector('.user-info');
         if (userInfo && this.currentUser) {
             userInfo.innerHTML = `
-                <img src="${this.currentUser.avatar || 'https://picsum.photos/seed/student-avatar/40/40'}" alt="User" class="user-avatar">
+                <img src="${escapeHtml(safeUrl(this.currentUser.avatar, 'https://picsum.photos/seed/student-avatar/40/40'))}" alt="User" class="user-avatar">
                 <div>
-                    <h3 class="mb-1">Xush kelibsiz, ${this.currentUser.full_name}!</h3>
+                    <h3 class="mb-1">Xush kelibsiz, ${escapeHtml(this.currentUser.full_name)}!</h3>
                     <p class="mb-0 text-white-50">O'rganishni davom ettiring</p>
                 </div>
             `;
@@ -189,12 +190,12 @@ class StudentDashboard {
         coursesContainer.innerHTML = courses.map(course => `
             <div class="course-card" data-course-id="${course.id}">
                 <div class="course-header">
-                    <img src="${course.avatar || 'https://picsum.photos/seed/course-' + course.id + '/60/60'}" alt="${course.title}" class="course-avatar">
+                    <img src="${escapeHtml(safeUrl(course.avatar, 'https://picsum.photos/seed/course-' + course.id + '/60/60'))}" alt="${escapeHtml(course.title)}" class="course-avatar">
                     <div class="course-info">
-                        <h4>${course.title}</h4>
+                        <h4>${escapeHtml(course.title)}</h4>
                         <div class="course-meta">
-                            <span class="course-category">${course.category}</span>
-                            <span class="course-teacher">${course.teacher_name}</span>
+                            <span class="course-category">${escapeHtml(course.category)}</span>
+                            <span class="course-teacher">${escapeHtml(course.teacher_name)}</span>
                         </div>
                     </div>
                 </div>
@@ -236,16 +237,16 @@ class StudentDashboard {
         groupsContainer.innerHTML = groups.map(group => `
             <div class="group-card" data-group-id="${group.id}">
                 <div class="group-header">
-                    <img src="${group.logo || 'https://picsum.photos/seed/group-' + group.id + '/60/60'}" alt="${group.name}" class="group-avatar">
+                    <img src="${escapeHtml(safeUrl(group.logo, 'https://picsum.photos/seed/group-' + group.id + '/60/60'))}" alt="${escapeHtml(group.name)}" class="group-avatar">
                     <div class="group-info">
-                        <h4>${group.name}</h4>
+                        <h4>${escapeHtml(group.name)}</h4>
                         <div class="group-meta">
-                            <span class="group-role">${group.student_role === 'leader' ? 'Rahbar' : 'A'zo'}</span>
+                            <span class="group-role">${group.student_role === 'leader' ? 'Rahbar' : 'A\'zo'}</span>
                             <span class="member-count">${group.total_members} a'zo</span>
                         </div>
                     </div>
                 </div>
-                <div class="group-description">${group.description}</div>
+                <div class="group-description">${escapeHtml(group.description)}</div>
                 <div class="group-stats">
                     <div class="stat-item">
                         <span class="stat-number">${group.active_projects}</span>
@@ -274,19 +275,19 @@ class StudentDashboard {
 
         const tasks = this.dashboardData.tasks;
         tasksContainer.innerHTML = tasks.map(task => `
-            <div class="task-card priority-${task.priority}">
+            <div class="task-card priority-${escapeHtml(task.priority)}">
                 <div class="task-header">
-                    <h4>${task.title}</h4>
+                    <h4>${escapeHtml(task.title)}</h4>
                     <div class="task-meta">
                         <span class="task-priority">${this.getPriorityLabel(task.priority)}</span>
-                        <span class="task-course">${task.course_title}</span>
+                        <span class="task-course">${escapeHtml(task.course_title)}</span>
                         <span class="task-due-date ${this.isOverdue(task.due_date) ? 'overdue' : ''}">
                             <i class="far fa-calendar"></i>
                             ${this.formatDate(task.due_date)}
                         </span>
                     </div>
                 </div>
-                <div class="task-description">${task.description}</div>
+                <div class="task-description">${escapeHtml(task.description)}</div>
                 <div class="task-actions">
                     <button class="task-action-btn btn-view" data-action="view" data-task-id="${task.id}">
                         <i class="fas fa-eye me-1"></i>Tafsilot
@@ -312,11 +313,11 @@ class StudentDashboard {
         achievementsContainer.innerHTML = achievements.map(achievement => `
             <div class="achievement-item">
                 <div class="achievement-icon">
-                    <i class="fas ${achievement.icon}"></i>
+                    <i class="fas ${escapeHtml(achievement.icon)}"></i>
                 </div>
                 <div class="achievement-details">
-                    <h5>${achievement.title}</h5>
-                    <p>${achievement.description}</p>
+                    <h5>${escapeHtml(achievement.title)}</h5>
+                    <p>${escapeHtml(achievement.description)}</p>
                     <div class="achievement-date">
                         <i class="far fa-calendar-check"></i>
                         ${this.formatDate(achievement.earned_at)}
@@ -337,8 +338,8 @@ class StudentDashboard {
                 <div class="recommended-courses">
                     ${recs.recommended_courses.map(course => `
                         <div class="recommended-course">
-                            <h4>${course.title}</h4>
-                            <p>${course.category} - ${course.teacher_name}</p>
+                            <h4>${escapeHtml(course.title)}</h4>
+                            <p>${escapeHtml(course.category)} - ${escapeHtml(course.teacher_name)}</p>
                             <button class="enroll-btn" data-course-id="${course.id}">
                                 <i class="fas fa-plus me-1"></i>Yozilish
                             </button>
@@ -349,7 +350,7 @@ class StudentDashboard {
                 <div class="available-groups">
                     ${recs.available_groups.map(group => `
                         <div class="available-group">
-                            <h4>${group.name}</h4>
+                            <h4>${escapeHtml(group.name)}</h4>
                             <p>${group.current_members} a'zo</p>
                             <button class="join-group-btn" data-group-id="${group.id}">
                                 <i class="fas fa-user-plus me-1"></i>Qo'shilish
@@ -482,7 +483,7 @@ class StudentDashboard {
         modal.innerHTML = `
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3>${course.title}</h3>
+                    <h3>${escapeHtml(course.title)}</h3>
                     <button class="close-btn" onclick="this.parentElement.parentElement.remove()">
                         <i class="fas fa-times"></i>
                     </button>
@@ -490,13 +491,13 @@ class StudentDashboard {
                 <div class="modal-body">
                     <div class="course-details">
                         <div class="detail-item">
-                            <strong>Kategoriya:</strong> ${course.category}
+                            <strong>Kategoriya:</strong> ${escapeHtml(course.category)}
                         </div>
                         <div class="detail-item">
-                            <strong>O\'qituvchi:</strong> ${course.teacher_name}
+                            <strong>O\'qituvchi:</strong> ${escapeHtml(course.teacher_name)}
                         </div>
                         <div class="detail-item">
-                            <strong>Tavsif:</strong> ${course.description}
+                            <strong>Tavsif:</strong> ${escapeHtml(course.description)}
                         </div>
                         <div class="detail-item">
                             <strong>Yozilgan talabalar:</strong> ${course.enrolled_students}
@@ -518,7 +519,7 @@ class StudentDashboard {
         modal.innerHTML = `
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3>${group.name}</h3>
+                    <h3>${escapeHtml(group.name)}</h3>
                     <button class="close-btn" onclick="this.parentElement.parentElement.remove()">
                         <i class="fas fa-times"></i>
                     </button>
@@ -526,7 +527,7 @@ class StudentDashboard {
                 <div class="modal-body">
                     <div class="group-details">
                         <div class="detail-item">
-                            <strong>Tavsif:</strong> ${group.description}
+                            <strong>Tavsif:</strong> ${escapeHtml(group.description)}
                         </div>
                         <div class="detail-item">
                             <strong>A'zolar soni:</strong> ${group.total_members}
@@ -551,7 +552,7 @@ class StudentDashboard {
         modal.innerHTML = `
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3>${task.title}</h3>
+                    <h3>${escapeHtml(task.title)}</h3>
                     <button class="close-btn" onclick="this.parentElement.parentElement.remove()">
                         <i class="fas fa-times"></i>
                     </button>
@@ -559,10 +560,10 @@ class StudentDashboard {
                 <div class="modal-body">
                     <div class="task-details">
                         <div class="detail-item">
-                            <strong>Kurs:</strong> ${task.course_title}
+                            <strong>Kurs:</strong> ${escapeHtml(task.course_title)}
                         </div>
                         <div class="detail-item">
-                            <strong>Tavsif:</strong> ${task.description}
+                            <strong>Tavsif:</strong> ${escapeHtml(task.description)}
                         </div>
                         <div class="detail-item">
                             <strong>Ustunlik:</strong> ${this.getPriorityLabel(task.priority)}
@@ -587,7 +588,7 @@ class StudentDashboard {
             'medium': 'O\'rta',
             'high': 'Yuqori'
         };
-        return labels[priority] || priority;
+        return escapeHtml(labels[priority] || priority);
     }
 
     getStatusLabel(status) {
@@ -596,7 +597,7 @@ class StudentDashboard {
             'in_progress': 'Jarayonda',
             'completed': 'Bajarilgan'
         };
-        return labels[status] || status;
+        return escapeHtml(labels[status] || status);
     }
 
     isOverdue(dueDate) {
@@ -625,7 +626,7 @@ class StudentDashboard {
         notification.className = `notification notification-${type}`;
         notification.innerHTML = `
             <i class="fas ${type === 'error' ? 'fa-exclamation-circle' : type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}"></i>
-            <span>${message}</span>
+            <span>${escapeHtml(message)}</span>
         `;
 
         notification.innerHTML += `

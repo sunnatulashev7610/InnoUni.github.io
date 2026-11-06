@@ -1,3 +1,4 @@
+// Requires js/utils.js (escapeHtml, safeUrl) to be loaded first.
 // Authentication Handler for Role-Based Routing
 class AuthHandler {
     constructor() {
@@ -232,9 +233,9 @@ class AuthHandler {
             if (userRole === 'teacher') {
                 element.innerHTML = `
                     <div class="teacher-info">
-                        <img src="${user.avatar || 'https://picsum.photos/seed/teacher-' + user.id + '/40/40'}" alt="Teacher" class="user-avatar">
+                        <img src="${escapeHtml(safeUrl(user.avatar, 'https://picsum.photos/seed/teacher-' + user.id + '/40/40'))}" alt="Teacher" class="user-avatar">
                         <div class="user-details">
-                            <div class="user-name">${user.full_name}</div>
+                            <div class="user-name">${escapeHtml(user.full_name)}</div>
                             <div class="user-role">O'qituvchi</div>
                         </div>
                     </div>
@@ -242,9 +243,9 @@ class AuthHandler {
             } else {
                 element.innerHTML = `
                     <div class="student-info">
-                        <img src="${user.avatar || 'https://picsum.photos/seed/student-' + user.id + '/40/40'}" alt="Student" class="user-avatar">
+                        <img src="${escapeHtml(safeUrl(user.avatar, 'https://picsum.photos/seed/student-' + user.id + '/40/40'))}" alt="Student" class="user-avatar">
                         <div class="user-details">
-                            <div class="user-name">${user.full_name}</div>
+                            <div class="user-name">${escapeHtml(user.full_name)}</div>
                             <div class="user-role">O'quvchi</div>
                         </div>
                     </div>
@@ -281,7 +282,7 @@ class AuthHandler {
         notification.className = `notification notification-${type}`;
         notification.innerHTML = `
             <i class="fas ${type === 'error' ? 'fa-exclamation-circle' : type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}"></i>
-            <span>${message}</span>
+            <span>${escapeHtml(message)}</span>
         `;
 
         notification.innerHTML += `
