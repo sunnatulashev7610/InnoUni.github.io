@@ -169,6 +169,26 @@ async function createTables() {
             )
         `);
 
+        // Task submissions table (student answers and teacher grades)
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS task_submissions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                task_id INT NOT NULL,
+                student_id INT NOT NULL,
+                content TEXT NOT NULL,
+                status ENUM('submitted', 'graded') DEFAULT 'submitted',
+                grade DECIMAL(5,2) NULL,
+                feedback TEXT NULL,
+                submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                graded_at TIMESTAMP NULL,
+                graded_by INT NULL,
+                FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+                FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (graded_by) REFERENCES users(id) ON DELETE SET NULL,
+                UNIQUE KEY unique_task_student (task_id, student_id)
+            )
+        `);
+
         // Projects table
         await db.execute(`
             CREATE TABLE IF NOT EXISTS projects (

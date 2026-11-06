@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { studentOnly, authenticateToken, requireSelf } = require('../middleware/roleBased');
+const { parseId, validateText } = require('../utils/validation');
 
 // Get student dashboard data
 router.get('/dashboard/:userId', authenticateToken, studentOnly, requireSelf(), async (req, res) => {
@@ -380,6 +381,85 @@ router.put('/tasks/:taskId/complete', authenticateToken, studentOnly, async (req
         res.json({ message: 'Task marked as completed' });
     } catch (error) {
         console.error('Task completion error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Submit (or re-submit, until it is graded) the answer to a task assigned to the student
+router.post('/tasks/:taskId/submit', authenticateToken, studentOnly, async (req, res) => {
+    try {
+        const db = req.db;
+        const userId = req.user.userId;
+
+        const taskId = parseId(req.params.taskId);
+        if (!taskId) {
+            return res.status(400).json({ error: 'Invalid task id' });
+        }
+
+        const contentResult = validateText(req.body.content, { field: 'Answer', required: true, maxLength: 10000 });
+        if (contentResult.error) {
+            return res.status(400).json({ error: contentResult.error });
+        }
+
+        // Task must be assigned to this student
+        const [task] = await db.execute(
+            'SELECT id FROM tasks WHERE id = ? AND assigned_to = ?',
+            [taskId, userId]
+        );
+        if (task.length === 0) {
+            return res.status(404).json({ error: 'Task not found' });
+        }
+
+        const [existing] = await db.execute(
+            'SELECT id, status FROM task_submissions WHERE task_id = ? AND student_id = ?',
+            [taskId, userId]
+        );
+
+        if (existing.length === 0) {
+            await db.execute(
+                'INSERT INTO task_submissions (task_id, student_id, content) VALUES (?, ?, ?)',
+                [taskId, userId, contentResult.value]
+            );
+        } else if (existing[0].status === 'graded') {
+            return res.status(409).json({ error: 'This submission has already been graded and can no longer be changed' });
+        } else {
+            await db.execute(
+                'UPDATE task_submissions SET content = ?, submitted_at = NOW() WHERE id = ?',
+                [contentResult.value, existing[0].id]
+            );
+        }
+
+        // A submitted task counts as completed
+        await db.execute('UPDATE tasks SET status = "completed" WHERE id = ?', [taskId]);
+
+        res.status(existing.length === 0 ? 201 : 200).json({ message: 'Task submitted successfully' });
+    } catch (error) {
+        console.error('Task submission error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// The student's own submission for a task, including grade and feedback
+router.get('/tasks/:taskId/submission', authenticateToken, studentOnly, async (req, res) => {
+    try {
+        const taskId = parseId(req.params.taskId);
+        if (!taskId) {
+            return res.status(400).json({ error: 'Invalid task id' });
+        }
+
+        const [rows] = await req.db.execute(`
+            SELECT s.task_id, s.content, s.status, s.grade, s.feedback, s.submitted_at, s.graded_at
+            FROM task_submissions s
+            WHERE s.task_id = ? AND s.student_id = ?
+        `, [taskId, req.user.userId]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'No submission found' });
+        }
+
+        res.json(rows[0]);
+    } catch (error) {
+        console.error('Submission lookup error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });

@@ -186,6 +186,13 @@ NODE_ENV=development
 - `POST /api/tasks` - Create new task
 - `PUT /api/tasks/:id` - Update task status
 
+### Submissions and grading
+A task is assigned to one student (`tasks.assigned_to`). The student submits an answer, the teacher of the task's course grades it.
+- `POST /api/student/tasks/:taskId/submit` - Submit or re-submit an answer, body `{ "content": "..." }` (re-submitting is blocked after grading)
+- `GET /api/student/tasks/:taskId/submission` - Own submission with grade and feedback
+- `GET /api/teacher/tasks/:taskId/submissions` - Submissions of one of your tasks
+- `POST /api/teacher/tasks/:taskId/grade` - Grade the submission, body `{ "grade": 0-100, "feedback": "optional" }`
+
 ## 🎨 UI Components
 
 ### Design System

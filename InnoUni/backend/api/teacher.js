@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { teacherOnly, authenticateToken, requireSelf } = require('../middleware/roleBased');
+const { parseId, validateGrade, validateText } = require('../utils/validation');
 
 // Get teacher dashboard data
 router.get('/dashboard/:userId', authenticateToken, teacherOnly, requireSelf(), async (req, res) => {
@@ -316,31 +317,102 @@ router.get('/tasks/:userId', authenticateToken, teacherOnly, requireSelf(), asyn
     }
 });
 
-// Grade student submissions
-router.post('/tasks/:taskId/grade', authenticateToken, teacherOnly, async (req, res) => {
+// Loads a task only if it belongs to one of the teacher's courses
+async function findOwnTask(db, taskId, teacherId) {
+    const [rows] = await db.execute(`
+        SELECT t.id, t.title, t.assigned_to
+        FROM tasks t
+        JOIN courses c ON t.course_id = c.id
+        WHERE t.id = ? AND c.teacher_id = ?
+    `, [taskId, teacherId]);
+    return rows[0] || null;
+}
+
+// List submissions for one of the teacher's tasks
+router.get('/tasks/:taskId/submissions', authenticateToken, teacherOnly, async (req, res) => {
     try {
-        const db = req.db;
-        const taskId = req.params.taskId;
-        const { grade, feedback } = req.body;
-        const teacherId = req.user.userId;
+        const taskId = parseId(req.params.taskId);
+        if (!taskId) {
+            return res.status(400).json({ error: 'Invalid task id' });
+        }
 
-        // Verify task belongs to teacher's course
-        const [task] = await db.execute(`
-            SELECT t.id FROM tasks t
-            JOIN courses c ON t.course_id = c.id
-            WHERE t.id = ? AND c.teacher_id = ?
-        `, [taskId, teacherId]);
-
-        if (task.length === 0) {
+        const task = await findOwnTask(req.db, taskId, req.user.userId);
+        if (!task) {
             return res.status(403).json({ error: 'Access denied' });
         }
 
-        // This would need a submissions table to implement properly
-        res.json({ 
-            message: 'Grading endpoint - needs submissions table implementation',
+        const [submissions] = await req.db.execute(`
+            SELECT s.id, s.task_id, s.student_id, u.full_name AS student_name, u.email AS student_email,
+                   s.content, s.status, s.grade, s.feedback, s.submitted_at, s.graded_at
+            FROM task_submissions s
+            JOIN users u ON s.student_id = u.id
+            WHERE s.task_id = ?
+            ORDER BY s.submitted_at DESC
+        `, [taskId]);
+
+        res.json(submissions);
+    } catch (error) {
+        console.error('Task submissions error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Grade a student's submission
+router.post('/tasks/:taskId/grade', authenticateToken, teacherOnly, async (req, res) => {
+    try {
+        const db = req.db;
+        const teacherId = req.user.userId;
+
+        const taskId = parseId(req.params.taskId);
+        if (!taskId) {
+            return res.status(400).json({ error: 'Invalid task id' });
+        }
+
+        const gradeResult = validateGrade(req.body.grade);
+        if (gradeResult.error) {
+            return res.status(400).json({ error: gradeResult.error });
+        }
+
+        const feedbackResult = validateText(req.body.feedback, { field: 'Feedback', required: false, maxLength: 2000 });
+        if (feedbackResult.error) {
+            return res.status(400).json({ error: feedbackResult.error });
+        }
+
+        // Verify task belongs to teacher's course
+        const task = await findOwnTask(db, taskId, teacherId);
+        if (!task) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        // A task is assigned to one student: that student's submission is the one being graded.
+        // student_id may be sent to be explicit, but it must match the assignment.
+        if (!task.assigned_to) {
+            return res.status(400).json({ error: 'This task is not assigned to a student' });
+        }
+        if (req.body.student_id !== undefined && parseId(req.body.student_id) !== task.assigned_to) {
+            return res.status(400).json({ error: 'student_id does not match the student this task is assigned to' });
+        }
+
+        const [submissions] = await db.execute(
+            'SELECT id FROM task_submissions WHERE task_id = ? AND student_id = ?',
+            [taskId, task.assigned_to]
+        );
+        if (submissions.length === 0) {
+            return res.status(404).json({ error: 'The student has not submitted this task yet' });
+        }
+
+        await db.execute(`
+            UPDATE task_submissions
+            SET grade = ?, feedback = ?, status = 'graded', graded_at = NOW(), graded_by = ?
+            WHERE id = ?
+        `, [gradeResult.value, feedbackResult.value, teacherId, submissions[0].id]);
+
+        res.json({
+            message: 'Submission graded successfully',
             taskId,
-            grade,
-            feedback
+            studentId: task.assigned_to,
+            grade: gradeResult.value,
+            feedback: feedbackResult.value
         });
     } catch (error) {
         console.error('Task grading error:', error);
