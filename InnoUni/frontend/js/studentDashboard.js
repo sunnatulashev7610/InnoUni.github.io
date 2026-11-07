@@ -16,7 +16,7 @@ class StudentDashboard {
             this.renderStudentDashboard();
         } catch (error) {
             console.error('Student dashboard initialization error:', error);
-            window.location.href = '/secondary-pages/login/login.html';
+            window.location.href = siteUrl('/secondary-pages/login/login.html');
         }
     }
 
@@ -387,16 +387,16 @@ class StudentDashboard {
         try {
             switch (action) {
                 case 'browse-courses':
-                    window.location.href = '/secondary-pages/dashboard/pages/groups.html';
+                    window.location.href = siteUrl('/secondary-pages/dashboard/pages/groups.html');
                     break;
                 case 'join-group':
-                    window.location.href = '/secondary-pages/dashboard/pages/jamoalar.html';
+                    window.location.href = siteUrl('/secondary-pages/dashboard/pages/jamoalar.html');
                     break;
                 case 'view-tasks':
-                    window.location.href = '/secondary-pages/dashboard/pages/vazifalar.html';
+                    window.location.href = siteUrl('/secondary-pages/dashboard/pages/vazifalar.html');
                     break;
                 case 'view-profile':
-                    window.location.href = '/secondary-pages/dashboard/pages/profile.html';
+                    window.location.href = siteUrl('/secondary-pages/dashboard/pages/profile.html');
                     break;
                 default:
                     console.log('Unknown quick action:', action);

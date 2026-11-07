@@ -376,6 +376,8 @@
         </div>
     </div>
 
+    <script src="../../frontend/js/utils.js"></script>
+    <script src="../../frontend/js/config.js"></script>
     <script src="../../frontend/js/api.js"></script>
     <script>
         // Role selection
@@ -453,18 +455,14 @@
 
                     // Redirect based on role
                     setTimeout(() => {
-                        if (data.user.role === 'teacher') {
-                            window.location.href = `/dashboard/${data.user.id}`;
-                        } else {
-                            window.location.href = `/dashboard/${data.user.id}`;
-                        }
+                        window.location.href = siteUrl(data.user.role === 'teacher' ? 'frontend/teacher.html' : 'frontend/student.html');
                     }, 1500);
                 } else {
                     showError(data.error || 'Kirishda xatolik yuz berdi');
                 }
             } catch (error) {
                 console.error('Login error:', error);
-                showError('Tarmoq xatoligi. Iltimos, qayta urinib ko\'ring.');
+                showError(window.config && window.config.backendMissing ? 'Server ulanmagan: GitHub Pages faqat statik sahifalarni ko\'rsatadi. frontend/js/config.js ichida BACKEND_API_URL ni kiriting.' : 'Tarmoq xatoligi. Iltimos, qayta urinib ko\'ring.');
             } finally {
                 // Reset button state
                 loginBtn.disabled = false;

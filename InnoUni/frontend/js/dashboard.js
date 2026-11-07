@@ -17,7 +17,7 @@ class Dashboard {
             this.renderDashboard();
         } catch (error) {
             console.error('Dashboard initialization error:', error);
-            window.location.href = '/secondary-pages/login/login.html';
+            window.location.href = siteUrl('/secondary-pages/login/login.html');
         }
     }
 
@@ -198,13 +198,13 @@ class Dashboard {
         try {
             switch (action) {
                 case 'Yangi kurs':
-                    window.location.href = '/secondary-pages/dashboard/pages/courses.html';
+                    window.location.href = siteUrl('/secondary-pages/dashboard/pages/courses.html');
                     break;
                 case 'Guruh yaratish':
-                    window.location.href = '/secondary-pages/dashboard/pages/groups.html';
+                    window.location.href = siteUrl('/secondary-pages/dashboard/pages/groups.html');
                     break;
                 case 'Vazifa qo\'shish':
-                    window.location.href = '/secondary-pages/dashboard/pages/vazifalar.html';
+                    window.location.href = siteUrl('/secondary-pages/dashboard/pages/vazifalar.html');
                     break;
                 case 'Statistika':
                     this.showDetailedStats();
@@ -250,7 +250,7 @@ class Dashboard {
                         <h4>Kurslar (${results.courses.length})</h4>
                         <div class="search-results">
                             ${results.courses.slice(0, 3).map(course => `
-                                <div class="search-result-item" onclick="window.location.href='/secondary-pages/dashboard/pages/courses.html?id=${course.id}'">
+                                <div class="search-result-item" onclick="window.location.href=siteUrl('/secondary-pages/dashboard/pages/courses.html?id=${course.id}')">
                                     <h5>${escapeHtml(course.title)}</h5>
                                     <p>${escapeHtml(course.category)}</p>
                                 </div>
@@ -261,7 +261,7 @@ class Dashboard {
                         <h4>Guruhlar (${results.groups.length})</h4>
                         <div class="search-results">
                             ${results.groups.slice(0, 3).map(group => `
-                                <div class="search-result-item" onclick="window.location.href='/secondary-pages/dashboard/pages/groups.html?id=${group.id}'">
+                                <div class="search-result-item" onclick="window.location.href=siteUrl('/secondary-pages/dashboard/pages/groups.html?id=${group.id}')">
                                     <h5>${escapeHtml(group.name)}</h5>
                                     <p>${group.member_count} a'zo</p>
                                 </div>
@@ -494,10 +494,10 @@ class Dashboard {
         const menu = document.createElement('div');
         menu.className = 'user-menu';
         menu.innerHTML = `
-            <div class="user-menu-item" onclick="window.location.href='/secondary-pages/dashboard/pages/profile.html'">
+            <div class="user-menu-item" onclick="window.location.href=siteUrl('/secondary-pages/dashboard/pages/profile.html')">
                 <i class="fas fa-user"></i> Profil
             </div>
-            <div class="user-menu-item" onclick="window.location.href='/secondary-pages/dashboard/pages/settings.html'">
+            <div class="user-menu-item" onclick="window.location.href=siteUrl('/secondary-pages/dashboard/pages/settings.html')">
                 <i class="fas fa-cog"></i> Sozlamalar
             </div>
             <div class="user-menu-item" onclick="dashboard.logout()">
@@ -548,10 +548,10 @@ class Dashboard {
     async logout() {
         try {
             await api.logout();
-            window.location.href = '/secondary-pages/login/login.html';
+            window.location.href = siteUrl('/secondary-pages/login/login.html');
         } catch (error) {
             console.error('Logout error:', error);
-            window.location.href = '/secondary-pages/login/login.html';
+            window.location.href = siteUrl('/secondary-pages/login/login.html');
         }
     }
 
