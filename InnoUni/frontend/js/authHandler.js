@@ -1,3 +1,4 @@
+// Requires js/utils.js (escapeHtml, safeUrl) to be loaded first.
 // Authentication Handler for Role-Based Routing
 class AuthHandler {
     constructor() {
@@ -66,11 +67,11 @@ class AuthHandler {
             }
 
             // Redirect to login page
-            window.location.href = '/secondary.html/login/login.html';
+            window.location.href = '/secondary-pages/login/login.html';
         } catch (error) {
             console.error('Logout error:', error);
             // Fallback redirect
-            window.location.href = '/secondary.html/login/login.html';
+            window.location.href = '/secondary-pages/login/login.html';
         }
     }
 
@@ -138,7 +139,7 @@ class AuthHandler {
     // Method to protect routes
     protectRoute(requiredRole = null) {
         if (!this.isAuthenticated()) {
-            window.location.href = '/secondary.html/login/login.html';
+            window.location.href = '/secondary-pages/login/login.html';
             return false;
         }
 
@@ -181,7 +182,7 @@ class AuthHandler {
                     <p style="margin-bottom: 20px; color: rgba(255, 255, 255, 0.8);">
                         Ushbu sahifaga kirish uchun ruxsat etishingiz yo'q.
                     </p>
-                    <button onclick="window.location.href='/secondary.html/login/login.html'" style="
+                    <button onclick="window.location.href='/secondary-pages/login/login.html'" style="
                         background: linear-gradient(90deg, #0d6efd, #00d4ff);
                         color: white;
                         border: none;
@@ -232,9 +233,9 @@ class AuthHandler {
             if (userRole === 'teacher') {
                 element.innerHTML = `
                     <div class="teacher-info">
-                        <img src="${user.avatar || 'https://picsum.photos/seed/teacher-' + user.id + '/40/40'}" alt="Teacher" class="user-avatar">
+                        <img src="${escapeHtml(safeUrl(user.avatar, 'https://picsum.photos/seed/teacher-' + user.id + '/40/40'))}" alt="Teacher" class="user-avatar">
                         <div class="user-details">
-                            <div class="user-name">${user.full_name}</div>
+                            <div class="user-name">${escapeHtml(user.full_name)}</div>
                             <div class="user-role">O'qituvchi</div>
                         </div>
                     </div>
@@ -242,9 +243,9 @@ class AuthHandler {
             } else {
                 element.innerHTML = `
                     <div class="student-info">
-                        <img src="${user.avatar || 'https://picsum.photos/seed/student-' + user.id + '/40/40'}" alt="Student" class="user-avatar">
+                        <img src="${escapeHtml(safeUrl(user.avatar, 'https://picsum.photos/seed/student-' + user.id + '/40/40'))}" alt="Student" class="user-avatar">
                         <div class="user-details">
-                            <div class="user-name">${user.full_name}</div>
+                            <div class="user-name">${escapeHtml(user.full_name)}</div>
                             <div class="user-role">O'quvchi</div>
                         </div>
                     </div>
@@ -281,7 +282,7 @@ class AuthHandler {
         notification.className = `notification notification-${type}`;
         notification.innerHTML = `
             <i class="fas ${type === 'error' ? 'fa-exclamation-circle' : type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}"></i>
-            <span>${message}</span>
+            <span>${escapeHtml(message)}</span>
         `;
 
         notification.innerHTML += `

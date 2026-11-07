@@ -5,9 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kirish - O'QIV</title>
-    <link rel="stylesheet" href="/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../../css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link rel="stylesheet" href="../../css/style.css">
     <style>
         body {
             background: linear-gradient(135deg, #020617 0%, #0a2540 100%);
@@ -424,8 +423,12 @@
             hideMessages();
 
             try {
+                // Same API address logic as frontend/js/api.js: local server while developing, same origin otherwise
+                const API_BASE = (window.config && window.config.apiBaseUrl) ||
+                    (['localhost', '127.0.0.1'].includes(window.location.hostname) ? 'http://localhost:3000/api' : '/api');
+
                 // Login with role
-                const response = await fetch('http://localhost:3000/api/auth/login', {
+                const response = await fetch(`${API_BASE}/auth/login`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

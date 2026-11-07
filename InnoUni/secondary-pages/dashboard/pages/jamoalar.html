@@ -5,7 +5,7 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Jamoalar - O'QIV</title>
-	<link rel="stylesheet" href="/css/bootstrap.min.css">
+	<link rel="stylesheet" href="../../css/bootstrap.min.css">
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 	<style>
 		body {
@@ -1114,16 +1114,16 @@
 			newTeamCard.className = 'team-card';
 			newTeamCard.innerHTML = `
 				<div class="team-header">
-					<img src="https://picsum.photos/seed/${Date.now()}/60/60" alt="${teamData.name}" class="team-logo">
+					<img src="https://picsum.photos/seed/${Date.now()}/60/60" alt="${esc(teamData.name)}" class="team-logo">
 					<div class="team-info">
-						<h3>${teamData.name}</h3>
+						<h3>${esc(teamData.name)}</h3>
 						<div class="team-status">
 							<i class="fas fa-circle text-success me-2"></i>Yangi - 1 a'zo
 						</div>
 					</div>
 				</div>
 				<p class="team-description">
-					${teamData.description}
+					${esc(teamData.description)}
 				</p>
 				<div class="team-members">
 					<div class="member-avatars">
@@ -1196,6 +1196,10 @@
 			}
 		}
 
+		// Escape user input before putting it into innerHTML
+		const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g,
+			(c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
 		// Text Chat Functions
 		function sendMessage() {
 			const input = document.getElementById('chatInput');
@@ -1214,7 +1218,7 @@
 							<span class="message-author">Siz</span>
 							<span class="message-time">${time}</span>
 						</div>
-						<div class="message-text">${message}</div>
+						<div class="message-text">${esc(message)}</div>
 					</div>
 				`;
 				
@@ -1285,7 +1289,7 @@
 							<span class="message-author">Siz</span>
 							<span class="message-time">${time}</span>
 						</div>
-						<div class="message-text">${message}</div>
+						<div class="message-text">${esc(message)}</div>
 					</div>
 				`;
 				

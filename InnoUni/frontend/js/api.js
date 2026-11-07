@@ -230,9 +230,33 @@ class ApiClient {
     }
 
     async completeTask(taskId) {
-        return this.request(`/tasks/${taskId}`, {
-            method: 'PUT',
-            body: JSON.stringify({ status: 'completed' })
+        // The backend route lives under /student (there is no PUT /tasks/:id)
+        return this.request(`/student/tasks/${taskId}/complete`, {
+            method: 'PUT'
+        });
+    }
+
+    // Student: submit the answer to a task, and read own grade/feedback
+    async submitTask(taskId, content) {
+        return this.request(`/student/tasks/${taskId}/submit`, {
+            method: 'POST',
+            body: JSON.stringify({ content })
+        });
+    }
+
+    async getMySubmission(taskId) {
+        return this.request(`/student/tasks/${taskId}/submission`);
+    }
+
+    // Teacher: list submissions of a task and grade it
+    async getTaskSubmissions(taskId) {
+        return this.request(`/teacher/tasks/${taskId}/submissions`);
+    }
+
+    async gradeTask(taskId, grade, feedback) {
+        return this.request(`/teacher/tasks/${taskId}/grade`, {
+            method: 'POST',
+            body: JSON.stringify({ grade, feedback })
         });
     }
 
@@ -287,7 +311,7 @@ class ApiClient {
         } catch (error) {
             if (error.message.includes('token')) {
                 this.logout();
-                window.location.href = '/secondary.html/login/login.html';
+                window.location.href = '/secondary-pages/login/login.html';
             }
             throw error;
         }

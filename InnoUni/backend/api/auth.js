@@ -3,25 +3,11 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const { JWT_SECRET } = require('../config');
+const { validatePassword, isValidEmail } = require('../utils/validation');
 
-// Middleware to verify JWT token
-const authenticateToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (!token) {
-        return res.status(401).json({ error: 'Access token required' });
-    }
-
-    jwt.verify(token, JWT_SECRET, (err, user) => {
-        if (err) {
-            return res.status(403).json({ error: 'Invalid token' });
-        }
-        req.user = user;
-        next();
-    });
-};
+// Single shared JWT verification middleware
+const { authenticateToken } = require('../middleware/roleBased');
 
 // Register new user
 router.post('/register', async (req, res) => {
@@ -34,10 +20,20 @@ router.post('/register', async (req, res) => {
             return res.status(400).json({ error: 'Name, email, and password are required' });
         }
 
-        // Validate role
-        const validRoles = ['student', 'teacher', 'admin'];
+        if (typeof full_name !== 'string' || !isValidEmail(email)) {
+            return res.status(400).json({ error: 'Valid name and email are required' });
+        }
+
+        // Validate role. Admin accounts are never self-registered: they are created manually in the database.
+        const validRoles = ['student', 'teacher'];
         if (!validRoles.includes(role)) {
             return res.status(400).json({ error: 'Invalid role specified' });
+        }
+
+        // Validate password strength before touching the database
+        const passwordError = validatePassword(password);
+        if (passwordError) {
+            return res.status(400).json({ error: passwordError });
         }
 
         // Check if user already exists
@@ -48,11 +44,6 @@ router.post('/register', async (req, res) => {
 
         if (existingUsers.length > 0) {
             return res.status(400).json({ error: 'User with this email already exists' });
-        }
-
-        // Validate password strength
-        if (password.length < 8) {
-            return res.status(400).json({ error: 'Password must be at least 8 characters long' });
         }
 
         // Hash password
@@ -209,6 +200,12 @@ router.put('/password', authenticateToken, async (req, res) => {
         // Validation
         if (!current_password || !new_password) {
             return res.status(400).json({ error: 'Current and new passwords are required' });
+        }
+
+        // Same password rules as registration
+        const passwordError = validatePassword(new_password);
+        if (passwordError) {
+            return res.status(400).json({ error: passwordError });
         }
 
         // Get current user

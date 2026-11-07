@@ -1,3 +1,4 @@
+// Requires js/utils.js (escapeHtml, safeUrl) to be loaded first.
 // Dashboard JavaScript with API integration
 class Dashboard {
     constructor() {
@@ -16,7 +17,7 @@ class Dashboard {
             this.renderDashboard();
         } catch (error) {
             console.error('Dashboard initialization error:', error);
-            window.location.href = '/secondary.html/login/login.html';
+            window.location.href = '/secondary-pages/login/login.html';
         }
     }
 
@@ -100,9 +101,9 @@ class Dashboard {
         const userInfo = document.querySelector('.user-info');
         if (userInfo && this.currentUser) {
             userInfo.innerHTML = `
-                <img src="${this.currentUser.avatar || 'https://picsum.photos/seed/dashboard-user/40/40'}" alt="User" class="user-avatar">
+                <img src="${escapeHtml(safeUrl(this.currentUser.avatar, 'https://picsum.photos/seed/dashboard-user/40/40'))}" alt="User" class="user-avatar">
                 <div>
-                    <h3 class="mb-1">Xush kelibsiz, ${this.currentUser.full_name}!</h3>
+                    <h3 class="mb-1">Xush kelibsiz, ${escapeHtml(this.currentUser.full_name)}!</h3>
                     <p class="mb-0 text-white-50">Bugungi o'rganishni boshlang</p>
                 </div>
             `;
@@ -165,11 +166,11 @@ class Dashboard {
         const activities = this.dashboardData.recentActivity;
         activityList.innerHTML = activities.map(activity => `
             <div class="activity-item">
-                <div class="activity-icon ${activity.type}">
-                    <i class="fas ${activity.icon}"></i>
+                <div class="activity-icon ${escapeHtml(activity.type)}">
+                    <i class="fas ${escapeHtml(activity.icon)}"></i>
                 </div>
                 <div class="activity-details">
-                    <div class="activity-title">${activity.title}</div>
+                    <div class="activity-title">${escapeHtml(activity.title)}</div>
                     <div class="activity-time">${this.formatTime(activity.timestamp)}</div>
                 </div>
             </div>
@@ -197,13 +198,13 @@ class Dashboard {
         try {
             switch (action) {
                 case 'Yangi kurs':
-                    window.location.href = '/secondary.html/dashboard/pages/courses.html';
+                    window.location.href = '/secondary-pages/dashboard/pages/courses.html';
                     break;
                 case 'Guruh yaratish':
-                    window.location.href = '/secondary.html/dashboard/pages/groups.html';
+                    window.location.href = '/secondary-pages/dashboard/pages/groups.html';
                     break;
                 case 'Vazifa qo\'shish':
-                    window.location.href = '/secondary.html/dashboard/pages/vazifalar.html';
+                    window.location.href = '/secondary-pages/dashboard/pages/vazifalar.html';
                     break;
                 case 'Statistika':
                     this.showDetailedStats();
@@ -239,7 +240,7 @@ class Dashboard {
         modal.innerHTML = `
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3>Qidirish natijalari: "${results.searchTerm}"</h3>
+                    <h3>Qidirish natijalari: "${escapeHtml(results.searchTerm)}"</h3>
                     <button class="close-btn" onclick="this.parentElement.parentElement.remove()">
                         <i class="fas fa-times"></i>
                     </button>
@@ -249,9 +250,9 @@ class Dashboard {
                         <h4>Kurslar (${results.courses.length})</h4>
                         <div class="search-results">
                             ${results.courses.slice(0, 3).map(course => `
-                                <div class="search-result-item" onclick="window.location.href='/secondary.html/dashboard/pages/courses.html?id=${course.id}'">
-                                    <h5>${course.title}</h5>
-                                    <p>${course.category}</p>
+                                <div class="search-result-item" onclick="window.location.href='/secondary-pages/dashboard/pages/courses.html?id=${course.id}'">
+                                    <h5>${escapeHtml(course.title)}</h5>
+                                    <p>${escapeHtml(course.category)}</p>
                                 </div>
                             `).join('')}
                         </div>
@@ -260,8 +261,8 @@ class Dashboard {
                         <h4>Guruhlar (${results.groups.length})</h4>
                         <div class="search-results">
                             ${results.groups.slice(0, 3).map(group => `
-                                <div class="search-result-item" onclick="window.location.href='/secondary.html/dashboard/pages/groups.html?id=${group.id}'">
-                                    <h5>${group.name}</h5>
+                                <div class="search-result-item" onclick="window.location.href='/secondary-pages/dashboard/pages/groups.html?id=${group.id}'">
+                                    <h5>${escapeHtml(group.name)}</h5>
                                     <p>${group.member_count} a'zo</p>
                                 </div>
                             `).join('')}
@@ -493,10 +494,10 @@ class Dashboard {
         const menu = document.createElement('div');
         menu.className = 'user-menu';
         menu.innerHTML = `
-            <div class="user-menu-item" onclick="window.location.href='/secondary.html/dashboard/pages/profile.html'">
+            <div class="user-menu-item" onclick="window.location.href='/secondary-pages/dashboard/pages/profile.html'">
                 <i class="fas fa-user"></i> Profil
             </div>
-            <div class="user-menu-item" onclick="window.location.href='/secondary.html/dashboard/pages/settings.html'">
+            <div class="user-menu-item" onclick="window.location.href='/secondary-pages/dashboard/pages/settings.html'">
                 <i class="fas fa-cog"></i> Sozlamalar
             </div>
             <div class="user-menu-item" onclick="dashboard.logout()">
@@ -547,10 +548,10 @@ class Dashboard {
     async logout() {
         try {
             await api.logout();
-            window.location.href = '/secondary.html/login/login.html';
+            window.location.href = '/secondary-pages/login/login.html';
         } catch (error) {
             console.error('Logout error:', error);
-            window.location.href = '/secondary.html/login/login.html';
+            window.location.href = '/secondary-pages/login/login.html';
         }
     }
 
@@ -560,7 +561,7 @@ class Dashboard {
         notification.className = `notification notification-${type}`;
         notification.innerHTML = `
             <i class="fas ${type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
-            <span>${message}</span>
+            <span>${escapeHtml(message)}</span>
         `;
 
         // Add styles

@@ -5,8 +5,12 @@
 ### 1. Backend serverini ishga tushirish
 
 ```bash
-# Backend papkasiga o'ting
-cd "c:/Users/Sunnatjon/Desktop/Open university/backend"
+# Loyiha papkasidan backend papkasiga o'ting
+cd backend
+
+# Sozlamalar faylini yarating va qiymatlarni to'ldiring.
+# JWT_SECRET majburiy (kamida 16 belgi): to'ldirilmasa server ishga tushmaydi.
+cp .env.example .env
 
 # Package larni o'rnating (agar o'rnatilmagan bo'lsa)
 npm install
@@ -25,7 +29,7 @@ Gmail orqali email yuborish uchun:
 2. App passwords → Create new app password
 3. `.env` faylga `EMAIL_PASS` ni kiriting:
 ```env
-EMAIL_USER=ulashevsunnat200@gmail.com
+EMAIL_USER=your-email@example.com
 EMAIL_PASS=your-gmail-app-password
 ```
 

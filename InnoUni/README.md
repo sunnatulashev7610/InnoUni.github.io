@@ -55,7 +55,7 @@ A comprehensive online learning platform built with modern web technologies, fea
 ```
 Inno Uni/
 ├── index.html                 # Main landing page
-├── secondary.html/             # Application pages
+├── secondary-pages/            # Application pages
 │   ├── login/                # Authentication pages
 │   ├── dashboard/            # Main application
 │   │   ├── dashboard.html     # Dashboard layout
@@ -120,7 +120,7 @@ Inno Uni/
      2. App passwords -> Create new app password
      3. Passwordni .env faylga qo'shing
    ```env
-   EMAIL_USER=ulashevsunnat200@gmail.com
+   EMAIL_USER=your-email@example.com
    EMAIL_PASS=your-gmail-app-password
    ```
 
@@ -185,6 +185,13 @@ NODE_ENV=development
 - `GET /api/tasks/:userId` - Get user tasks
 - `POST /api/tasks` - Create new task
 - `PUT /api/tasks/:id` - Update task status
+
+### Submissions and grading
+A task is assigned to one student (`tasks.assigned_to`). The student submits an answer, the teacher of the task's course grades it.
+- `POST /api/student/tasks/:taskId/submit` - Submit or re-submit an answer, body `{ "content": "..." }` (re-submitting is blocked after grading)
+- `GET /api/student/tasks/:taskId/submission` - Own submission with grade and feedback
+- `GET /api/teacher/tasks/:taskId/submissions` - Submissions of one of your tasks
+- `POST /api/teacher/tasks/:taskId/grade` - Grade the submission, body `{ "grade": 0-100, "feedback": "optional" }`
 
 ## 🎨 UI Components
 
