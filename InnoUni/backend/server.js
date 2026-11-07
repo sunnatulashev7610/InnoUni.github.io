@@ -346,12 +346,22 @@ app.post('/api/contact', contactLimiter, async (req, res) => {
     }
 });
 
-// Serve static files
-app.use(express.static(path.join(__dirname, '../frontend')));
+// Serve the site. URLs mirror the folder layout (/css/..., /imgs/..., /secondary-pages/...), so the
+// same relative links work here, on GitHub Pages and on a plain static server.
+// Only these folders are exposed, never the project root: backend/ holds the source code and .env.
+const siteRoot = path.join(__dirname, '..');
+['css', 'imgs', 'style', 'secondary-pages', 'frontend'].forEach((dir) => {
+    app.use(`/${dir}`, express.static(path.join(siteRoot, dir)));
+});
+app.use(express.static(path.join(siteRoot, 'frontend')));
 
-// Catch-all handler for SPA routing
+app.get(['/', '/index.html'], (req, res) => {
+    res.sendFile(path.join(siteRoot, 'index.html'));
+});
+
+// Catch-all handler: unknown pages fall back to the home page
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/index.html'));
+    res.sendFile(path.join(siteRoot, 'index.html'));
 });
 
 // Lets tests inject a fake database without connecting to MySQL

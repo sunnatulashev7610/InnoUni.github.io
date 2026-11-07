@@ -35,7 +35,7 @@
 /*  */
 /*  */
 body {
-	background-image: url("/imgs/hero.bg.png");
+	background-image: url("../imgs/hero.bg.png");
 	background-repeat: no-repeat;
 	background-attachment: fixed;
 	background-size: cover;
