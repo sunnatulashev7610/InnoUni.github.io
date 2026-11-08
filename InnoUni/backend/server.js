@@ -359,9 +359,12 @@ app.get(['/', '/index.html'], (req, res) => {
     res.sendFile(path.join(siteRoot, 'index.html'));
 });
 
-// Catch-all handler: unknown pages fall back to the home page
+// Unknown URLs: a real 404 (JSON for the API, the friendly 404 page for browsers)
 app.get('*', (req, res) => {
-    res.sendFile(path.join(siteRoot, 'index.html'));
+    if (req.path.startsWith('/api/')) {
+        return res.status(404).json({ error: 'Not found' });
+    }
+    res.status(404).sendFile(path.join(siteRoot, '..', '404.html'));
 });
 
 // Lets tests inject a fake database without connecting to MySQL
