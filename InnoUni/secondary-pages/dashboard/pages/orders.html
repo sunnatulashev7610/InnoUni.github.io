@@ -10,6 +10,7 @@
 				<button class="pg-chip on" data-cat="all">Hammasi</button>
 				<button class="pg-chip" data-cat="kurs">Kurslar</button>
 				<button class="pg-chip" data-cat="material">Materiallar</button>
+				<button class="pg-chip" data-cat="tarif">Tariflar</button>
 			</div>
 			<div class="pg-orders" id="pgFilterTarget">
 				<div class="pg-order" data-cat="kurs"><div class="ic" style="background:rgba(108,183,240,.2);color:#6cb7f0"><i class="fas fa-graduation-cap"></i></div><div class="mid"><b>React va Next.js</b><span class="pg-muted">GE-1042 · Onlayn (jonli darslar) · 08-noy</span></div><div class="end"><b>300 000 so'm</b><span class="pg-pill sky">Tasdiqlangan</span></div></div>
@@ -21,7 +22,7 @@
 		</div>
 		<form class="pg-card pg-order-form" id="orderForm" style="align-self:start">
 			<h3 class="pg-h3">Yangi buyurtma</h3>
-			<div class="pg-seg" role="group" aria-label="Buyurtma turi"><button type="button" class="on" data-order-type="kurs">Kurs</button><button type="button" data-order-type="material">Material</button></div>
+			<div class="pg-seg" role="group" aria-label="Buyurtma turi"><button type="button" class="on" data-order-type="kurs">Kurs</button><button type="button" data-order-type="material">Material</button><button type="button" data-order-type="tarif">Tarif</button></div>
 			<label class="pg-lbl" for="orderItem">Nomi</label>
 			<select class="pg-input" id="orderItem"><option value="React va Next.js" data-price="300000">React va Next.js</option><option value="Python va Django" data-price="250000">Python va Django</option><option value="UI/UX Dizayn" data-price="200000">UI/UX Dizayn</option><option value="Mobile dasturlash" data-price="350000">Mobile dasturlash</option><option value="Ma'lumotlar bazasi" data-price="220000">Ma'lumotlar bazasi</option><option value="Biznes Ingliz tili" data-price="180000">Biznes Ingliz tili</option></select>
 			<label class="pg-lbl" for="orderFormat">Format</label>
@@ -33,5 +34,5 @@
 			<p class="pg-muted" id="orderNoticeNote" style="margin:12px 0 0;font-size:13px">Buyurtma o'qituvchi tomonidan tasdiqlanadi. To'lov tasdiqlangandan keyin so'raladi.</p>
 		</form>
 	</div>
-	<script type="application/json" id="orderCatalog">{"kurs": {"formats": ["Onlayn (jonli darslar)", "Yozib olingan video"], "items": [{"n": "React va Next.js", "p": 300000}, {"n": "Python va Django", "p": 250000}, {"n": "UI/UX Dizayn", "p": 200000}, {"n": "Mobile dasturlash", "p": 350000}, {"n": "Ma'lumotlar bazasi", "p": 220000}, {"n": "Biznes Ingliz tili", "p": 180000}]}, "material": {"formats": ["Elektron (PDF)", "Chop etilgan nusxa"], "items": [{"n": "React hooks qo'llanmasi", "p": 25000}, {"n": "Django loyiha shabloni", "p": 40000}, {"n": "Figma UI kit", "p": 60000}, {"n": "SQL so'rovlar to'plami", "p": 55000}, {"n": "Python mashqlar daftari", "p": 35000}]}}</script>
+	<script type="application/json" id="orderCatalog">{"kurs": {"formats": ["Onlayn (jonli darslar)", "Yozib olingan video"], "items": [{"n": "React va Next.js", "p": 300000}, {"n": "Python va Django", "p": 250000}, {"n": "UI/UX Dizayn", "p": 200000}, {"n": "Mobile dasturlash", "p": 350000}, {"n": "Ma'lumotlar bazasi", "p": 220000}, {"n": "Biznes Ingliz tili", "p": 180000}]}, "material": {"formats": ["Elektron (PDF)", "Chop etilgan nusxa"], "items": [{"n": "React hooks qo'llanmasi", "p": 25000}, {"n": "Django loyiha shabloni", "p": 40000}, {"n": "Figma UI kit", "p": 60000}, {"n": "SQL so'rovlar to'plami", "p": 55000}, {"n": "Python mashqlar daftari", "p": 35000}]}, "tarif": {"formats": ["Oylik", "Yillik (20% chegirma)"], "items": [{"n": "Standart tarif", "p": 99000}, {"n": "Jamoa tarifi (10 o'quvchi)", "p": 499000}]}}</script>
 </div>
