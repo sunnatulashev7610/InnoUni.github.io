@@ -499,7 +499,7 @@
 					<div class="user-profile">
 						<div class="user-info">
 							<div class="user-name">Sunnat Ulashev</div>
-							<div class="user-role">O'qituvchi</div>
+							<div class="user-role" id="userRole">O'quvchi</div>
 						</div>
 						<img src="https://picsum.photos/seed/user/35/35" alt="User" class="user-avatar">
 					</div>
@@ -510,6 +510,8 @@
 
 	<!-- SIDEBAR -->
 	<nav class="sidebar">
+		<div class="role-switch" role="group" aria-label="Rol"><button type="button" data-role-btn="student" class="on">O'quvchi</button><button type="button" data-role-btn="teacher">O'qituvchi</button></div>
+		<div data-role-group="student">
 		<div class="sidebar-section">
 			<div class="sidebar-title">Asosiy</div>
 			<button class="nav-item active" onclick="loadPage('main.dashboard', this)">
@@ -548,9 +550,8 @@
 				Narxlar
 			</button>
 		</div>
-		
 		<div class="sidebar-section">
-			<div class="sidebar-title">O'qituvchi</div>
+			<div class="sidebar-title">O'qish</div>
 			<button class="nav-item" onclick="loadPage('vazifalar', this)">
 				<i class="fas fa-tasks"></i>
 				Vazifalar
@@ -565,7 +566,6 @@
 				Kutubxona
 			</button>
 		</div>
-		
 		<div class="sidebar-section">
 			<div class="sidebar-title">Sozlamalar</div>
 			<button class="nav-item" onclick="loadPage('profile', this)">
@@ -576,6 +576,64 @@
 				<i class="fas fa-cog"></i>
 				Sozlamalar
 			</button>
+		</div>
+		</div>
+		<div data-role-group="teacher">
+		<div class="sidebar-section">
+			<div class="sidebar-title">Asosiy</div>
+			<button class="nav-item" onclick="loadPage('t-home', this)">
+				<i class="fas fa-home"></i>
+				Boshqaruv paneli
+			</button>
+			<button class="nav-item" onclick="loadPage('t-courses', this)">
+				<i class="fas fa-book"></i>
+				Mening kurslarim
+			</button>
+			<button class="nav-item" onclick="loadPage('groups', this)">
+				<i class="fas fa-users"></i>
+				Guruhlar
+			</button>
+			<button class="nav-item" onclick="loadPage('t-schedule', this)">
+				<i class="fas fa-video"></i>
+				Jonli darslar
+			</button>
+		</div>
+		<div class="sidebar-section">
+			<div class="sidebar-title">Ish</div>
+			<button class="nav-item" onclick="loadPage('t-grading', this)">
+				<i class="fas fa-clipboard-check"></i>
+				Baholash
+				<span class="nav-badge">12</span>
+			</button>
+			<button class="nav-item" onclick="loadPage('t-students', this)">
+				<i class="fas fa-user-graduate"></i>
+				O'quvchilar
+			</button>
+			<button class="nav-item" onclick="loadPage('t-orders', this)">
+				<i class="fas fa-inbox"></i>
+				Buyurtmalar
+				<span class="nav-badge">3</span>
+			</button>
+			<button class="nav-item" onclick="loadPage('t-create', this)">
+				<i class="fas fa-circle-plus"></i>
+				Kurs yaratish
+			</button>
+			<button class="nav-item" onclick="loadPage('t-analytics', this)">
+				<i class="fas fa-chart-column"></i>
+				Daromad va statistika
+			</button>
+		</div>
+		<div class="sidebar-section">
+			<div class="sidebar-title">Sozlamalar</div>
+			<button class="nav-item" onclick="loadPage('profile', this)">
+				<i class="fas fa-user"></i>
+				Profil
+			</button>
+			<button class="nav-item" onclick="loadPage('settings', this)">
+				<i class="fas fa-cog"></i>
+				Sozlamalar
+			</button>
+		</div>
 		</div>
 	</nav>
 
@@ -673,7 +731,7 @@
 			element.classList.add("active");
 
 			// The welcome header and stat cards belong to the overview page only
-			document.getElementById('mainOverview').hidden = page !== 'main.dashboard';
+			document.getElementById('mainOverview').hidden = page !== 't-home';
 
 			// Show loading state
 			const contentArea = document.getElementById("content");
@@ -707,9 +765,33 @@
 		}
 
 		// Initialize dashboard
+		// ---- Role switch (student / teacher view) ----
+		var currentRole = 'student';
+		function initialRole() {
+			var r = (location.search.match(/[?&]role=(student|teacher)/) || [])[1];
+			try { r = r || localStorage.getItem('geRole'); } catch (e) { /* storage may be blocked */ }
+			return r === 'teacher' ? 'teacher' : 'student';
+		}
+		function navFor(page) {
+			return document.querySelector('[data-role-group="' + currentRole + '"] .nav-item[onclick*="\'' + page + '\'"]');
+		}
+		function setRole(role) {
+			currentRole = role;
+			document.body.dataset.role = role;
+			document.getElementById('userRole').textContent = role === 'teacher' ? "O'qituvchi" : "O'quvchi";
+			document.querySelectorAll('[data-role-btn]').forEach(function (b) { b.classList.toggle('on', b.dataset.roleBtn === role); });
+			try { localStorage.setItem('geRole', role); } catch (e) { /* ignore */ }
+			var home = role === 'teacher' ? 't-home' : 'main.dashboard';
+			loadPage(home, navFor(home));
+		}
+		document.addEventListener('click', function (e) {
+			var rb = e.target.closest('[data-role-btn]');
+			if (rb) setRole(rb.dataset.roleBtn);
+		});
+
 		document.addEventListener('DOMContentLoaded', function() {
 			// Load default page
-			loadPage("main.dashboard", document.querySelector(".nav-item.active"));
+			setRole(initialRole());
 			
 			// Add search functionality
 			const searchInput = document.querySelector('.search-bar input');
@@ -780,7 +862,7 @@
 			});
 			// ---- Pricing page: monthly/yearly switch and "choose plan" -> pre-filled order ----
 			function openOrderWith(type, item, fmtIndex) {
-				var btn = document.querySelector('.nav-item[onclick*="\'orders\'"]');
+				var btn = navFor(currentRole === 'teacher' ? 't-orders' : 'orders');
 				loadPage('orders', btn);
 				var tries = 0;
 				var timer = setInterval(function () {
@@ -849,6 +931,113 @@
 				content.querySelector('#orderNote').value = '';
 				toast('Buyurtma qabul qilindi: ' + id);
 			});
+			/* ---- Teacher pages (event delegation; all text via textContent) ---- */
+			function q(sel) { return content.querySelector(sel); }
+			function renumberLessons() {
+				var rows = content.querySelectorAll('#lessonList .pg-lrow');
+				rows.forEach(function (r, i) { r.querySelector('.n').textContent = (i < 9 ? '0' : '') + (i + 1); });
+				var pv = q('#pvLessons'); if (pv) pv.textContent = rows.length + ' dars';
+			}
+			function courseSync() {
+				if (!q('#cTitle')) return;
+				var t = q('#cTitle').value.trim() || 'Nomsiz kurs';
+				q('#pvTitle').textContent = t; q('#pvLetter').textContent = t.charAt(0).toUpperCase();
+				q('#pvCat').textContent = q('#cCat').value;
+				q('#pvDesc').textContent = q('#cDesc').value.trim() || 'Kurs tavsifi shu yerda ko\'rinadi';
+				var pr = parseInt(q('#cPrice').value, 10) || 0;
+				q('#pvPrice').textContent = pr ? money(pr) : 'Bepul';
+			}
+			function pendingCount() {
+				var n = content.querySelectorAll('#subList .pg-sub[data-state="wait"]').length;
+				var el = q('#gradePending'); if (el) el.textContent = n + ' ta kutilmoqda';
+			}
+			function pickSub(btn) {
+				content.querySelectorAll('#subList .pg-sub').forEach(function (b) { b.classList.toggle('on', b === btn); });
+				q('#gdCourse').textContent = btn.dataset.course; q('#gdTask').textContent = btn.dataset.task;
+				q('#gdStudent').textContent = btn.dataset.student; q('#gdAnswer').textContent = btn.dataset.answer.replace(/\\n/g, '\n');
+				q('#gradeForm').dataset.current = btn.dataset.task;
+			}
+			function recount() {
+				['wait', 'ok', 'bad'].forEach(function (k) {
+					var el = q('#ord' + { wait: 'Wait', ok: 'Ok', bad: 'Bad' }[k]);
+					if (el) el.textContent = content.querySelectorAll('.pg-order[data-state="' + k + '"]').length;
+				});
+			}
+			content.addEventListener('click', function (e) {
+				var a = e.target.closest('[data-action]');
+				if (a && a.dataset.action === 'add-lesson') {
+					var list = q('#lessonList'); if (!list) return;
+					var row = document.createElement('div'); row.className = 'pg-lrow';
+					var n = document.createElement('span'); n.className = 'n';
+					var inp = document.createElement('input'); inp.className = 'pg-input'; inp.placeholder = 'Dars nomi';
+					var x = document.createElement('button'); x.type = 'button'; x.className = 'pg-x'; x.dataset.action = 'del-lesson'; x.setAttribute('aria-label', 'O\'chirish');
+					var xi = document.createElement('i'); xi.className = 'fas fa-xmark'; x.appendChild(xi);
+					row.appendChild(n); row.appendChild(inp); row.appendChild(x); list.appendChild(row);
+					renumberLessons(); inp.focus(); return;
+				}
+				if (a && a.dataset.action === 'del-lesson') { a.closest('.pg-lrow').remove(); renumberLessons(); return; }
+				if (a && a.dataset.action === 'skip-sub') {
+					var subs = Array.prototype.slice.call(content.querySelectorAll('#subList .pg-sub[data-state="wait"]'));
+					var cur = q('#subList .pg-sub.on'); var i = subs.indexOf(cur);
+					if (subs.length) pickSub(subs[(i + 1) % subs.length]); return;
+				}
+				var cov = e.target.closest('#cCover i[data-cover]');
+				if (cov) { var pc = q('#pvCover'); if (pc) pc.style.background = cov.dataset.cover; return; }
+				var sub = e.target.closest('.pg-sub');
+				if (sub) { pickSub(sub); return; }
+				var qs = e.target.closest('#quickScores [data-score]');
+				if (qs) { q('#gScore').value = qs.dataset.score; return; }
+				var oa = e.target.closest('[data-order-act]');
+				if (oa) {
+					var row = oa.closest('.pg-order'), ok = oa.dataset.orderAct === 'ok';
+					row.dataset.state = row.dataset.cat = ok ? 'ok' : 'bad';
+					var st = row.querySelector('.state'); st.textContent = '';
+					var pill = document.createElement('span'); pill.className = 'pg-pill' + (ok ? '' : ' coral'); pill.textContent = ok ? 'Tasdiqlangan' : 'Rad etilgan';
+					st.appendChild(pill); row.querySelector('.acts').textContent = '';
+					recount(); toast(ok ? 'Buyurtma tasdiqlandi' : 'Buyurtma rad etildi');
+				}
+			});
+			content.addEventListener('input', function (e) {
+				if (e.target.closest('#courseForm')) courseSync();
+				var s = e.target.closest('[data-search]');
+				if (s) {
+					var term = s.value.trim().toLowerCase(), shown = 0;
+					content.querySelectorAll('#' + s.dataset.search + ' tr').forEach(function (tr) {
+						var hit = tr.textContent.toLowerCase().indexOf(term) !== -1; tr.hidden = !hit; if (hit) shown++;
+					});
+					var em = q('#studentEmpty'); if (em) em.hidden = shown > 0;
+				}
+			});
+			content.addEventListener('change', function (e) { if (e.target.closest('#courseForm')) courseSync(); });
+			content.addEventListener('submit', function (e) {
+				if (e.target.id === 'courseForm') {
+					e.preventDefault();
+					toast(q('#cPublish').checked ? 'Kurs nashr etildi' : 'Qoralama saqlandi');
+				} else if (e.target.id === 'gradeForm') {
+					e.preventDefault();
+					var on = q('#subList .pg-sub.on'); if (!on) return;
+					var sc = Math.max(0, Math.min(100, parseInt(q('#gScore').value, 10) || 0));
+					on.dataset.state = 'done';
+					var pill = on.querySelector('.pg-pill'); pill.className = 'pg-pill'; pill.textContent = sc + ' / 100';
+					pendingCount(); toast(on.dataset.student + ': ' + sc + ' ball qo\'yildi');
+					q('#gNote').value = '';
+					var nxt = q('#subList .pg-sub[data-state="wait"]'); if (nxt) pickSub(nxt);
+				} else if (e.target.id === 'lessonForm') {
+					e.preventDefault();
+					var card = document.createElement('div'); card.className = 'pg-card pg-file';
+					var wh = document.createElement('div'); wh.className = 'pg-when';
+					var wb = document.createElement('b'); wb.textContent = q('#lTime').value; var ws = document.createElement('span'); ws.textContent = q('#lDay').value;
+					wh.appendChild(wb); wh.appendChild(ws);
+					var mid = document.createElement('div'); mid.style.cssText = 'flex:1;min-width:0';
+					var t = document.createElement('b'); t.textContent = q('#lTitle').value;
+					var c = document.createElement('div'); c.className = 'pg-muted'; c.textContent = q('#lCourse').value;
+					mid.appendChild(t); mid.appendChild(c);
+					var tag = document.createElement('span'); tag.className = 'pg-pill sun'; tag.textContent = 'Rejada';
+					card.appendChild(wh); card.appendChild(mid); card.appendChild(tag);
+					q('#lessonCards').appendChild(card); q('#lTitle').value = '';
+					toast('Jonli dars rejalashtirildi');
+				}
+			});
 			content.addEventListener('click', function (e) {
 				var chip = e.target.closest('.pg-chip');
 				if (chip) {
@@ -865,7 +1054,7 @@
 				if (open && !e.target.closest('.btn-join')) {
 					// detail pages keep their parent's sidebar item highlighted
 					var nav = { 'course-detail': 'courses', 'group-detail': 'groups' }[open.dataset.open] || open.dataset.open;
-					var btn = document.querySelector('.nav-item[onclick*="\'' + nav + '\'"]');
+					var btn = navFor(nav);
 					loadPage(open.dataset.open, btn || document.querySelector('.nav-item.active'));
 					document.querySelector('.main').scrollTop = 0; window.scrollTo(0, 0);
 					return;
