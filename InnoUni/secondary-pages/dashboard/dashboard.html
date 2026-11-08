@@ -931,6 +931,54 @@
 				content.querySelector('#orderNote').value = '';
 				toast('Buyurtma qabul qilindi: ' + id);
 			});
+			/* ---- Team space: discussion, Q&A, resources (textContent only) ---- */
+			function mk(tag, cls, text) { var el = document.createElement(tag); if (cls) el.className = cls; if (text) el.textContent = text; return el; }
+			content.addEventListener('submit', function (e) {
+				var id = e.target.id;
+				if (id === 'teamPostForm') {
+					e.preventDefault();
+					var sel = content.querySelector('#tpTopic'), anon = content.querySelector('#tpAnon').checked, text = content.querySelector('#tpText').value.trim();
+					if (!text) return;
+					var card = mk('div', 'pg-card'); card.setAttribute('data-cat', sel.value);
+					card.appendChild(mk('span', 'pg-pill sky', 'Mavzu: ' + sel.options[sel.selectedIndex].text));
+					var who = mk('div', 'pg-file'); who.style.marginTop = '10px';
+					var av = mk('span', 'pg-av'); av.style.cssText = 'width:38px;height:38px;font-size:14px;background:' + (anon ? '#4b5d56' : '#0f8a68');
+					av.textContent = anon ? '?' : 'DR';
+					var nm = mk('div'); nm.appendChild(mk('b', '', anon ? 'Anonim a\'zo' : 'Dilnoza Rahimova (sardor)')); nm.appendChild(mk('div', 'pg-muted', 'Hozir'));
+					who.appendChild(av); who.appendChild(nm); card.appendChild(who);
+					var p = mk('p', '', text); p.style.margin = '14px 0'; card.appendChild(p);
+					var list = content.querySelector('#pgFilterTarget'); list.insertBefore(card, list.firstChild);
+					content.querySelector('#tpText').value = ''; toast(anon ? 'Anonim xabar yuborildi' : 'Xabar yuborildi');
+				} else if (id === 'teamAskForm') {
+					e.preventDefault();
+					var q = content.querySelector('#askText').value.trim(); if (!q) return;
+					var row = mk('div', 'pg-row'); row.setAttribute('data-q', '');
+					var mid = mk('div'); mid.style.cssText = 'flex:1;min-width:0'; mid.appendChild(mk('b', '', q)); mid.appendChild(mk('span', 'pg-muted', '0 ta javob'));
+					var st = mk('span', 'pg-pill sun', 'Ochiq'); st.setAttribute('data-qstate', '');
+					var bt = mk('button', 'pg-btn ghost', 'Hal qilindi'); bt.style.padding = '7px 12px'; bt.setAttribute('data-solve', '');
+					row.appendChild(mid); row.appendChild(st); row.appendChild(bt);
+					var ql = content.querySelector('#qaList'); ql.insertBefore(row, ql.firstChild);
+					content.querySelector('#askText').value = ''; toast('Savol yuborildi');
+				} else if (id === 'teamResForm') {
+					e.preventDefault();
+					var t = content.querySelector('#resTitle').value.trim(); if (!t) return;
+					var r = mk('div', 'pg-row'), f = mk('div', 'pg-file'); f.style.cssText = 'flex:1;min-width:0';
+					var ic = mk('div', 'ic'); ic.style.cssText = 'background:rgba(31,169,122,.2);color:#6fe0b4;width:42px;height:42px;border-radius:12px;display:grid;place-items:center';
+					var i = mk('i', 'fas fa-link'); ic.appendChild(i);
+					var d = mk('div'); d.appendChild(mk('b', '', t)); d.appendChild(mk('div', 'pg-muted', 'Ulashdi: Siz'));
+					f.appendChild(ic); f.appendChild(d); r.appendChild(f); r.appendChild(mk('span', 'pg-pill sky', 'Yangi'));
+					var rl = content.querySelector('#resList'); rl.insertBefore(r, rl.firstChild);
+					content.querySelector('#resTitle').value = ''; toast('Material ulashildi');
+				}
+			});
+			content.addEventListener('click', function (e) {
+				var sv = e.target.closest('[data-solve]');
+				if (!sv) return;
+				var row = sv.closest('[data-q]'), st = row.querySelector('[data-qstate]');
+				var done = st.textContent !== 'Hal qilindi';
+				st.textContent = done ? 'Hal qilindi' : 'Ochiq'; st.className = 'pg-pill' + (done ? '' : ' sun');
+				sv.textContent = done ? 'Qayta ochish' : 'Hal qilindi';
+			});
 			/* ---- Groups: teacher-only creation ---- */
 			content.addEventListener('click', function (e) {
 				var tg = e.target.closest('[data-toggle]');
@@ -1119,7 +1167,7 @@
 				var open = e.target.closest('[data-open]');
 				if (open && !e.target.closest('.btn-join')) {
 					// detail pages keep their parent's sidebar item highlighted
-					var nav = { 'course-detail': 'courses', 'group-detail': 'groups' }[open.dataset.open] || open.dataset.open;
+					var nav = { 'course-detail': 'courses', 'group-detail': 'groups', 'team-detail': 'jamoalar' }[open.dataset.open] || open.dataset.open;
 					var btn = navFor(nav);
 					loadPage(open.dataset.open, btn || document.querySelector('.nav-item.active'));
 					document.querySelector('.main').scrollTop = 0; window.scrollTo(0, 0);

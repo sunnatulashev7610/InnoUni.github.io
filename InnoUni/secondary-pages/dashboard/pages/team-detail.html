@@ -1,0 +1,61 @@
+<div class="pg">
+	<button class="pg-back" data-open="jamoalar"><i class="fas fa-arrow-left"></i> Barcha jamoalar</button>
+	<section class="pg-hero" style="background:linear-gradient(135deg,#0f8a68,#12231c 75%)">
+		<div class="pg-hero-l">
+			<span class="pg-pill sun">Dasturlash · Tekin jamoa</span>
+			<h1>Python Sprint</h1>
+			<p>Har kuni bitta masala: algoritm va Python mashqlari. Birga o'rganamiz, bir-birimizga yordam beramiz.</p>
+			<div class="pg-facts"><span><i class="fas fa-users"></i> 24 a'zo</span><span><i class="fas fa-trophy"></i> Reyting: #1 · 126 ball</span><span><i class="fas fa-comments"></i> 38 mavzu</span></div>
+		</div>
+		<div class="pg-hero-r"><span class="pg-pill sun" style="display:block;text-align:center;padding:10px">Siz sardorsiz</span><button class="pg-btn ghost" style="width:100%;justify-content:center;margin-top:10px" data-open="jamoalar"><i class="fas fa-gear"></i> Sardor paneli</button></div>
+	</section>
+	<div class="pg-tabs" data-tabs style="margin-top:18px">
+		<button class="on" data-tab="td-feed">Muhokama</button><button data-tab="td-qa">Savol-javob</button><button data-tab="td-res">Resurslar</button><button data-tab="td-ach">Yutuqlar</button><button data-tab="td-mem">A'zolar</button>
+	</div>
+
+	<div class="pg-pane" id="td-feed">
+		<div class="pg-detail">
+			<div style="display:grid;gap:16px;align-content:start">
+				<form class="pg-card" id="teamPostForm"><div class="pg-two"><div><label class="pg-lbl" for="tpTopic" style="margin-top:0">Mavzu</label><select class="pg-input" id="tpTopic"><option value="algo">Algoritmlar</option><option value="oop">Python'da OOP</option><option value="weekly">Haftalik masala</option></select></div><div style="display:flex;align-items:flex-end"><label class="pg-file" style="gap:10px;cursor:pointer;padding-bottom:8px"><span class="pg-switch"><input type="checkbox" id="tpAnon"><span></span></span><b style="font-size:14px">Anonim yozish</b></label></div></div>
+					<textarea class="pg-input" id="tpText" rows="3" required placeholder="Fikringiz yoki savolingiz..." style="margin-top:12px"></textarea>
+					<button type="submit" class="pg-btn" style="margin-top:12px"><i class="fas fa-paper-plane"></i> Yuborish</button></form>
+				<div class="pg-chips" style="margin-bottom:0"><button class="pg-chip on" data-cat="all">Hammasi</button><button class="pg-chip" data-cat="algo">Algoritmlar</button><button class="pg-chip" data-cat="oop">Python'da OOP</button><button class="pg-chip" data-cat="weekly">Haftalik masala</button></div>
+				<div style="display:grid;gap:16px" id="pgFilterTarget">
+			<div class="pg-card" data-cat="algo"><span class="pg-pill sky">Mavzu: Algoritmlar</span><div class="pg-file" style="margin-top:10px"><span class="pg-av" style="background:#0f8a68;width:38px;height:38px;font-size:13px">BT</span><div><b>Bekzod Tursunov</b><div class="pg-muted">2 soat oldin</div></div></div><p style="margin:14px 0">Binary search'ni tsiklsiz, rekursiya bilan yozdim. Qaysi biri tezroq deb o'ylaysiz?</p><div class="pg-muted"><i class="fas fa-heart" style="color:#ff7a59"></i> 14 &nbsp; <i class="fas fa-comment"></i> 6</div></div>
+			<div class="pg-card" data-cat="oop"><span class="pg-pill sky">Mavzu: Python'da OOP</span><div class="pg-file" style="margin-top:10px"><span class="pg-av" style="background:#4b5d56;width:38px;height:38px;font-size:14px"><i class="fas fa-user-secret"></i></span><div><b>Anonim a'zo</b><div class="pg-muted">4 soat oldin</div></div></div><p style="margin:14px 0">Class va object farqini oddiy misolda tushuntira olasizmi? Men hali chalkashyapman.</p><div class="pg-muted"><i class="fas fa-heart" style="color:#ff7a59"></i> 9 &nbsp; <i class="fas fa-comment"></i> 5</div></div>
+			<div class="pg-card" data-cat="weekly"><span class="pg-pill sky">Mavzu: Haftalik masala</span><div class="pg-file" style="margin-top:10px"><span class="pg-av" style="background:#4a9fd8;width:38px;height:38px;font-size:13px">KA</span><div><b>Kamola Aliyeva</b><div class="pg-muted">Kecha</div></div></div><p style="margin:14px 0">Bu haftaning masalasi: ro'yxatdagi takrorlanuvchi elementlarni topish. Mening yechimim: set ishlatish.</p><div class="pg-muted"><i class="fas fa-heart" style="color:#ff7a59"></i> 21 &nbsp; <i class="fas fa-comment"></i> 9</div></div>
+			<div class="pg-card" data-cat="weekly"><span class="pg-pill sky">Mavzu: Haftalik masala</span><div class="pg-file" style="margin-top:10px"><span class="pg-av" style="background:#d9981c;width:38px;height:38px;font-size:13px">DR</span><div><b>Dilnoza Rahimova (sardor)</b><div class="pg-muted">2 kun oldin</div></div></div><p style="margin:14px 0">Eslatma: haftalik masala yechimlarini yakshanbagacha shu yerga yozing. Eng yaxshisi reytingga ball qo'shadi.</p><div class="pg-muted"><i class="fas fa-heart" style="color:#ff7a59"></i> 32 &nbsp; <i class="fas fa-comment"></i> 11</div></div>
+				</div>
+			</div>
+			<aside style="display:grid;gap:18px;align-content:start">
+				<div class="pg-card"><h3 class="pg-h3">Keyingi musobaqa</h3><div class="pg-file"><div class="ic" style="background:rgba(246,183,60,.2);color:#f6b73c;width:46px;height:46px;border-radius:12px;display:grid;place-items:center"><i class="fas fa-flag-checkered"></i></div><div><b>Noyabr musobaqasi</b><div class="pg-muted">22 kun qoldi</div></div></div></div>
+				<div class="pg-card"><h3 class="pg-h3">Muhokama qoidalari</h3><div class="pg-row"><b>Bir-biringizni hurmat qiling</b></div><div class="pg-row"><b>Mavzuni to'g'ri tanlang</b></div><div class="pg-row"><b>Shaxsiy ma'lumot so'ramang</b></div></div>
+			</aside>
+		</div>
+	</div>
+
+	<div class="pg-pane" id="td-qa" hidden>
+		<div class="pg-detail">
+			<section class="pg-card"><h3 class="pg-h3">Yordam kerak</h3><div id="qaList"><div class="pg-row" data-q><div style="flex:1;min-width:0"><b>Rekursiya xotirani ko'p oladimi?</b><span class="pg-muted">5 ta javob</span></div><span class="pg-pill " data-qstate>Hal qilindi</span><button class="pg-btn ghost" style="padding:7px 12px" data-solve>Qayta ochish</button></div><div class="pg-row" data-q><div style="flex:1;min-width:0"><b>Decorator nima uchun kerak?</b><span class="pg-muted">3 ta javob</span></div><span class="pg-pill sun" data-qstate>Ochiq</span><button class="pg-btn ghost" style="padding:7px 12px" data-solve>Hal qilindi</button></div><div class="pg-row" data-q><div style="flex:1;min-width:0"><b>Pytest'ni qanday o'rnataman?</b><span class="pg-muted">2 ta javob</span></div><span class="pg-pill sun" data-qstate>Ochiq</span><button class="pg-btn ghost" style="padding:7px 12px" data-solve>Hal qilindi</button></div></div></section>
+			<form class="pg-card" id="teamAskForm" style="align-self:start"><h3 class="pg-h3">Savol bering</h3><input class="pg-input" id="askText" required maxlength="120" placeholder="Savolingizni yozing"><button type="submit" class="pg-btn" style="margin-top:12px"><i class="fas fa-circle-question"></i> Savol yuborish</button><p class="pg-muted" style="margin:12px 0 0">Jamoadoshlaringiz javob beradi. Javob topilsa, "Hal qilindi" deb belgilang.</p></form>
+		</div>
+	</div>
+
+	<div class="pg-pane" id="td-res" hidden>
+		<div class="pg-detail">
+			<section class="pg-card"><h3 class="pg-h3">Ulashilgan materiallar</h3><div id="resList"><div class="pg-row"><div class="pg-file" style="flex:1;min-width:0"><div class="ic" style="background:rgba(31,169,122,.2);color:#6fe0b4;width:42px;height:42px;border-radius:12px;display:grid;place-items:center"><i class="fas fa-file-pdf"></i></div><div><b>Algoritmlar bo'yicha qo'llanma (PDF)</b><div class="pg-muted">Ulashdi: Bekzod T.</div></div></div><span class="pg-pill sky">PDF</span></div><div class="pg-row"><div class="pg-file" style="flex:1;min-width:0"><div class="ic" style="background:rgba(31,169,122,.2);color:#6fe0b4;width:42px;height:42px;border-radius:12px;display:grid;place-items:center"><i class="fas fa-link"></i></div><div><b>Python hujjatlari: OOP bo'limi</b><div class="pg-muted">Ulashdi: Kamola A.</div></div></div><span class="pg-pill sky">Havola</span></div><div class="pg-row"><div class="pg-file" style="flex:1;min-width:0"><div class="ic" style="background:rgba(31,169,122,.2);color:#6fe0b4;width:42px;height:42px;border-radius:12px;display:grid;place-items:center"><i class="fas fa-file-code"></i></div><div><b>Haftalik masalalar to'plami</b><div class="pg-muted">Ulashdi: Dilnoza R.</div></div></div><span class="pg-pill sky">Kod</span></div></div></section>
+			<form class="pg-card" id="teamResForm" style="align-self:start"><h3 class="pg-h3">Material ulashish</h3><input class="pg-input" id="resTitle" required maxlength="80" placeholder="Nomi yoki havola"><button type="submit" class="pg-btn" style="margin-top:12px"><i class="fas fa-share-nodes"></i> Ulashish</button></form>
+		</div>
+	</div>
+
+	<div class="pg-pane" id="td-ach" hidden>
+		<div class="pg-detail">
+			<section class="pg-card"><h3 class="pg-h3">Jamoa yutuqlari</h3><div class="pg-row"><div class="pg-file"><div class="ic" style="background:rgba(246,183,60,.2);color:#f6b73c;width:42px;height:42px;border-radius:12px;display:grid;place-items:center"><i class="fas fa-trophy"></i></div><b>Sentyabr musobaqasi g'olibi</b></div></div><div class="pg-row"><div class="pg-file"><div class="ic" style="background:rgba(246,183,60,.2);color:#f6b73c;width:42px;height:42px;border-radius:12px;display:grid;place-items:center"><i class="fas fa-fire"></i></div><b>Ketma-ket 30 kun faollik</b></div></div><div class="pg-row"><div class="pg-file"><div class="ic" style="background:rgba(246,183,60,.2);color:#f6b73c;width:42px;height:42px;border-radius:12px;display:grid;place-items:center"><i class="fas fa-comments"></i></div><b>30 dan ortiq mavzu muhokamasi</b></div></div><div class="pg-row"><div class="pg-file"><div class="ic" style="background:rgba(246,183,60,.2);color:#f6b73c;width:42px;height:42px;border-radius:12px;display:grid;place-items:center"><i class="fas fa-user-group"></i></div><b>20 dan ortiq a'zo</b></div></div><div class="pg-row"><div class="pg-file"><div class="ic" style="background:rgba(246,183,60,.2);color:#f6b73c;width:42px;height:42px;border-radius:12px;display:grid;place-items:center"><i class="fas fa-star"></i></div><b>100 ball to'plandi</b></div></div></section>
+			<section class="pg-card" style="align-self:start"><h3 class="pg-h3">Reyting</h3><div style="font-size:44px;font-weight:800;line-height:1">#1</div><div class="pg-muted" style="margin:6px 0 14px">126 ball · 2-o'rindan 20 ball oldinda</div><div class="pg-bar"><i style="width:84%"></i></div><p class="pg-muted" style="margin:12px 0 0">Ball = mavzular × 2 + yutuqlar × 10 (namuna)</p></section>
+		</div>
+	</div>
+
+	<div class="pg-pane" id="td-mem" hidden>
+		<section class="pg-card"><h3 class="pg-h3">A'zolar (24)</h3><div class="pg-row"><div class="pg-file" style="flex:1"><span class="pg-av" style="background:#0f8a68;width:38px;height:38px;font-size:13px">DR</span><b>Dilnoza Rahimova</b></div><span class="pg-pill sun">Sardor</span></div><div class="pg-row"><div class="pg-file" style="flex:1"><span class="pg-av" style="background:#ff7a59;width:38px;height:38px;font-size:13px">BT</span><b>Bekzod Tursunov</b></div><span class="pg-pill">A'zo</span></div><div class="pg-row"><div class="pg-file" style="flex:1"><span class="pg-av" style="background:#4a9fd8;width:38px;height:38px;font-size:13px">KA</span><b>Kamola Aliyeva</b></div><span class="pg-pill">A'zo</span></div><div class="pg-row"><div class="pg-file" style="flex:1"><span class="pg-av" style="background:#4b5d56;width:38px;height:38px;font-size:14px"><i class="fas fa-user-secret"></i></span><b>Anonim a'zo <i class="fas fa-lock" style="font-size:12px;opacity:.6"></i></b></div><span class="pg-pill">A'zo</span></div><div class="pg-row"><div class="pg-file" style="flex:1"><span class="pg-av" style="background:#7a63d9;width:38px;height:38px;font-size:13px">RE</span><b>Rustam Ergashev</b></div><span class="pg-pill">A'zo</span></div><p class="pg-muted" style="margin:12px 0 0"><i class="fas fa-lock"></i> Shaxsini yashirgan a'zolar "Anonim a'zo" deb ko'rinadi.</p></section>
+	</div>
+</div>
