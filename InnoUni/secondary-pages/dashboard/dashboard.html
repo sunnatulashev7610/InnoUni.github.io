@@ -538,6 +538,11 @@
 				<i class="fas fa-chart-line"></i>
 				Natijalar
 			</button>
+			<button class="nav-item" onclick="loadPage('orders', this)">
+				<i class="fas fa-cart-shopping"></i>
+				Buyurtmalar
+				<span class="nav-badge">2</span>
+			</button>
 		</div>
 		
 		<div class="sidebar-section">
@@ -769,6 +774,56 @@
 				send(form.closest('[data-chat]'), input.value);
 				input.value = '';
 			});
+			// ---- Orders page ----
+			function money(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + " so'm"; }
+			function catalog() { var el = content.querySelector('#orderCatalog'); return el ? JSON.parse(el.textContent) : null; }
+			function orderUpdateTotal() {
+				var sel = content.querySelector('#orderItem');
+				var opt = sel && sel.options[sel.selectedIndex];
+				if (opt) content.querySelector('#orderTotal').textContent = money(opt.dataset.price);
+			}
+			function orderSetType(type) {
+				var cat = catalog(); if (!cat) return;
+				var seg = content.querySelector('.pg-seg');
+				seg.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.dataset.orderType === type); });
+				var item = content.querySelector('#orderItem'), fmt = content.querySelector('#orderFormat');
+				item.textContent = ''; fmt.textContent = '';
+				cat[type].items.forEach(function (it) { var o = document.createElement('option'); o.value = it.n; o.textContent = it.n; o.dataset.price = it.p; item.appendChild(o); });
+				cat[type].formats.forEach(function (f) { var o = document.createElement('option'); o.textContent = f; fmt.appendChild(o); });
+				orderUpdateTotal();
+			}
+			content.addEventListener('change', function (e) { if (e.target.id === 'orderItem') orderUpdateTotal(); });
+			function toast(text) {
+				var t = document.createElement('div'); t.className = 'pg-toast'; t.textContent = text;
+				document.body.appendChild(t); setTimeout(function () { t.remove(); }, 3500);
+			}
+			content.addEventListener('submit', function (e) {
+				if (e.target.id !== 'orderForm') return;
+				e.preventDefault();
+				var type = content.querySelector('.pg-seg .on').dataset.orderType;
+				var sel = content.querySelector('#orderItem'), opt = sel.options[sel.selectedIndex];
+				var list = content.querySelector('#pgFilterTarget');
+				var id = 'GE-' + (1043 + list.children.length - 5);
+				var row = document.createElement('div');
+				row.className = 'pg-order new'; row.dataset.cat = type;
+				var ic = document.createElement('div'); ic.className = 'ic';
+				ic.style.background = type === 'kurs' ? 'rgba(108,183,240,.2)' : 'rgba(246,183,60,.2)';
+				ic.style.color = type === 'kurs' ? '#6cb7f0' : '#f6b73c';
+				var i = document.createElement('i'); i.className = 'fas ' + (type === 'kurs' ? 'fa-graduation-cap' : 'fa-book'); ic.appendChild(i);
+				var mid = document.createElement('div'); mid.className = 'mid';
+				var b = document.createElement('b'); b.textContent = opt.value;
+				var sp = document.createElement('span'); sp.className = 'pg-muted';
+				sp.textContent = id + ' \u00b7 ' + content.querySelector('#orderFormat').value + ' \u00b7 hozir';
+				mid.appendChild(b); mid.appendChild(sp);
+				var end = document.createElement('div'); end.className = 'end';
+				var pr = document.createElement('b'); pr.textContent = money(opt.dataset.price);
+				var pill = document.createElement('span'); pill.className = 'pg-pill sun'; pill.textContent = 'Kutilmoqda';
+				end.appendChild(pr); end.appendChild(pill);
+				row.appendChild(ic); row.appendChild(mid); row.appendChild(end);
+				list.insertBefore(row, list.firstChild); // text only, never HTML
+				content.querySelector('#orderNote').value = '';
+				toast('Buyurtma qabul qilindi: ' + id);
+			});
 			content.addEventListener('click', function (e) {
 				var chip = e.target.closest('.pg-chip');
 				if (chip) {
@@ -797,6 +852,9 @@
 					return;
 				}
 				if (e.target.closest('[data-action="print-cert"]')) { window.print(); return; }
+				var ot = e.target.closest('[data-order-type]');
+				if (ot) { orderSetType(ot.dataset.orderType); return; }
+				if (e.target.closest('[data-action="focus-order"]')) { var f = content.querySelector('#orderForm'); if (f) { f.scrollIntoView({ behavior: 'smooth', block: 'center' }); content.querySelector('#orderItem').focus(); } return; }
 				var hand = e.target.closest('[data-action="raise-hand"]');
 				if (hand) hand.classList.toggle('on');
 			});

@@ -90,6 +90,26 @@ describe('navigation works under any hosting prefix (GitHub Pages)', () => {
     });
 });
 
+describe('dashboard menu', () => {
+    const dir = path.join(SITE, 'secondary-pages/dashboard');
+    const targets = [...fs.readFileSync(path.join(dir, 'dashboard.html'), 'utf8').matchAll(/loadPage\('([^']+)'/g)].map((m) => m[1]);
+
+    test('has menu items', () => expect(targets.length).toBeGreaterThan(8));
+    test.each([...new Set(targets)])('page "%s" exists', (name) => {
+        expect(fs.existsSync(path.join(dir, 'pages', name + '.html'))).toBe(true);
+    });
+    test('every data-open target exists', () => {
+        const missing = [];
+        for (const f of fs.readdirSync(path.join(dir, 'pages'))) {
+            const src = fs.readFileSync(path.join(dir, 'pages', f), 'utf8');
+            for (const m of src.matchAll(/data-open="([^"]+)"/g)) {
+                if (!fs.existsSync(path.join(dir, 'pages', m[1] + '.html'))) missing.push(f + ' -> ' + m[1]);
+            }
+        }
+        expect(missing).toEqual([]);
+    });
+});
+
 describe('url() inside project stylesheets', () => {
     test('style/style.css background images exist and are not root-absolute', () => {
         const cssFile = path.join(SITE, 'style/style.css');
