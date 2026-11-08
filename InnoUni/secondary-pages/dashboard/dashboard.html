@@ -472,6 +472,7 @@
 			}
 		}
 	</style>
+	<link rel="stylesheet" href="../../style/dashboard-pages.css">
 </head>
 
 <body>
@@ -524,6 +525,19 @@
 				<i class="fas fa-user-friends"></i>
 				Jamoalar
 			</button>
+			<button class="nav-item" onclick="loadPage('live', this)">
+				<i class="fas fa-video"></i>
+				Jonli dars
+				<span class="nav-badge">LIVE</span>
+			</button>
+			<button class="nav-item" onclick="loadPage('ai', this)">
+				<i class="fas fa-wand-magic-sparkles"></i>
+				AI yordamchi
+			</button>
+			<button class="nav-item" onclick="loadPage('results', this)">
+				<i class="fas fa-chart-line"></i>
+				Natijalar
+			</button>
 		</div>
 		
 		<div class="sidebar-section">
@@ -558,6 +572,7 @@
 
 	<!-- MAIN CONTENT -->
 	<main class="main">
+		<div id="mainOverview">
 		<div class="page-header">
 			<h1 class="page-title">Boshqaruv paneli</h1>
 			<p class="page-subtitle">Xush kelibsiz! O'qituvchi paneliga</p>
@@ -630,6 +645,8 @@
 			</div>
 		</div>
 
+		</div>
+
 		<!-- CONTENT AREA -->
 		<div class="content-area" id="content">
 			<div class="loading">
@@ -645,6 +662,9 @@
 			document.querySelectorAll(".nav-item")
 				.forEach(btn => btn.classList.remove("active"));
 			element.classList.add("active");
+
+			// The welcome header and stat cards belong to the overview page only
+			document.getElementById('mainOverview').hidden = page !== 'main.dashboard';
 
 			// Show loading state
 			const contentArea = document.getElementById("content");
@@ -715,5 +735,71 @@
 			const sidebar = document.querySelector('.sidebar');
 			sidebar.classList.toggle('open');
 		}
+	</script>
+	<script>
+		// Interactivity for the injected pages (scripts inside fetched fragments do not run, so we delegate from here)
+		(function () {
+			var content = document.getElementById('content');
+			var replies = [
+				"Yaxshi savol! Qisqacha: avval asosiy g'oyani tushunib oling, keyin kichik misolda sinab ko'ring.",
+				'Mana mini test: 1) props nima? 2) state qachon o\'zgaradi? 3) useEffect nima uchun kerak?',
+				"Vazifangizni ko'rib chiqdim: tuzilishi yaxshi, faqat o'zgaruvchi nomlarini aniqroq qiling."
+			];
+			function addMsg(box, text, cls, who) {
+				var d = document.createElement('div');
+				d.className = 'pg-msg ' + (cls || '');
+				if (who) { var s = document.createElement('small'); s.textContent = who; d.appendChild(s); }
+				d.appendChild(document.createTextNode(text)); // text only, never HTML
+				box.appendChild(d);
+				box.scrollTop = box.scrollHeight;
+			}
+			function send(chat, text) {
+				var box = chat.querySelector('.pg-msgs');
+				if (!text.trim()) return;
+				addMsg(box, text, 'me', chat.dataset.chat === 'live' ? 'Siz' : '');
+				if (chat.dataset.chat === 'ai') {
+					setTimeout(function () { addMsg(box, replies[Math.floor(Math.random() * replies.length)], 'bot'); }, 600);
+				}
+			}
+			content.addEventListener('submit', function (e) {
+				var form = e.target.closest('.pg-send');
+				if (!form) return;
+				e.preventDefault();
+				var input = form.querySelector('input');
+				send(form.closest('[data-chat]'), input.value);
+				input.value = '';
+			});
+			content.addEventListener('click', function (e) {
+				var chip = e.target.closest('.pg-chip');
+				if (chip) {
+					var cat = chip.dataset.cat;
+					chip.parentNode.querySelectorAll('.pg-chip').forEach(function (c) { c.classList.toggle('on', c === chip); });
+					content.querySelectorAll('#pgFilterTarget > [data-cat]').forEach(function (it) { it.hidden = !(cat === 'all' || it.dataset.cat === cat); });
+					return;
+				}
+				var sug = e.target.closest('.pg-sug button');
+				if (sug) { var chat = content.querySelector('[data-chat="ai"]'); if (chat) send(chat, sug.textContent); return; }
+				var sw = e.target.closest('.pg-swatches i');
+				if (sw) { sw.parentNode.querySelectorAll('i').forEach(function (i) { i.classList.toggle('on', i === sw); }); return; }
+				var open = e.target.closest('[data-open]');
+				if (open && !e.target.closest('.btn-join')) {
+					// detail pages keep their parent's sidebar item highlighted
+					var nav = { 'course-detail': 'courses', 'group-detail': 'groups' }[open.dataset.open] || open.dataset.open;
+					var btn = document.querySelector('.nav-item[onclick*="\'' + nav + '\'"]');
+					loadPage(open.dataset.open, btn || document.querySelector('.nav-item.active'));
+					document.querySelector('.main').scrollTop = 0; window.scrollTo(0, 0);
+					return;
+				}
+				var tab = e.target.closest('[data-tab]');
+				if (tab) {
+					tab.parentNode.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b === tab); });
+					content.querySelectorAll('.pg-pane').forEach(function (p) { p.hidden = p.id !== tab.dataset.tab; });
+					return;
+				}
+				if (e.target.closest('[data-action="print-cert"]')) { window.print(); return; }
+				var hand = e.target.closest('[data-action="raise-hand"]');
+				if (hand) hand.classList.toggle('on');
+			});
+		})();
 	</script>
 </body>

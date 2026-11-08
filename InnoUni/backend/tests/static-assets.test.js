@@ -135,6 +135,25 @@ describe('the server serves the site', () => {
         expect(res.text).toContain('style/gather.css');
     });
 
+    test('unknown pages get a real 404 with the friendly page', async () => {
+        const res = await request(app).get('/no/such/page');
+        expect(res.status).toBe(404);
+        expect(res.headers['content-type']).toMatch(/text\/html/);
+        expect(res.text).toContain('Bu sahifa topilmadi');
+    });
+
+    test('unknown API routes get JSON 404', async () => {
+        const res = await request(app).get('/api/nope');
+        expect(res.status).toBe(404);
+        expect(res.body.error).toBeTruthy();
+    });
+
+    test('404.html at the repo root is self-contained (no relative asset paths)', () => {
+        const src = fs.readFileSync(path.join(SITE, '../404.html'), 'utf8');
+        const local = [...src.matchAll(/<(?:link|script|img)\b[^>]*?\b(?:href|src)\s*=\s*["']([^"']+)["']/gi)].map((m) => m[1]).filter((u) => !/^(https?:)?\/\/|^data:/.test(u));
+        expect(local).toEqual([]);
+    });
+
     test.each(['/backend/server.js', '/backend/.env', '/backend/.env.example', '/backend/package.json', '/.git/config'])(
         'does not expose %s', async (url) => {
             const res = await request(app).get(url);
