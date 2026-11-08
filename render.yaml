@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: gather-edu-api
+    runtime: node
+    plan: free
+    rootDir: InnoUni/backend
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: TRUST_PROXY
+        value: "1"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: https://sunnatulashev7610.github.io
+      - key: DB_SSL
+        value: "true"
+      - key: DB_PORT
+        value: "4000"
+      - key: DB_HOST
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        value: gather_edu

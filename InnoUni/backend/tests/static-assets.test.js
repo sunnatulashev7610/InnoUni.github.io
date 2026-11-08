@@ -180,3 +180,13 @@ describe('the server serves the site', () => {
             expect(res.text).not.toMatch(/JWT_SECRET|require\(|\[core\]/);
         });
 });
+
+describe('health check (Render)', () => {
+    test('GET /api/health answers 200 {ok:true}', async () => {
+        const request = require('supertest');
+        const app = require('../server');
+        const res = await request(app).get('/api/health');
+        expect(res.status).toBe(200);
+        expect(res.body).toEqual({ ok: true });
+    });
+});
