@@ -112,3 +112,29 @@
 .pg-lesson:first-of-type { border-top: 0; }
 .pg-lesson .n { color: var(--pg-dim); font-weight: 800; font-size: 13px; width: 22px; }
 .pg-lesson i { font-size: 18px; width: 20px; text-align: center; }
+
+/* results */
+.pg-chart { display: flex; align-items: flex-end; gap: 10px; height: 220px; padding-top: 16px; }
+.pg-col { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 6px; }
+.pg-col i { width: 100%; max-width: 42px; border-radius: 10px 10px 4px 4px; background: linear-gradient(180deg, #6fe0b4, #1fa97a); min-height: 4px; }
+.pg-col:last-child i { background: linear-gradient(180deg, #ffd36b, #f6b73c); }
+.pg-col b { font-size: 12px; }
+.pg-col span { font-size: 12px; color: var(--pg-dim); }
+.pg-table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.pg-table th { text-align: left; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--pg-dim); padding: 0 12px 10px; }
+.pg-table td { padding: 13px 12px; border-top: 1px dashed var(--pg-line); }
+.pg-cert { background: #fbf8f2; color: #16231d; border-radius: 22px; padding: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, .4); }
+.pg-cert-in { border: 3px double #0f5c47; border-radius: 14px; padding: clamp(24px, 5vw, 56px); text-align: center; background: radial-gradient(420px 260px at 0 0, rgba(246, 183, 60, .18), transparent 70%), radial-gradient(420px 260px at 100% 100%, rgba(31, 169, 122, .16), transparent 70%); }
+.pg-cert .k { margin-top: 10px; font-size: 12px; font-weight: 800; letter-spacing: .22em; color: #0f5c47; }
+.pg-cert .t { margin: 18px 0 8px; color: #4a5750; font-size: 16px; }
+.pg-cert .name { font-size: clamp(30px, 5vw, 52px); font-weight: 800; letter-spacing: -.02em; color: #16231d; margin: 6px 0 4px; }
+.pg-cert .foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-top: 34px; font-weight: 700; font-size: 14px; }
+.pg-cert .foot > div { flex: 1; }
+.pg-cert .foot small { display: block; font-weight: 500; color: #87918b; font-size: 12px; }
+.pg-cert .line { height: 1px; background: #16231d; opacity: .4; margin: 0 auto 8px; max-width: 200px; }
+.pg-cert .seal { flex: none !important; width: 70px; height: 70px; border-radius: 50%; display: grid; place-items: center; background: #f6b73c; color: #2a1f00; font-size: 28px; box-shadow: 0 0 0 5px rgba(246, 183, 60, .35); }
+@media print {
+	body * { visibility: hidden; }
+	.pg-cert, .pg-cert * { visibility: visible; }
+	.pg-cert { position: fixed; left: 0; top: 0; width: 100%; box-shadow: none; }
+}

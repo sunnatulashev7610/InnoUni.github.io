@@ -534,6 +534,10 @@
 				<i class="fas fa-wand-magic-sparkles"></i>
 				AI yordamchi
 			</button>
+			<button class="nav-item" onclick="loadPage('results', this)">
+				<i class="fas fa-chart-line"></i>
+				Natijalar
+			</button>
 		</div>
 		
 		<div class="sidebar-section">
@@ -792,6 +796,7 @@
 					content.querySelectorAll('.pg-pane').forEach(function (p) { p.hidden = p.id !== tab.dataset.tab; });
 					return;
 				}
+				if (e.target.closest('[data-action="print-cert"]')) { window.print(); return; }
 				var hand = e.target.closest('[data-action="raise-hand"]');
 				if (hand) hand.classList.toggle('on');
 			});
