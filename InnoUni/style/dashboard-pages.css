@@ -218,3 +218,8 @@ body[data-role="student"] [data-role-group="teacher"], body[data-role="teacher"]
 .pg-rate b { text-align: right; font-size: 13px; }
 @media (max-width: 900px) { .pg-grading { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .pg-two { grid-template-columns: 1fr; } .pg-week { gap: 5px; } .pg-order { flex-wrap: wrap; } .pg-order .end { align-items: flex-start; text-align: left; width: 100%; } }
+
+.pg-tabs { overflow-x: auto; scrollbar-width: none; }
+.pg-tabs button { white-space: nowrap; }
+body[data-role="student"] .only-teacher, body[data-role="teacher"] .only-student { display: none !important; }
+.pg-meta { gap: 14px; flex-wrap: wrap; }
