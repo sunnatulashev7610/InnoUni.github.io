@@ -1,7 +1,7 @@
 {
   "name": "oqiv-backend",
   "version": "1.0.0",
-  "description": "Backend API for O'QIV Learning Platform",
+  "description": "Backend API for Gather Edu Learning Platform",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -9,7 +9,7 @@
     "test": "jest"
   },
   "keywords": ["education", "learning", "platform", "uzbekistan"],
-  "author": "O'QIV Team",
+  "author": "Gather Edu Team",
   "license": "MIT",
   "dependencies": {
     "express": "^4.18.2",

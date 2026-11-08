@@ -1,4 +1,4 @@
-# O'QIV Learning Platform
+# Gather Edu
 
 A comprehensive online learning platform built with modern web technologies, featuring teacher-led courses, student collaboration teams, and interactive learning management.
 
@@ -53,7 +53,7 @@ A comprehensive online learning platform built with modern web technologies, fea
 ## 📁 Project Structure
 
 ```
-Inno Uni/
+Gather Edu/
 ├── index.html                 # Main landing page
 ├── secondary-pages/            # Application pages
 │   ├── login/                # Authentication pages
@@ -99,7 +99,7 @@ Inno Uni/
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd "Inno Uni"
+   cd "Gather Edu"
    ```
 
 2. **Install backend dependencies**
@@ -277,5 +277,5 @@ For support and questions:
 
 ---
 
-**O'QIV** - O'zbek tilidagi zamonaviy ta'lim platformasi
+**Gather Edu** - O'zbek tilidagi zamonaviy ta'lim platformasi
 *Modern learning platform in Uzbek language*

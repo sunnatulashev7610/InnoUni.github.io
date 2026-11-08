@@ -118,7 +118,7 @@ describe('url() inside project stylesheets', () => {
 describe('the server serves the site', () => {
     test.each([
         ['/css/bootstrap.min.css', /text\/css/],
-        ['/style/style.css', /text\/css/],
+        ['/style/gather.css', /text\/css/],
         ['/imgs/hero.bg.png', /image\/png/],
         ['/secondary-pages/login/login.html', /text\/html/],
         ['/frontend/js/utils.js', /javascript/],
@@ -132,7 +132,7 @@ describe('the server serves the site', () => {
 
     test('the home page is the real index.html', async () => {
         const res = await request(app).get('/');
-        expect(res.text).toContain('style/style.css');
+        expect(res.text).toContain('style/gather.css');
     });
 
     test.each(['/backend/server.js', '/backend/.env', '/backend/.env.example', '/backend/package.json', '/.git/config'])(

@@ -1,4 +1,4 @@
-// API Client for O'QIV Platform
+// API Client for Gather Edu Platform
 class ApiClient {
     constructor() {
         // Load configuration
