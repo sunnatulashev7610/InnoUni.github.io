@@ -92,3 +92,23 @@
 .pg-sug button { text-align: left; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--pg-line); background: rgba(255, 255, 255, .04); color: #fff; font: inherit; font-size: 14px; cursor: pointer; }
 .pg-sug button:hover { border-color: var(--pg-mint); background: rgba(31, 169, 122, .12); }
 @media (max-width: 1000px) { .pg-ai { grid-template-columns: 1fr; } }
+
+/* detail pages (course / group) */
+.pg-back { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 16px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--pg-line); background: transparent; color: var(--pg-dim); font-weight: 600; cursor: pointer; }
+.pg-back:hover { color: #fff; background: rgba(255, 255, 255, .06); }
+.pg-hero { display: grid; grid-template-columns: 1fr 260px; gap: 28px; align-items: end; padding: clamp(22px, 4vw, 38px); border-radius: 22px; border: 1px solid var(--pg-line); margin-bottom: 22px; }
+.pg-hero h1 { font-size: clamp(26px, 4vw, 38px); font-weight: 800; letter-spacing: -.02em; margin: 12px 0 8px; }
+.pg-hero p { margin: 0 0 16px; color: rgba(255, 255, 255, .78); max-width: 56ch; }
+.pg-facts { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 14px; color: rgba(255, 255, 255, .85); }
+.pg-facts i { margin-right: 6px; opacity: .8; }
+@media (max-width: 800px) { .pg-hero { grid-template-columns: 1fr; } }
+.pg-tabs { display: flex; gap: 6px; margin-bottom: 18px; border-bottom: 1px solid var(--pg-line); }
+.pg-tabs button { padding: 12px 18px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--pg-dim); font-weight: 700; cursor: pointer; margin-bottom: -1px; }
+.pg-tabs button.on { color: #fff; border-bottom-color: var(--pg-sun); }
+.pg-detail { display: grid; grid-template-columns: 1fr 320px; gap: 18px; }
+@media (max-width: 1000px) { .pg-detail { grid-template-columns: 1fr; } }
+.pg-h3 { font-size: 18px; font-weight: 700; margin: 0 0 12px; }
+.pg-lesson { display: flex; align-items: center; gap: 14px; padding: 13px 0; border-top: 1px dashed var(--pg-line); }
+.pg-lesson:first-of-type { border-top: 0; }
+.pg-lesson .n { color: var(--pg-dim); font-weight: 800; font-size: 13px; width: 22px; }
+.pg-lesson i { font-size: 18px; width: 20px; text-align: center; }

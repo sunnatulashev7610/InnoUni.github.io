@@ -777,6 +777,21 @@
 				if (sug) { var chat = content.querySelector('[data-chat="ai"]'); if (chat) send(chat, sug.textContent); return; }
 				var sw = e.target.closest('.pg-swatches i');
 				if (sw) { sw.parentNode.querySelectorAll('i').forEach(function (i) { i.classList.toggle('on', i === sw); }); return; }
+				var open = e.target.closest('[data-open]');
+				if (open && !e.target.closest('.btn-join')) {
+					// detail pages keep their parent's sidebar item highlighted
+					var nav = { 'course-detail': 'courses', 'group-detail': 'groups' }[open.dataset.open] || open.dataset.open;
+					var btn = document.querySelector('.nav-item[onclick*="\'' + nav + '\'"]');
+					loadPage(open.dataset.open, btn || document.querySelector('.nav-item.active'));
+					document.querySelector('.main').scrollTop = 0; window.scrollTo(0, 0);
+					return;
+				}
+				var tab = e.target.closest('[data-tab]');
+				if (tab) {
+					tab.parentNode.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b === tab); });
+					content.querySelectorAll('.pg-pane').forEach(function (p) { p.hidden = p.id !== tab.dataset.tab; });
+					return;
+				}
 				var hand = e.target.closest('[data-action="raise-hand"]');
 				if (hand) hand.classList.toggle('on');
 			});
