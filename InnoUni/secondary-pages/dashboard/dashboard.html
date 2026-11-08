@@ -931,6 +931,72 @@
 				content.querySelector('#orderNote').value = '';
 				toast('Buyurtma qabul qilindi: ' + id);
 			});
+			/* ---- Groups: teacher-only creation ---- */
+			content.addEventListener('click', function (e) {
+				var tg = e.target.closest('[data-toggle]');
+				if (tg) { var box = content.querySelector('#' + tg.dataset.toggle); if (box) box.hidden = !box.hidden; }
+			});
+			content.addEventListener('submit', function (e) {
+				if (e.target.id === 'groupFormCard') {
+					e.preventDefault();
+					toast('"' + content.querySelector('#gName').value.trim() + '" guruhi ochildi. Barcha huquqlar sizda');
+					e.target.reset(); e.target.hidden = true;
+				}
+			});
+			/* ---- Jamoalar: join request, captain tools, anonymity (textContent only) ---- */
+			function memberCount(delta) {
+				var el = content.querySelector('#memCount'); if (el) el.textContent = Math.max(0, (parseInt(el.textContent, 10) || 0) + delta);
+			}
+			function reqCount() {
+				var n = content.querySelectorAll('#reqList [data-req-row]').length;
+				var c = content.querySelector('#reqCount'); if (c) c.textContent = n + ' ta';
+				var e = content.querySelector('#reqEmpty'); if (e) e.hidden = n > 0;
+			}
+			content.addEventListener('click', function (e) {
+				var j = e.target.closest('[data-team-join]');
+				if (j) { j.textContent = 'So\'rov yuborildi'; j.disabled = true; j.className = 'pg-btn ghost'; toast('So\'rov yuborildi. Sardor javobini kuting'); return; }
+				var r = e.target.closest('[data-req]');
+				if (r) {
+					var row = r.closest('[data-req-row]'), name = row.dataset.name, ok = r.dataset.req === 'ok';
+					row.remove(); reqCount();
+					if (ok) {
+						var list = content.querySelector('#memList');
+						var m = document.createElement('div'); m.className = 'pg-row'; m.setAttribute('data-member', '');
+						var av = document.createElement('span'); av.className = 'pg-av'; av.style.cssText = 'background:#c4506a;width:38px;height:38px;font-size:13px';
+						av.textContent = name.split(' ').map(function (w) { return w.charAt(0); }).slice(0, 2).join('').toUpperCase();
+						var mid = document.createElement('div'); mid.style.cssText = 'flex:1;min-width:0';
+						var b = document.createElement('b'); b.textContent = name; mid.appendChild(b);
+						var k = document.createElement('button'); k.className = 'pg-btn danger'; k.style.padding = '7px 12px'; k.setAttribute('data-kick', ''); k.textContent = 'Chiqarish';
+						m.appendChild(av); m.appendChild(mid); m.appendChild(k); list.appendChild(m); memberCount(1);
+					}
+					toast(ok ? name + ' jamoaga qabul qilindi' : name + ' so\'rovi rad etildi');
+					return;
+				}
+				var kk = e.target.closest('[data-kick]');
+				if (kk) { kk.closest('[data-member]').remove(); memberCount(-1); toast('A\'zo jamoadan chiqarildi'); return; }
+				var cj = e.target.closest('[data-contest-join]');
+				if (cj) {
+					var on = cj.classList.toggle('sun'); cj.classList.toggle('ghost', !on);
+					cj.textContent = on ? 'Jamoa yozildi' : 'Jamoani yozdirish';
+					toast(on ? 'Jamoa musobaqaga yozildi' : 'Musobaqadan bekor qilindi');
+				}
+			});
+			content.addEventListener('change', function (e) {
+				if (e.target.id === 'anonToggle') {
+					var hide = e.target.checked;
+					var nm = content.querySelector('#anonName'), av = content.querySelector('#anonAv');
+					nm.textContent = hide ? 'Anonim sardor' : 'Dilnoza Rahimova';
+					av.textContent = hide ? '?' : 'DR'; av.style.background = hide ? '#4b5d56' : '#0f8a68';
+					toast(hide ? 'Shaxsingiz yashirildi' : 'Ismingiz ko\'rinadi');
+				}
+			});
+			content.addEventListener('submit', function (e) {
+				if (e.target.id === 'teamForm') {
+					e.preventDefault();
+					toast('"' + content.querySelector('#tmName').value.trim() + '" jamoasi ochildi. Siz sardorsiz');
+					e.target.reset();
+				}
+			});
 			/* ---- Teacher pages (event delegation; all text via textContent) ---- */
 			function q(sel) { return content.querySelector(sel); }
 			function renumberLessons() {
