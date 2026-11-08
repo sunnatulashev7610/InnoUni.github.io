@@ -28,6 +28,9 @@ if (process.env.TRUST_PROXY) {
 // CSP is off for now: the pages rely on inline scripts and CDN assets. Other helmet headers stay on.
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({ origin: config.corsOrigins }));
+
+// Used by Render to check the service is alive
+app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use(bodyParser.json({ limit: '100kb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '100kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -53,8 +56,13 @@ const dbConfig = {
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'oqiv_platform'
+    database: process.env.DB_NAME || 'oqiv_platform',
+    port: Number(process.env.DB_PORT) || 3306
 };
+// Cloud MySQL (TiDB, Aiven, Railway...) requires TLS: set DB_SSL=true
+if (process.env.DB_SSL === 'true') {
+    dbConfig.ssl = { minVersion: 'TLSv1.2', rejectUnauthorized: true };
+}
 
 let db;
 
