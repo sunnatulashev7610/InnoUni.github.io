@@ -326,7 +326,7 @@ app.post('/api/contact', contactLimiter, async (req, res) => {
                 <p><strong>Message:</strong></p>
                 <p>${escapeHtml(message).replace(/\r?\n/g, '<br>')}</p>
                 <hr>
-                <p><small>Sent from Inno Uni Contact Form</small></p>
+                <p><small>Sent from Gather Edu Contact Form</small></p>
             `
         };
 

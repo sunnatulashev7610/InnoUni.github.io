@@ -1,4 +1,4 @@
-# Inno Uni - Ro'yxatdan o'tish tizimi
+# Gather Edu - Ro'yxatdan o'tish tizimi
 
 ## 🚀 Tezkor o'rnatish
 

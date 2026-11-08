@@ -1,4 +1,4 @@
--- O'QIV Learning Platform Database Schema
+-- Gather Edu Learning Platform Database Schema
 -- MySQL Database Initialization Script
 
 -- Create database

@@ -1,491 +1,229 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uz">
 
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<meta name="author" content="Sunnat Ulashev">
-	<meta name="description" content="ulashev Sunnat Project, Inno Uni">
-	<meta property="og:title" content="Inno Uni">
-	<meta property="og:description" content="Sunnat Ulashev Generated Project">
+	<meta name="description" content="Gather Edu: birga o'rganing, birga o'sing. Guruhlar, jonli darslar va AI yordamchi bitta platformada.">
+	<meta property="og:title" content="Gather Edu">
+	<meta property="og:description" content="Birga o'rganing, birga o'sing.">
 	<meta property="og:type" content="website">
-
-	<link rel="stylesheet" href="css/bootstrap.min.css">
-	<link rel="stylesheet" href="style/style.css">
-	<title>Inno Uni</title>
-	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+	<title>Gather Edu: birga o'rganing, birga o'sing</title>
+	<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='14' cy='15' r='10' fill='%230f5c47'/%3E%3Ccircle cx='27' cy='15' r='10' fill='%23f6b73c'/%3E%3Ccircle cx='20.5' cy='27' r='10' fill='%23ff7a59'/%3E%3C/svg%3E">
+	<link rel="stylesheet" href="style/gather.css">
 </head>
 
-<body class="bg-white-50">
-	<div class="main-screen">
+<body class="ge">
 
-		<!-- navbar -->
-
-		<nav class="navbar navbar-expand-lg">
-			<div
-				class="container-fluid d-flex justify-content-around .bg-dark.bg-gradient d-inline-flex px-4 py-4 justify-content-between"
-				id="navbar">
-				<a href="#" class="navbar-toggler-icon" style="width: 50px;"><img src="imgs/00000000000.jpg" alt=""
-						style="width: 50px; border-radius: 30%;"></a>
-				<a class="navbar-brand fw-bold" href="#">INNO. <m class="text-success">UNI</m> </a>
-
-				<div class="collapse navbar-collapse fs-6 d-flex align-items-center justify-content-center"
-					id="navbarSupportedContent">
-					<ul class="navbar-nav me-auto mb-2 ">
-						<li class="nav-item">
-							<a class="nav-link text-white " aria-current="page" href="#">Home</a>
-						</li>
-						<li class="nav-item dropdown">
-						<li class="nav-item">
-							<a class="nav-link text-white " aria-current="page" href="#imkoniyatlar">Imkoniyatlar</a>
-						</li>
-						</li>
-						<li class="nav-item ">
-							<a class="nav-link text-white " href="#contact" aria-disabled="true">Biz bilan bog'lanish</a>
-						</li>
-					</ul>
-				</div>
+	<header class="ge-nav">
+		<div class="ge-wrap">
+			<a class="ge-logo" href="#top"><svg class="ge-logo-mark" viewBox="0 0 40 40" aria-hidden="true"><circle cx="14" cy="15" r="10" fill="#0f5c47"/><circle cx="27" cy="15" r="10" fill="#f6b73c" fill-opacity=".92"/><circle cx="20.5" cy="27" r="10" fill="#ff7a59" fill-opacity=".92"/></svg>Gather Edu</a>
+			<ul class="ge-nav-links">
+				<li><a href="#imkoniyatlar">Imkoniyatlar</a></li>
+				<li><a href="#qanday">Qanday ishlaydi</a></li>
+				<li><a href="#guruhlar">Guruhlar</a></li>
+				<li><a href="#contact">Aloqa</a></li>
+			</ul>
+			<div class="ge-nav-cta">
+				<a class="ge-btn ge-btn-ghost" href="secondary-pages/login/login.html">Kirish</a>
+				<a class="ge-btn ge-btn-primary" href="secondary-pages/login/register.html">Boshlash</a>
 			</div>
-		</nav>
+		</div>
+	</header>
 
-		<!-- hero section -->
+	<main id="top">
+		<section class="ge-hero">
+			<div class="ge-wrap ge-hero-grid">
+				<div>
+					<div class="ge-eyebrow">O'zbekistonning hamkorlikdagi ta'lim platformasi</div>
+					<h1>Birga o'rganing, <span class="hl">birga o'sing<svg viewBox="0 0 300 12" preserveAspectRatio="none" aria-hidden="true"><path d="M2 8c60-8 120-8 180-3s90 3 116-1" fill="none" stroke="#f6b73c" stroke-width="5" stroke-linecap="round"/></svg></span></h1>
+					<p class="ge-lead">Gather Edu o'quvchi, o'qituvchi va jamoani bir joyga to'playdi: guruhlar, jonli darslar, vazifalar va AI yordamchi bitta qulay platformada.</p>
+					<div class="ge-hero-actions">
+						<a class="ge-btn ge-btn-primary" href="secondary-pages/login/register.html">Bepul boshlash →</a>
+						<a class="ge-btn ge-btn-ghost" href="secondary-pages/dashboard/dashboard.html">Demoni ko'rish</a>
+					</div>
+					<div class="ge-proof">
+						<div class="ge-avatars"><span style="background:#0f5c47">A</span><span style="background:#ff7a59">M</span><span style="background:#6cb7f0">S</span><span style="background:#f6b73c;color:#2a1f00">D</span></div>
+						<span><b>1 200+</b> o'quvchi allaqachon qo'shildi</span>
+					</div>
+				</div>
 
-		<section class="hero-section">
-			<div class="container">
-				<div class="row align-items-center p-4">
-					<div class="col-md-6">
-						<div class="hero-content">
-							<h1 class="display-4 fw-bold text-white mb-4">InnoUni - <span class="text-info">Online</span> Ta'lim
-								Platformasi</h1>
-							<p class="text-white-50 mb-4">Zamonaviy texnologiyalar asosida qurilgan interaktiv ta'lim platformasi.
-								O'qituvchilar va o'quvchilar uchun to'liq funksional imkoniyatlar.</p>
-							<div class="hero-buttons">
-								<a href="/secondary-pages/login/login.html" class="btn btn-primary btn-lg me-3">Boshlash</a>
-								<a href="#how-it-work" class="btn btn-outline-light btn-lg">Qanday ishlaydi</a>
-							</div>
-						</div>
+				<div class="ge-mock" aria-hidden="true">
+					<div class="ge-card m-main">
+						<div class="m-head"><b>Bugungi darslar</b><span class="m-pill">3 ta faol</span></div>
+						<div class="m-row"><div class="m-ico c-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3z"/></svg></div><div><div class="t">React: komponentlar</div><div class="s">14:00 · Jonli efir</div></div><div class="m-bar"><i style="width:72%"></i></div></div>
+						<div class="m-row"><div class="m-ico c-sun"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg></div><div><div class="t">Python: 4-vazifa</div><div class="s">Muddat: ertaga</div></div><div class="m-bar"><i style="width:45%;background:#f6b73c"></i></div></div>
+						<div class="m-row"><div class="m-ico c-coral"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.5-3.5 3-5.5 6.5-5.5s6 2 6.5 5.5"/><path d="M16 4.7a3.5 3.5 0 0 1 0 6.6M18 14.8c2 .6 3.3 2.3 3.7 5.2"/></svg></div><div><div class="t">UI/UX jamoasi</div><div class="s">8 ishtirokchi</div></div><div class="m-bar"><i style="width:88%;background:#ff7a59"></i></div></div>
 					</div>
-					<div class="col-md-6">
-						<div class="hero-image">
-							<img src="imgs/hero.main.png" alt="Hero Image" class="img-fluid rounded">
-						</div>
-					</div>
+					<div class="ge-card m-float f1"><span class="m-dot" style="background:#1f9d6b"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span><div>Vazifa baholandi<small>98 / 100 ball</small></div></div>
+					<div class="ge-card m-float f2"><span class="m-dot" style="background:#f6b73c;color:#2a1f00"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg></span><div>Yangi sertifikat<small>Python asoslari</small></div></div>
 				</div>
 			</div>
 		</section>
 
-		<!-- chence -->
+		<section class="ge-stats" aria-label="Raqamlarda">
+			<div class="ge-wrap">
+				<div class="ge-stat"><b>1 200+</b><span>faol o'quvchi</span></div>
+				<div class="ge-stat"><b>85</b><span>o'qituvchi</span></div>
+				<div class="ge-stat"><b>140</b><span>ochiq guruh</span></div>
+				<div class="ge-stat"><b>4.8</b><span>o'rtacha baho</span></div>
+			</div>
+		</section>
 
-		<section class="chence maim-bg" id="imkoniyatlar">
-			<div class="container d-flex flex-column align-items-center gap-3 ">
-				<div class="chance-info text-center m-3 p-4">
-					<h1 class="text-light">Barcha <span class="text-info">imkoniyatlar</span> bir joyda</h1>
-					<h4 class="text-white-50">O'QIV platformasi sizga eng zamonaviy o'quv vositalarini taqdim etadi</h4>
-				</div>
-				<div class="cards">
-					<div class="main-card kurslar card text-light" style="width: 25rem; height: 14rem;">
-						<i class="fa-solid fa-book-open"></i>
-						<div class="card-body">
-							<h5 class="card-title">Kurslar va darslar</h5>
-							<p class="card-text">Video, PDF va interaktiv materiallar bilan to'liq kurslar yarating.</p>
-						</div>
-					</div>
-					<div class="main-card live-education card  text-light" style="width: 25rem; height: 14rem;">
-						<i class=" fa-solid fa-video"></i>
-						<div class="card-body">
-							<h5 class="card-title">Live darslar</h5>
-							<p class="card-text">Jonli efir orqali dars o'ting va o'quvchilaringiz bilan real vaqtda muloqot qiling.
-							</p>
-						</div>
-					</div>
-					<div class="main-card guruhlar card text-light" style="width: 25rem; height: 14rem;">
-						<i class=" fa-solid fa-user-group"></i>
-						<div class="card-body">
-							<h5 class="card-title">Guruhlar va Jamoalar</h5>
-							<p class="card-text">O'qituvchi sifatida guruh tuzing yoki o'quvchi sifatida mavjud guruhlarga qo'shiling.</p>
-						</div>
-					</div>
-					<div class="main-card ai-career card text-light" style="width: 25rem; height: 14rem;">
-						<i class="fa-solid fa-robot"></i>
-						<div class="card-body">
-							<h5 class="card-title">AI yordamchi</h5>
-							<p class="card-text">Sun'iy intellekt yordamida savollaringizga javob oling va bilimingizni sinab
-								ko'ring.</p>
-						</div>
-					</div>
-					<div class="main-card kutubxona card  text-light" style="width: 25rem; height: 14rem;">
-						<i class=" fa-solid fa-book-atlas"></i>
-						<div class="card-body">
-							<h5 class="card-title">Kutubxona</h5>
-							<p class="card-text">O'quv materiallarni yuklab oling va yuklang </p>
-						</div>
-					</div>
-					<div class="main-card buyurtmalar card text-light" style="width: 25rem; height: 14rem;">
-						<i class=" fa-solid fa-magnifying-glass-location"></i>
-						<div class="card-body">
-							<h5 class="card-title">Buyurtma berish</h5>
-							<p class="card-text">Darslar va materiallarni Buyurtma qiling</p>
-						</div>
-					</div>
+		<section class="ge-section" id="imkoniyatlar">
+			<div class="ge-wrap">
+				<div class="ge-eyebrow">Imkoniyatlar</div>
+				<h2 class="ge-h2">O'rganish uchun kerak hamma narsa</h2>
+				<p class="ge-lead">Alohida ilovalar orasida adashmang. Darsdan tortib sertifikatgacha hammasi shu yerda.</p>
+				<div class="ge-features">
+					<div class="ge-feature wide"><div class="ic c-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.5-3.5 3-5.5 6.5-5.5s6 2 6.5 5.5"/><path d="M16 4.7a3.5 3.5 0 0 1 0 6.6M18 14.8c2 .6 3.3 2.3 3.7 5.2"/></svg></div><h3>Guruhlar va jamoalar</h3><p>O'qituvchi sifatida guruh tuzing yoki o'quvchi sifatida mavjud guruhlarga qo'shiling. Muhokama, vazifa va natijalar bir joyda.</p></div>
+					<div class="ge-feature"><div class="ic c-sun"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3z"/></svg></div><h3>Jonli darslar</h3><p>Jonli efir orqali dars o'ting va o'quvchilar bilan real vaqtda muloqot qiling.</p></div>
+					<div class="ge-feature"><div class="ic c-coral"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/></svg></div><h3>Kurslar</h3><p>Video, PDF va interaktiv materiallar bilan to'liq kurs yarating.</p></div>
+					<div class="ge-feature"><div class="ic c-sky"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/></svg></div><h3>AI yordamchi</h3><p>Savollaringizga javob oling va bilimingizni sinab ko'ring.</p></div>
+					<div class="ge-feature"><div class="ic c-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h4v16H4zM10 4h4v16h-4z"/><path d="m16 6 4 1-3 13-4-1z"/></svg></div><h3>Kutubxona</h3><p>O'quv materiallarini yuklang, saqlang va ulashing.</p></div>
+					<div class="ge-feature wide full" style="background:var(--sun);border-color:var(--sun);color:#2a1f00"><div class="ic" style="background:rgba(0,0,0,.08)!important;color:#2a1f00!important"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></div><h3 style="color:#2a1f00">Natijalar va baholash</h3><p style="color:#4a3a00">Vazifalarni baholang, o'sishni grafikda kuzating va sertifikat bilan yakunlang.</p></div>
 				</div>
 			</div>
 		</section>
 
-		<!-- groups -->
-
-		<section class="popular-groups maim-bg" id="popular-groups">
-			<div class="container d-flex flex-column align-items-center gap-3 ">
-				<div class="pGroups-info  m-3 p-4">
-					<h1 class="text-light">Eng <span class="text-info">ommabop </span> guruhlar</h1>
-					<h4 class="text-white-50">O'QIV platformasi sizga eng zamonaviy o'quv vositalarini taqdim etadi</h4>
-				</div>
-				<div class="cards-container">
-					<div class="cards ">
-						<div class="main-card  text-light" style="width: 25rem; height: 27rem;">
-							<div class="group-img">
-								<img src="imgs/photo_2026-02-13_14-07-40.jpg" alt="kurslar">
-							</div>
-							<div class="card-body">
-								<h3 class="card-title">React.js va Next.js</h3>
-								<p class="card-text">O'qituvchi: <span> Malika Karimova</span>
-								</p>
-								<hr>
-								<div class="value d-flex flex-colum justify-content-between align-items-center">
-									<span class="summa text-secondary"> 300 000 so'm</span>
-									<a href="/secondary-pages/dashboard/dashboard.html" class="btn main-btn">
-										Qo'shilish</a>
-								</div>
-							</div>
-						</div>
-
-						<div class="main-card  text-light" style="width: 25rem; height: 27rem;">
-							<div class="group-img">
-								<img src="imgs/photo_2026-02-13_14-07-40.jpg" alt="kurslar">
-							</div>
-							<div class="card-body">
-								<h3 class="card-title">Python va Django</h3>
-								<p class="card-text">O'qituvchi: <span> Bekzod Tursunov</span>
-								</p>
-								<hr>
-								<div class="value d-flex flex-colum justify-content-between align-items-center">
-									<span class="summa text-secondary"> 250 000 so'm</span>
-									<a href="/secondary-pages/dashboard/dashboard.html" class="btn main-btn">
-										Qo'shilish</a>
-								</div>
-							</div>
-						</div>
-
-						<div class="main-card  text-light" style="width: 25rem; height: 27rem;">
-							<div class="group-img">
-								<img src="imgs/photo_2026-02-13_14-07-40.jpg" alt="kurslar">
-							</div>
-							<div class="card-body">
-								<h3 class="card-title">UI/UX Dizayn</h3>
-								<p class="card-text">O'qituvchi: <span> Kamola Aliyeva</span>
-								</p>
-								<hr>
-								<div class="value d-flex flex-colum justify-content-between align-items-center">
-									<span class="summa text-secondary"> 200 000 so'm</span>
-									<a href="/secondary-pages/dashboard/dashboard.html" class="btn main-btn">
-										Qo'shilish</a>
-								</div>
-							</div>
-						</div>
-
-						<div class="main-card  text-light" style="width: 25rem; height: 27rem;">
-							<div class="group-img">
-								<img src="imgs/photo_2026-02-13_14-07-40.jpg" alt="kurslar">
-							</div>
-							<div class="card-body">
-								<h3 class="card-title">Mobile Development</h3>
-								<p class="card-text">O'qituvchi: <span> Rustam Karimov</span>
-								</p>
-								<hr>
-								<div class="value d-flex flex-colum justify-content-between align-items-center">
-									<span class="summa text-secondary"> 350 000 so'm</span>
-									<a href="/secondary-pages/dashboard/dashboard.html" class="btn main-btn">
-										Qo'shilish</a>
-								</div>
-							</div>
-						</div>
-
-						<div class="main-card  text-light" style="width: 25rem; height: 27rem; ">
-							<div class="group-img">
-								<img src="imgs/photo_2026-02-13_14-07-40.jpg" alt="kurslar">
-							</div>
-							<div class="card-body">
-								<h3 class="card-title">Data Science</h3>
-								<p class="card-text">O'qituvchi: <span> Aziz Nazarov</span>
-								</p>
-								<hr>
-								<div class="value d-flex flex-colum justify-content-between align-items-center">
-									<span class="summa text-secondary"> 400 000 so'm</span>
-									<a href="/secondary-pages/dashboard/dashboard.html" class="btn main-btn">
-										Qo'shilish</a>
-								</div>
-							</div>
-						</div>
-
-						<div class="main-card  text-light" style="width: 25rem; height: 27rem; ">
-							<div class="group-img">
-								<img src="imgs/photo_2026-02-13_14-07-40.jpg" alt="kurslar">
-							</div>
-							<div class="card-body">
-								<h3 class="card-title">DevOps & Cloud</h3>
-								<p class="card-text">O'qituvchi: <span> Dilnoza Bekmirzaeva</span>
-								</p>
-								<hr>
-								<div class="value d-flex flex-colum justify-content-between align-items-center">
-									<span class="summa text-secondary"> 450 000 so'm</span>
-									<a href="/secondary-pages/dashboard/dashboard.html" class="btn main-btn">
-										Qo'shilish</a>
-								</div>
-							</div>
-						</div>
-					</div>
+		<section class="ge-section ge-how" id="qanday">
+			<div class="ge-wrap">
+				<div class="ge-eyebrow">Qanday ishlaydi</div>
+				<h2 class="ge-h2">Uch qadamda boshlang</h2>
+				<div class="ge-steps">
+					<div class="ge-step"><h3>Ro'yxatdan o'ting</h3><p>Bir daqiqada hisob yarating va o'quvchi yoki o'qituvchi rolini tanlang.</p></div>
+					<div class="ge-step"><h3>Guruhga qo'shiling</h3><p>O'zingizga mos guruhni toping yoki yangisini yarating va do'stlaringizni taklif qiling.</p></div>
+					<div class="ge-step"><h3>O'rganing va o'sing</h3><p>Darslarda qatnashing, vazifa topshiring va sertifikat oling.</p></div>
 				</div>
 			</div>
 		</section>
 
-		<!-- how it works -->
-
-		<section class="how-it-work maim-bg" id="how-it-work">
-			<div class="container d-flex flex-column align-items-center gap-3">
-				<div class="how-it-work-info text-center m-3 p-4">
-					<h1 class="text-light">Platforma qanday <span class="text-info">ishlaydi</span></h1>
-					<h4 class="text-white-50">O'QIV platformasi orqali o'rganish jarayonining 6 oddiy qadami</h4>
-				</div>
-
-				<div class="steps-container">
-					<div class="step-card main-card text-light" style="width: 20rem; height: 22rem;">
-						<div class="step-number m-3">1</div>
-						<div class="step-icon">
-							<i class="fa-solid fa-user-plus"></i>
-						</div>
-						<div class="card-body text-center">
-							<h5 class="card-title">Ro'yxatdan o'ting</h5>
-							<p class="card-text">Bir necha daqiqa ichida platformaga ro'yxatdan o'ting va shaxsiy kabinetingizni yarating.</p>
-							<a href="/secondary-pages/login/login.html" class="btn main-btn mt-3">Boshlash</a>
-						</div>
+		<section class="ge-section" id="guruhlar">
+			<div class="ge-wrap">
+				<div class="ge-eyebrow">Mashhur guruhlar</div>
+				<h2 class="ge-h2">Eng ommabop yo'nalishlar</h2>
+				<div class="ge-groups">
+				<article class="ge-group">
+					<div class="cover" style="background:#0f5c47">R</div>
+					<div class="body">
+						<h3>React va Next.js</h3>
+						<div class="by">O'qituvchi: Malika Karimova</div>
+						<div class="foot"><span class="price">300 000 <small>so'm</small></span><a class="join" href="secondary-pages/login/login.html">Qo'shilish →</a></div>
 					</div>
-
-					<div class="step-card main-card text-light" style="width: 20rem; height: 22rem;">
-						<div class="step-number m-3">2</div>
-						<div class="step-icon">
-							<i class="fa-solid fa-user-group"></i>
-						</div>
-						<div class="card-body text-center">
-							<h5 class="card-title">Guruhga qo'shiling</h5>
-							<p class="card-text">Qiziqishlaringga mos guruhlarga qo'shiling yoki o'zingizning guruhingizni yarating.</p>
-							<a href="/secondary-pages/dashboard/dashboard.html" class="btn main-btn mt-3">Guruhlarni ko'rish</a>
-						</div>
+				</article>
+				<article class="ge-group">
+					<div class="cover" style="background:#ff7a59">Py</div>
+					<div class="body">
+						<h3>Python va Django</h3>
+						<div class="by">O'qituvchi: Bekzod Tursunov</div>
+						<div class="foot"><span class="price">250 000 <small>so'm</small></span><a class="join" href="secondary-pages/login/login.html">Qo'shilish →</a></div>
 					</div>
-
-					<div class="step-card main-card text-light" style="width: 20rem; height: 22rem;">
-						<div class="step-number m-3">3</div>
-						<div class="step-icon">
-							<i class="fa-solid fa-book-open"></i>
-						</div>
-						<div class="card-body text-center">
-							<h5 class="card-title">Kurslarni tanlang</h5>
-							<p class="card-text">Video, PDF va interaktiv materiallar bilan to'liq kurslardan tanlang va o'rganishni boshlang.</p>
-							<a href="#imkoniyatlar" class="btn main-btn mt-3">Kurslarni ko'rish</a>
-						</div>
+				</article>
+				<article class="ge-group">
+					<div class="cover" style="background:#6cb7f0">UX</div>
+					<div class="body">
+						<h3>UI/UX Dizayn</h3>
+						<div class="by">O'qituvchi: Kamola Aliyeva</div>
+						<div class="foot"><span class="price">200 000 <small>so'm</small></span><a class="join" href="secondary-pages/login/login.html">Qo'shilish →</a></div>
 					</div>
-
-					<div class="step-card main-card text-light" style="width: 20rem; height: 22rem;">
-						<div class="step-number m-3">4</div>
-						<div class="step-icon">
-							<i class="fa-solid fa-graduation-cap"></i>
-						</div>
-						<div class="card-body text-center">
-							<h5 class="card-title">O'rganishni boshlang</h5>
-							<p class="card-text">Jonli darslarda qatnashing, video materiallarni ko'ring va amaliy topshiriqlarni bajaring.</p>
-							<a href="/secondary-pages/dashboard/dashboard.html" class="btn main-btn mt-3">Demo ko'rish</a>
-						</div>
+				</article>
+				<article class="ge-group">
+					<div class="cover" style="background:#f6b73c">Mb</div>
+					<div class="body">
+						<h3>Mobile Dasturlash</h3>
+						<div class="by">O'qituvchi: Rustam Ergashev</div>
+						<div class="foot"><span class="price">350 000 <small>so'm</small></span><a class="join" href="secondary-pages/login/login.html">Qo'shilish →</a></div>
 					</div>
-
-					<div class="step-card main-card text-light" style="width: 20rem; height: 22rem;">
-						<div class="step-number m-3">5</div>
-						<div class="step-icon">
-							<i class="fa-solid fa-robot"></i>
-						</div>
-						<div class="card-body text-center">
-							<h5 class="card-title">AI yordamchidan foydalaning</h5>
-							<p class="card-text">Sun'iy intellekt yordamida savollaringizga javob oling va bilimingizni chuqurlashtiring.</p>
-							<a href="#imkoniyatlar" class="btn main-btn mt-3">AI haqida bilish</a>
-						</div>
-					</div>
-
-					<div class="step-card main-card text-light" style="width: 20rem; height: 22rem;">
-						<div class="step-number m-3">6</div>
-						<div class="step-icon">
-							<i class="fa-solid fa-trophy"></i>
-						</div>
-						<div class="card-body text-center">
-							<h5 class="card-title">Bilimlarni mustahkamlang</h5>
-							<p class="card-text">Testlar va loyihalar orqali o'z bilimlaringizni tekshiring va sertifikat oling.</p>
-							<a href="/secondary-pages/dashboard/dashboard.html" class="btn main-btn mt-3">Natijalarni ko'rish</a>
-						</div>
-					</div>
-				</div>
-
-				<div class="cta-section text-center mt-5">
-					<h3 class="text-light mb-3">O'rganishni boshlash uchun tayyormisiz?</h3>
-					<p class="text-white-50 mb-4">Birinchi qadamni qo'ying va bilim olamiga qo'shiling</p>
-					<div class="cta-buttons">
-						<a href="/secondary-pages/login/login.html" class="btn btn-primary btn-lg m-2 px-4 py-2">Ro'yxatdan o'tish</a>
-						<a href="/secondary-pages/dashboard/dashboard.html" class="btn btn-success btn-lg m-2 px-4 py-2">Demo ko'rish</a>
-					</div>
+				</article>
 				</div>
 			</div>
 		</section>
 
-		<!-- contact -->
-
-		<section class="contact-section" id="contact">
-			<div class="container">
-				<div class="contact-box">
-					<div class="row">
-						<!-- LEFT FORM -->
-						<div class="col-md-7">
-							<h2 class="contact-title text-light">Contact Us</h2>
-							<p class="text-secondary mb-4">
-								Have a question or feedback? Fill out the form below.
-							</p>
-							<form id="contactForm">
-								<div class="mb-4">
-									<input type="text" class="form-control" id="contactName" placeholder="Name" required>
-								</div>
-								<div class="mb-4">
-									<input type="email" class="form-control" id="contactEmail" placeholder="Email" required>
-								</div>
-								<div class="mb-4">
-									<textarea class="form-control" id="contactMessage" rows="3" placeholder="Message" required></textarea>
-								</div>
-								<button type="submit" class="btn btn-send">
-									Send
-								</button>
-							</form>
-						</div>
-						<!-- RIGHT INFO -->
-						<div class="col-md-5 mt-5 mt-md-0">
-							<div class="contact-info d-flex flex-wrap">
-								<a href="mailto:hello@email.com" class=" text-light"> hello@email.com </a>
-								<a href="tel:+998946741176" class=" text-light">Tel: +998 94 674 11 76</a>
-								<div class="social mt-3">
-									<a href="#" class="fw-bold fs-4  text-white">
-										<i class="fa-brands fa-square-instagram"> Instagram</i>
-									</a>
-									<a href="#" class="fw-bold fs-4  text-white">
-										<i class="fa-brands fa-telegram"> Telegram</i>
-									</a>
-									<a href="#" class="fw-bold fs-4  text-white">
-										<i class="fa-brands fa-youtube"> YouTube</i>
-									</a>
-									<a href="#" class="fw-bold fs-4  text-white">
-										<i class="fa-brands fa-facebook"> Facebook</i>
-									</a>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
+		<section class="ge-wrap" style="padding-bottom: clamp(64px,9vw,120px)">
+			<div class="ge-cta">
+				<h2>Bugun jamoangizni to'plang</h2>
+				<p>Gather Edu bilan o'rganish yakka mashaqqat emas, jamoaviy quvonchga aylanadi.</p>
+				<a class="ge-btn ge-btn-sun" href="secondary-pages/login/register.html">Ro'yxatdan o'tish →</a>
 			</div>
 		</section>
 
-		<!-- footer -->
+		<section class="ge-section" id="contact" style="padding-top:0">
+			<div class="ge-wrap ge-contact-grid">
+				<div>
+					<div class="ge-eyebrow">Aloqa</div>
+					<h2 class="ge-h2">Savolingiz bormi?</h2>
+					<p class="ge-lead">Yozing, biz tez orada javob beramiz.</p>
+					<div class="ge-contact-info">
+						<a href="mailto:info@gatheredu.uz"><span class="ic c-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span>info@gatheredu.uz</a>
+						<a href="tel:+998946741176"><span class="ic c-sun"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></span>+998 94 674 11 76</a>
+						<a href="#"><span class="ic c-sky"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 4 3 11l5 2 2 6 3-4 5 4z"/></svg></span>Telegram</a>
+					</div>
+				</div>
+				<form id="contactForm" class="ge-card ge-form">
+					<label for="contactName">Ismingiz</label>
+					<input type="text" class="ge-field" id="contactName" placeholder="Ism Familiya" required>
+					<label for="contactEmail">Email</label>
+					<input type="email" class="ge-field" id="contactEmail" placeholder="email@misol.uz" required>
+					<label for="contactMessage">Xabar</label>
+					<textarea class="ge-field" id="contactMessage" rows="4" placeholder="Xabaringizni yozing" required></textarea>
+					<button type="submit" class="ge-btn ge-btn-primary btn-send" style="width:100%">Yuborish</button>
+				</form>
+			</div>
+		</section>
+	</main>
 
-		<footer class="footer">
-			<div class="footer-container">
-				<div class="footer-logo">
-					<h2>Inno Uni</h2>
-					<p>Hamkorlikdagi o'quv platformasi</p>
-				</div>
-				<div class="footer-contact">
-					<h3>Aloqa</h3>
-					<p>Email: info@openuni.uz</p>
-					<p>Tel: +998 94 674 11 76 </p>
-				</div>
+	<footer class="ge-footer">
+		<div class="ge-wrap">
+			<div class="row">
+				<div><a class="ge-logo" href="#top"><svg class="ge-logo-mark" viewBox="0 0 40 40" aria-hidden="true"><circle cx="14" cy="15" r="10" fill="#0f5c47"/><circle cx="27" cy="15" r="10" fill="#f6b73c" fill-opacity=".92"/><circle cx="20.5" cy="27" r="10" fill="#ff7a59" fill-opacity=".92"/></svg>Gather Edu</a><p style="margin:10px 0 0">Hamkorlikdagi o'quv platformasi</p></div>
+				<div><b style="color:var(--ink)">Aloqa</b><p style="margin:8px 0 0">info@gatheredu.uz<br>+998 94 674 11 76</p></div>
 			</div>
-			<div class="footer-bottom">
-				<p>© 2026 Inno Uni | Barcha huquqlar himoyalangan</p>
-			</div>
-		</footer>
-	</div>
-	<script src="js/bootstrap.min.js"></script>
+			<div class="bottom">© 2026 Gather Edu · Barcha huquqlar himoyalangan</div>
+		</div>
+	</footer>
+
 	<script src="frontend/js/config.js"></script>
 	<script>
-		document.getElementById('contactForm').addEventListener('submit', async function(e) {
+		document.getElementById('contactForm').addEventListener('submit', async function (e) {
 			e.preventDefault();
-			
 			const name = document.getElementById('contactName').value;
 			const email = document.getElementById('contactEmail').value;
 			const message = document.getElementById('contactMessage').value;
-			const submitBtn = document.querySelector('.btn-send');
-			
-			// Show loading state
-			submitBtn.textContent = 'Sending...';
-			submitBtn.disabled = true;
-			
+			const btn = this.querySelector('.btn-send');
+			btn.textContent = 'Yuborilmoqda...';
+			btn.disabled = true;
 			try {
 				// config.js picks http://localhost:3000/api locally and /api in production
 				const apiBase = (window.config && window.config.apiBaseUrl) || '/api';
 				const response = await fetch(`${apiBase}/contact`, {
 					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-					},
+					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({ name, email, message })
 				});
-				
 				const data = await response.json();
-				
 				if (response.ok) {
-					// Show success message
-					showMessage('Message sent successfully!', 'success');
-					// Reset form
+					showMessage('Xabar yuborildi. Rahmat!', 'ok');
 					this.reset();
 				} else {
-					showMessage(data.error || 'Failed to send message', 'error');
+					showMessage(data.error || 'Xabar yuborilmadi', 'err');
 				}
 			} catch (error) {
-				console.error('Error:', error);
-				showMessage('Failed to send message. Please try again.', 'error');
+				showMessage('Xabar yuborilmadi. Keyinroq urinib ko\'ring.', 'err');
 			} finally {
-				// Reset button state
-				submitBtn.textContent = 'Send';
-				submitBtn.disabled = false;
+				btn.textContent = 'Yuborish';
+				btn.disabled = false;
 			}
 		});
-		
+
 		function showMessage(message, type) {
-			// Create message element
-			const messageDiv = document.createElement('div');
-			messageDiv.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show`;
-			messageDiv.style.position = 'fixed';
-			messageDiv.style.top = '20px';
-			messageDiv.style.right = '20px';
-			messageDiv.style.zIndex = '9999';
-			// The message can contain server text (data.error): insert it as text, never as HTML
-			messageDiv.appendChild(document.createTextNode(message));
-			const closeBtn = document.createElement('button');
-			closeBtn.type = 'button';
-			closeBtn.className = 'btn-close';
-			closeBtn.setAttribute('data-bs-dismiss', 'alert');
-			messageDiv.appendChild(closeBtn);
-			
-			document.body.appendChild(messageDiv);
-			
-			// Auto remove after 5 seconds
-			setTimeout(() => {
-				if (messageDiv.parentNode) {
-					messageDiv.parentNode.removeChild(messageDiv);
-				}
-			}, 5000);
+			const el = document.createElement('div');
+			el.className = 'ge-toast ' + type;
+			el.textContent = message; // text only: the message may contain server text
+			document.body.appendChild(el);
+			setTimeout(() => el.remove(), 5000);
 		}
 	</script>
-
 </body>
 
 </html>

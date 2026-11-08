@@ -1,4 +1,4 @@
-// API Client for O'QIV Platform
+// API Client for Gather Edu Platform
 class ApiClient {
     constructor() {
         // Load configuration
@@ -311,7 +311,7 @@ class ApiClient {
         } catch (error) {
             if (error.message.includes('token')) {
                 this.logout();
-                window.location.href = '/secondary-pages/login/login.html';
+                window.location.href = siteUrl('/secondary-pages/login/login.html');
             }
             throw error;
         }

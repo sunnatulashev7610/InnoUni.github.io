@@ -36,10 +36,25 @@
         return fallback || '';
     }
 
+    // Build a URL relative to the site root (the folder holding index.html), wherever the site is hosted:
+    // "/", "/InnoUni/" or "/repo/InnoUni/" on GitHub Pages. Never use root-absolute paths in the browser code.
+    function siteUrl(path, loc) {
+        loc = loc || (global.location || { pathname: '/' });
+        var pathname = loc.pathname || '/';
+        var cuts = ['/secondary-pages/', '/frontend/', '/dashboard/']
+            .map(function (m) { return pathname.indexOf(m); })
+            .filter(function (i) { return i >= 0; });
+        var base = cuts.length
+            ? pathname.slice(0, Math.min.apply(null, cuts))
+            : pathname.slice(0, pathname.lastIndexOf('/'));
+        return base + '/' + String(path).replace(/^\/+/, '');
+    }
+
     global.escapeHtml = escapeHtml;
+    global.siteUrl = siteUrl;
     global.safeUrl = safeUrl;
 
     if (typeof module !== 'undefined' && module.exports) {
-        module.exports = { escapeHtml: escapeHtml, safeUrl: safeUrl };
+        module.exports = { escapeHtml: escapeHtml, safeUrl: safeUrl, siteUrl: siteUrl };
     }
 })(typeof window !== 'undefined' ? window : globalThis);

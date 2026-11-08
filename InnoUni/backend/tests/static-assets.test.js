@@ -57,6 +57,39 @@ describe('assets referenced by the HTML pages', () => {
     });
 });
 
+describe('navigation works under any hosting prefix (GitHub Pages)', () => {
+    const pages = htmlFiles(SITE);
+    test.each(pages.map((p) => [path.relative(SITE, p), p]))('%s: no root-absolute links', (_n, file) => {
+        const src = fs.readFileSync(file, 'utf8');
+        expect([...src.matchAll(/\b(?:href|action)\s*=\s*["'](\/[^"'/][^"']*)["']/g)].map((m) => m[1])).toEqual([]);
+    });
+
+    test('browser scripts never redirect to a root-absolute path', () => {
+        const dir = path.join(SITE, 'frontend/js');
+        for (const f of fs.readdirSync(dir).filter((n) => n.endsWith('.js'))) {
+            const src = fs.readFileSync(path.join(dir, f), 'utf8');
+            expect({ f, hits: src.match(/location\.href\s*=\s*[`'"]\/(?!\/)/g) || [] }).toEqual({ f, hits: [] });
+        }
+    });
+
+    test('siteUrl resolves from every page depth', () => {
+        const { siteUrl } = require('../../frontend/js/utils.js');
+        const at = (pathname) => siteUrl('frontend/student.html', { pathname });
+        expect(at('/index.html')).toBe('/frontend/student.html');
+        expect(at('/InnoUni/index.html')).toBe('/InnoUni/frontend/student.html');
+        expect(at('/repo/InnoUni/secondary-pages/login/login.html')).toBe('/repo/InnoUni/frontend/student.html');
+        expect(at('/repo/InnoUni/secondary-pages/dashboard/pages/x.html')).toBe('/repo/InnoUni/frontend/student.html');
+        expect(at('/repo/InnoUni/frontend/teacher.html')).toBe('/repo/InnoUni/frontend/student.html');
+        expect(at('/dashboard/5')).toBe('/frontend/student.html');
+    });
+
+    test('root index.html forwards to InnoUni/index.html', () => {
+        const root = fs.readFileSync(path.join(SITE, '../index.html'), 'utf8');
+        expect(root).toContain('InnoUni/index.html');
+        expect(fs.existsSync(path.join(SITE, '../.nojekyll'))).toBe(true);
+    });
+});
+
 describe('url() inside project stylesheets', () => {
     test('style/style.css background images exist and are not root-absolute', () => {
         const cssFile = path.join(SITE, 'style/style.css');
@@ -85,7 +118,7 @@ describe('url() inside project stylesheets', () => {
 describe('the server serves the site', () => {
     test.each([
         ['/css/bootstrap.min.css', /text\/css/],
-        ['/style/style.css', /text\/css/],
+        ['/style/gather.css', /text\/css/],
         ['/imgs/hero.bg.png', /image\/png/],
         ['/secondary-pages/login/login.html', /text\/html/],
         ['/frontend/js/utils.js', /javascript/],
@@ -99,7 +132,7 @@ describe('the server serves the site', () => {
 
     test('the home page is the real index.html', async () => {
         const res = await request(app).get('/');
-        expect(res.text).toContain('style/style.css');
+        expect(res.text).toContain('style/gather.css');
     });
 
     test.each(['/backend/server.js', '/backend/.env', '/backend/.env.example', '/backend/package.json', '/.git/config'])(
