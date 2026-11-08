@@ -543,6 +543,10 @@
 				Buyurtmalar
 				<span class="nav-badge">2</span>
 			</button>
+			<button class="nav-item" onclick="loadPage('pricing', this)">
+				<i class="fas fa-tags"></i>
+				Narxlar
+			</button>
 		</div>
 		
 		<div class="sidebar-section">
@@ -774,13 +778,34 @@
 				send(form.closest('[data-chat]'), input.value);
 				input.value = '';
 			});
+			// ---- Pricing page: monthly/yearly switch and "choose plan" -> pre-filled order ----
+			function openOrderWith(type, item, fmtIndex) {
+				var btn = document.querySelector('.nav-item[onclick*="\'orders\'"]');
+				loadPage('orders', btn);
+				var tries = 0;
+				var timer = setInterval(function () {
+					var form = content.querySelector('#orderForm');
+					if (form || ++tries > 40) {
+						clearInterval(timer);
+						if (!form) return;
+						orderSetType(type);
+						var sel = content.querySelector('#orderItem');
+						Array.prototype.forEach.call(sel.options, function (o, k) { if (o.value === item) sel.selectedIndex = k; });
+						content.querySelector('#orderFormat').selectedIndex = fmtIndex;
+						orderUpdateTotal();
+					}
+				}, 50);
+			}
 			// ---- Orders page ----
 			function money(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + " so'm"; }
 			function catalog() { var el = content.querySelector('#orderCatalog'); return el ? JSON.parse(el.textContent) : null; }
 			function orderUpdateTotal() {
 				var sel = content.querySelector('#orderItem');
 				var opt = sel && sel.options[sel.selectedIndex];
-				if (opt) content.querySelector('#orderTotal').textContent = money(opt.dataset.price);
+				if (!opt) return;
+				var isTarif = content.querySelector('.pg-seg .on').dataset.orderType === 'tarif';
+				var yearly = isTarif && content.querySelector('#orderFormat').selectedIndex === 1;
+				content.querySelector('#orderTotal').textContent = money(yearly ? Math.round(opt.dataset.price * 12 * 0.8) : opt.dataset.price);
 			}
 			function orderSetType(type) {
 				var cat = catalog(); if (!cat) return;
@@ -792,7 +817,7 @@
 				cat[type].formats.forEach(function (f) { var o = document.createElement('option'); o.textContent = f; fmt.appendChild(o); });
 				orderUpdateTotal();
 			}
-			content.addEventListener('change', function (e) { if (e.target.id === 'orderItem') orderUpdateTotal(); });
+			content.addEventListener('change', function (e) { if (e.target.id === 'orderItem' || e.target.id === 'orderFormat') orderUpdateTotal(); });
 			function toast(text) {
 				var t = document.createElement('div'); t.className = 'pg-toast'; t.textContent = text;
 				document.body.appendChild(t); setTimeout(function () { t.remove(); }, 3500);
@@ -807,16 +832,16 @@
 				var row = document.createElement('div');
 				row.className = 'pg-order new'; row.dataset.cat = type;
 				var ic = document.createElement('div'); ic.className = 'ic';
-				ic.style.background = type === 'kurs' ? 'rgba(108,183,240,.2)' : 'rgba(246,183,60,.2)';
-				ic.style.color = type === 'kurs' ? '#6cb7f0' : '#f6b73c';
-				var i = document.createElement('i'); i.className = 'fas ' + (type === 'kurs' ? 'fa-graduation-cap' : 'fa-book'); ic.appendChild(i);
+				var look = { kurs: ['rgba(108,183,240,.2)', '#6cb7f0', 'fa-graduation-cap'], material: ['rgba(246,183,60,.2)', '#f6b73c', 'fa-book'], tarif: ['rgba(255,122,89,.2)', '#ff7a59', 'fa-crown'] }[type];
+				ic.style.background = look[0]; ic.style.color = look[1];
+				var i = document.createElement('i'); i.className = 'fas ' + look[2]; ic.appendChild(i);
 				var mid = document.createElement('div'); mid.className = 'mid';
 				var b = document.createElement('b'); b.textContent = opt.value;
 				var sp = document.createElement('span'); sp.className = 'pg-muted';
 				sp.textContent = id + ' \u00b7 ' + content.querySelector('#orderFormat').value + ' \u00b7 hozir';
 				mid.appendChild(b); mid.appendChild(sp);
 				var end = document.createElement('div'); end.className = 'end';
-				var pr = document.createElement('b'); pr.textContent = money(opt.dataset.price);
+				var pr = document.createElement('b'); pr.textContent = content.querySelector('#orderTotal').textContent;
 				var pill = document.createElement('span'); pill.className = 'pg-pill sun'; pill.textContent = 'Kutilmoqda';
 				end.appendChild(pr); end.appendChild(pill);
 				row.appendChild(ic); row.appendChild(mid); row.appendChild(end);
@@ -852,6 +877,16 @@
 					return;
 				}
 				if (e.target.closest('[data-action="print-cert"]')) { window.print(); return; }
+				var bill = e.target.closest('[data-billing]');
+				if (bill) {
+					var yearly = bill.dataset.billing === '1';
+					bill.parentNode.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b === bill); });
+					content.querySelectorAll('#pricingPlans .amt').forEach(function (a) { var m = Number(a.dataset.m); a.textContent = money(yearly ? Math.round(m * 0.8) : m).replace(" so'm", ''); });
+					content.querySelectorAll('#pricingPlans .pg-plan-btn[data-order-preset]').forEach(function (b) { var p = b.dataset.orderPreset.split('|'); p[2] = yearly ? '1' : '0'; b.dataset.orderPreset = p.join('|'); });
+					return;
+				}
+				var preset = e.target.closest('[data-order-preset]');
+				if (preset) { var pp = preset.dataset.orderPreset.split('|'); openOrderWith(pp[0], pp[1], Number(pp[2])); return; }
 				var ot = e.target.closest('[data-order-type]');
 				if (ot) { orderSetType(ot.dataset.orderType); return; }
 				if (e.target.closest('[data-action="focus-order"]')) { var f = content.querySelector('#orderForm'); if (f) { f.scrollIntoView({ behavior: 'smooth', block: 'center' }); content.querySelector('#orderItem').focus(); } return; }
