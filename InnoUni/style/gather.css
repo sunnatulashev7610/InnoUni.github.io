@@ -922,7 +922,7 @@ body.ge-auth {
 	margin-bottom: 14px;
 }
 
-.ge-auth .logo svg {
+.ge-auth .logo img, .ge-auth .logo svg {
 	width: 36px;
 	height: 36px;
 }
@@ -1321,3 +1321,5 @@ body.ge-auth {
 /* Theme switch placement */
 .ge-auth > .theme-toggle { position: fixed; top: 16px; right: 16px; z-index: 20; }
 .ge-nav-cta { display: flex; align-items: center; gap: 10px; }
+
+.ge-logo-mark, .ge-auth .logo img { border-radius: 10px; }

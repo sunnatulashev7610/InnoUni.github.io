@@ -21,9 +21,7 @@ body {
 }
 .header-content { display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 16px; }
 .logo { display: flex; align-items: center; gap: 10px; font: 700 1.35rem var(--font-display); letter-spacing: -.02em; color: var(--ink); }
-.logo svg circle:nth-child(1) { fill: var(--c1); }
-.logo svg circle:nth-child(2) { fill: var(--c5); }
-.logo svg circle:nth-child(3) { fill: var(--c3); }
+.logo img { width: 34px; height: 34px; border-radius: 10px; }
 .menu-btn { display: none; width: 40px; height: 40px; flex: none; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); color: var(--ink); cursor: pointer; }
 .menu-btn:hover { border-color: var(--brand); color: var(--brand-ink); }
 .header-left { display: flex; align-items: center; }
