@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /InnoUni/secondary-pages/
+Disallow: /InnoUni/frontend/
+Disallow: /api/
+
+Sitemap: https://sunnatulashev7610.github.io/InnoUni.github.io/sitemap.xml
