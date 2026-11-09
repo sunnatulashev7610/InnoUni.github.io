@@ -13,6 +13,9 @@ const { router: authRouter } = require('./api/auth');
 const studentRouter = require('./api/student');
 const teacherRouter = require('./api/teacher');
 const dashboardRouter = require('./api/dashboard');
+const teamsRouter = require('./api/teams');
+const ordersRouter = require('./api/orders');
+const { runMigrations } = require('./migrate');
 const { escapeHtml } = require('./utils/escapeHtml');
 const { isValidEmail } = require('./utils/validation');
 
@@ -78,6 +81,7 @@ async function initDB() {
 
         // Create tables if they don't exist
         await createTables();
+        console.log('Migrations applied:', await runMigrations(db));
     } catch (error) {
         console.error('Database connection failed:', error);
         process.exit(1);
@@ -253,6 +257,8 @@ app.use('/api/auth', authRouter);
 app.use('/api/student', studentRouter);
 app.use('/api/teacher', teacherRouter);
 app.use('/api/dashboard', authenticateToken, dashboardRouter);
+app.use('/api/teams', teamsRouter);
+app.use('/api/orders', ordersRouter);
 
 // Role-based dashboard routing
 app.get('/dashboard/:userId', authenticateToken, async (req, res) => {
