@@ -22,3 +22,6 @@ All routes need `Authorization: Bearer <token>`.
 
 ## Migrations
 SQL files in `migrations/` run once each, in name order, at server start (tracked in `schema_migrations`). Add `002_name.sql` for new changes; never edit an applied file.
+
+## Demo data
+`SEED_PASSWORD=yourpass npm run seed` creates 3 demo users (`teacher@`, `captain@`, `student@demo.gatheredu.uz`), 2 teams and 3 orders. It can be run again safely and refuses to run in production unless `SEED_FORCE=1`.
