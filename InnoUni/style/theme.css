@@ -1,0 +1,158 @@
+/* Gather Edu: theme tokens.
+   One source of truth for both themes. Pages read these variables only.
+   Light: cool paper white, cobalt ink.  Dark: deep navy, soft violet-blue. */
+
+:root,
+:root[data-theme="light"] {
+	color-scheme: light;
+	--bg: #f4f5f8;
+	--surface: #ffffff;
+	--surface-2: #eceff5;
+	--ink: #131722;
+	--ink-2: #545d6e;
+	--ink-3: #7b8496;
+	--line: #e1e5ee;
+	--line-strong: #c9d0de;
+	--dot: #d6dbe6;
+
+	--brand: #2b59e8;
+	--brand-2: #2147c4;
+	--brand-ink: #2147c4;
+	--brand-soft: #e6ecff;
+	--on-brand: #ffffff;
+
+	--ok: #0b855a;
+	--ok-soft: #dff4ea;
+	--warn: #9a5a00;
+	--warn-soft: #fcefd3;
+	--danger: #bf3326;
+	--danger-soft: #fce6e2;
+	--info: #0a6a9c;
+	--info-soft: #dff0fa;
+
+	--sun: var(--warn);
+	--sun-soft: var(--warn-soft);
+	--coral: var(--danger);
+	--coral-soft: var(--danger-soft);
+	--sky: var(--info);
+	--sky-soft: var(--info-soft);
+
+	--c1: #3d5be0;
+	--c2: #d0485f;
+	--c3: #0e8a9e;
+	--c4: #a8650a;
+	--c5: #7648d6;
+	--c6: #b03f8a;
+
+	--shadow-sm: 0 1px 2px rgba(19, 23, 34, .05);
+	--shadow-md: 0 8px 24px rgba(19, 23, 34, .08);
+	--shadow-lg: 0 20px 50px rgba(19, 23, 34, .12);
+}
+
+:root[data-theme="dark"] {
+	color-scheme: dark;
+	--bg: #0d1020;
+	--surface: #151930;
+	--surface-2: #1c2140;
+	--ink: #e6e8f5;
+	--ink-2: #a0a8c8;
+	--ink-3: #737ba3;
+	--line: #262c4f;
+	--line-strong: #363e69;
+	--dot: #20264a;
+
+	--brand: #8b7dff;
+	--brand-2: #a094ff;
+	--brand-ink: #b4abff;
+	--brand-soft: rgba(139, 125, 255, .16);
+	--on-brand: #0d1020;
+
+	--ok: #4fd6a2;
+	--ok-soft: rgba(79, 214, 162, .14);
+	--warn: #f0b24c;
+	--warn-soft: rgba(240, 178, 76, .15);
+	--danger: #ff8f80;
+	--danger-soft: rgba(255, 143, 128, .15);
+	--info: #72b8f2;
+	--info-soft: rgba(114, 184, 242, .15);
+
+	--shadow-sm: none;
+	--shadow-md: 0 8px 28px rgba(0, 0, 0, .35);
+	--shadow-lg: 0 24px 60px rgba(0, 0, 0, .5);
+}
+
+:root {
+	--r-sm: 8px;
+	--r-md: 12px;
+	--r-lg: 16px;
+	--r-xl: 20px;
+	--font-display: "Bricolage Grotesque", "Onest", system-ui, sans-serif;
+	--font-body: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+html {
+	background: var(--bg);
+}
+
+html body {
+	background: var(--bg);
+	color: var(--ink);
+	font-family: var(--font-body);
+	-webkit-font-smoothing: antialiased;
+}
+
+/* Bootstrap (loaded by some pages) hard-codes light colours; keep it on tokens. */
+.btn-primary { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
+.btn-primary:hover { background: var(--brand-2); border-color: var(--brand-2); color: var(--on-brand); }
+
+h1, h2, h3, .ge-display {
+	font-family: var(--font-display);
+	letter-spacing: -.015em;
+}
+
+:focus-visible {
+	outline: 2px solid var(--brand);
+	outline-offset: 2px;
+}
+
+::selection {
+	background: var(--brand-soft);
+	color: var(--ink);
+}
+
+/* Theme switch (used on every page) */
+.theme-toggle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	flex: none;
+	border-radius: var(--r-md);
+	border: 1px solid var(--line);
+	background: var(--surface);
+	color: var(--ink-2);
+	cursor: pointer;
+	transition: border-color .15s, color .15s;
+}
+
+.theme-toggle:hover {
+	border-color: var(--brand);
+	color: var(--brand-ink);
+}
+
+.theme-toggle .ico-moon,
+:root[data-theme="dark"] .theme-toggle .ico-sun {
+	display: none;
+}
+
+:root[data-theme="dark"] .theme-toggle .ico-moon {
+	display: inline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*, *::before, *::after {
+		animation-duration: .01ms !important;
+		transition-duration: .01ms !important;
+	}
+}

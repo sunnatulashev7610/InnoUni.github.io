@@ -5,18 +5,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ro'yxatdan o'tish - Gather Edu</title>
+        <script>(function(){var t=null;try{t=localStorage.getItem('geTheme')}catch(e){}document.documentElement.dataset.theme=t||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')})()</script>
+        <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..700&display=swap">
+        <link rel="stylesheet" href="../../style/theme.css">
         <link rel="stylesheet" href="../../style/gather.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 
 <body class="ge ge-auth">
+    <button type="button" class="theme-toggle" data-theme-toggle aria-label="Tungi rejimga o'tish" aria-pressed="false"><i class="fas fa-sun ico-sun"></i><i class="fas fa-moon ico-moon"></i></button>
     <a href="../../index.html" class="back-link">
         <i class="fas fa-arrow-left me-2"></i>Asosiy sahifa
     </a>
 
     <div class="register-container">
         <div class="register-header">
-            <div class="logo"><svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="14" cy="15" r="10" fill="#0f5c47"/><circle cx="27" cy="15" r="10" fill="#f6b73c" fill-opacity=".92"/><circle cx="20.5" cy="27" r="10" fill="#ff7a59" fill-opacity=".92"/></svg>Gather Edu</div>
+            <div class="logo"><svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="14" cy="15" r="10" style="fill:var(--c1)"/><circle cx="27" cy="15" r="10" style="fill:var(--c5)" fill-opacity=".92"/><circle cx="20.5" cy="27" r="10" style="fill:var(--c3)" fill-opacity=".92"/></svg>Gather Edu</div>
             <h1 class="register-title">Ro'yxatdan o'tish</h1>
             <p class="register-subtitle">Gather Edu jamoasiga qo'shiling</p>
         </div>
@@ -306,6 +311,7 @@
             }
         });
     </script>
+    <script src="../../frontend/js/theme.js"></script>
 </body>
 
 </html>
