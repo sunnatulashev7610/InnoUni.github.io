@@ -24,6 +24,10 @@ body {
 .logo svg circle:nth-child(1) { fill: var(--c1); }
 .logo svg circle:nth-child(2) { fill: var(--c5); }
 .logo svg circle:nth-child(3) { fill: var(--c3); }
+.menu-btn { display: none; width: 40px; height: 40px; flex: none; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); color: var(--ink); cursor: pointer; }
+.menu-btn:hover { border-color: var(--brand); color: var(--brand-ink); }
+.header-left { display: flex; align-items: center; }
+.sidebar-backdrop { display: none; }
 .header-actions { display: flex; align-items: center; gap: 12px; }
 .search-bar { position: relative; display: flex; align-items: center; }
 .search-bar input {
@@ -100,8 +104,11 @@ body {
 
 @media (max-width: 1024px) { .sidebar { width: 236px; } .main { margin-left: 236px; } }
 @media (max-width: 768px) {
-	.sidebar { transform: translateX(-100%); transition: transform .25s ease; z-index: 900; }
+	.menu-btn { display: inline-flex; margin-right: 10px; }
+	.header-content { gap: 8px; }
+	.sidebar { transform: translateX(-100%); transition: transform .25s ease; z-index: 1100; height: calc(100dvh - 64px); box-shadow: var(--shadow-lg); }
 	.sidebar.open { transform: translateX(0); }
+	.sidebar-backdrop.show { display: block; position: fixed; inset: 64px 0 0 0; z-index: 1050; background: rgba(8, 10, 24, .5); }
 	.main { margin-left: 0; }
 	.search-bar input { width: 180px; }
 }
@@ -109,5 +116,7 @@ body {
 	.header { padding: 0 14px; }
 	.search-bar, .user-info { display: none; }
 	.main { padding: 20px 14px 40px; }
-	.content-area { padding: 18px; }
+	.content-area { padding: 12px; border-radius: var(--r-lg); }
+	.page-title { font-size: 1.5rem; }
+	.user-profile { padding: 4px; }
 }

@@ -236,3 +236,16 @@ body[data-role="student"] .only-teacher, body[data-role="teacher"] .only-student
 	.pg-two { grid-template-columns: 1fr; } .pg-week { gap: 4px; }
 	.pg-order { flex-wrap: wrap; } .pg-order .end { flex-direction: row; align-items: center; width: 100%; justify-content: space-between; }
 }
+
+/* Phones: tabs and tables scroll sideways inside their own box, never the page */
+@media (max-width: 768px) {
+	.pg-tabs { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+	.pg-tabs::-webkit-scrollbar { display: none; }
+	.pg-tabs button { flex: none; white-space: nowrap; }
+	.pg-table { display: block; overflow-x: auto; white-space: nowrap; }
+	.pg-btn, .pg-chip, .nav-item { min-height: 40px; }
+}
+.pg-detail > *, .pg-grid > *, .pg-hero > * { min-width: 0; }
+@media (max-width: 768px) { .pg-chart { overflow-x: auto; } }
+.pg-detail > div[style*="display:grid"] { grid-template-columns: minmax(0, 1fr); }
+.pg-card { min-width: 0; }

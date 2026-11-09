@@ -22,8 +22,11 @@
 	<!-- HEADER -->
 	<header class="header">
 		<div class="header-content">
-			<div class="logo">
+			<div class="header-left">
+			<button type="button" class="menu-btn" id="menuBtn" aria-label="Menyuni ochish" aria-expanded="false" aria-controls="sidebar"><i class="fas fa-bars"></i></button>
+				<div class="logo">
 				<svg viewBox="0 0 40 40" width="30" height="30" aria-hidden="true"><circle cx="14" cy="15" r="10" fill="#1fa97a"/><circle cx="27" cy="15" r="10" fill="#f6b73c" fill-opacity=".92"/><circle cx="20.5" cy="27" r="10" fill="#ff7a59" fill-opacity=".92"/></svg> Gather Edu
+			</div>
 			</div>
 			
 			<div class="header-actions">
@@ -52,7 +55,7 @@
 	</header>
 
 	<!-- SIDEBAR -->
-	<nav class="sidebar">
+	<nav class="sidebar" id="sidebar">
 		<div class="role-switch" role="group" aria-label="Rol"><button type="button" data-role-btn="student" class="on">O'quvchi</button><button type="button" data-role-btn="teacher">O'qituvchi</button></div>
 		<div data-role-group="student">
 		<div class="sidebar-section">
@@ -365,11 +368,25 @@
 			}
 		});
 
-		// Mobile menu toggle
-		function toggleSidebar() {
-			const sidebar = document.querySelector('.sidebar');
-			sidebar.classList.toggle('open');
-		}
+		// Mobile menu: hamburger opens the sidebar, backdrop / Esc / choosing a page closes it
+		(function () {
+			var sidebar = document.querySelector('.sidebar');
+			var btn = document.getElementById('menuBtn');
+			var back = document.createElement('div');
+			back.className = 'sidebar-backdrop';
+			document.body.appendChild(back);
+			function setOpen(open) {
+				sidebar.classList.toggle('open', open);
+				back.classList.toggle('show', open);
+				if (btn) { btn.setAttribute('aria-expanded', String(open)); btn.setAttribute('aria-label', open ? 'Menyuni yopish' : 'Menyuni ochish'); }
+			}
+			window.toggleSidebar = function () { setOpen(!sidebar.classList.contains('open')); };
+			if (btn) btn.addEventListener('click', window.toggleSidebar);
+			back.addEventListener('click', function () { setOpen(false); });
+			document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setOpen(false); });
+			sidebar.addEventListener('click', function (e) { if (e.target.closest('.nav-item')) setOpen(false); });
+			window.addEventListener('resize', function () { if (innerWidth > 768) setOpen(false); });
+		})();
 	</script>
 	<script>
 		// Interactivity for the injected pages (scripts inside fetched fragments do not run, so we delegate from here)
