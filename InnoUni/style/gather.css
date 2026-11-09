@@ -1,57 +1,7 @@
-/* Gather Edu design system
-   Warm, light, community-first. One file: tokens, landing page, auth pages. */
+/* Gather Edu: landing + auth. One file: tokens, landing page, auth pages. */
 
-@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=DM+Sans:wght@400;500;600;700&display=swap");
 
-:root {
-	--bg: #fbf8f2;
-	--surface: #ffffff;
-	--surface-2: #f3eee4;
-	--ink: #16231d;
-	--ink-2: #4a5750;
-	--ink-3: #87918b;
-	--line: #e6dfd0;
-	--brand: #0f5c47;
-	/* forest green */
-	--brand-2: #0b4535;
-	--brand-soft: #dcefe6;
-	--sun: #f6b73c;
-	/* sunflower */
-	--sun-soft: #fdf0d0;
-	--coral: #ff7a59;
-	--coral-soft: #ffe3da;
-	--sky: #6cb7f0;
-	--sky-soft: #def0fd;
-	--ok: #1f9d6b;
-	--danger: #d6452f;
-	--r-sm: 10px;
-	--r-md: 16px;
-	--r-lg: 24px;
-	--r-xl: 32px;
-	--shadow-sm: 0 1px 2px rgba(22, 35, 29, .06), 0 2px 8px rgba(22, 35, 29, .04);
-	--shadow-md: 0 6px 24px rgba(22, 35, 29, .08);
-	--shadow-lg: 0 24px 60px rgba(22, 35, 29, .14);
-	--font-display: "Bricolage Grotesque", "DM Sans", system-ui, sans-serif;
-	--font-body: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-}
-
-@media (prefers-color-scheme: dark) {
-	:root:not([data-theme="light"]) {
-		--bg: #0e1613;
-		--surface: #15211c;
-		--surface-2: #1b2923;
-		--ink: #f1efe7;
-		--ink-2: #b8c2bb;
-		--ink-3: #7f8b84;
-		--line: #263630;
-		--brand: #4fcf9f;
-		--brand-2: #3bb98a;
-		--brand-soft: #173a2e;
-		--sun-soft: #3a3016;
-		--coral-soft: #3d2219;
-		--sky-soft: #172c3b;
-	}
-}
+/* Tokens live in theme.css (light + dark). */
 
 * {
 	box-sizing: border-box;
@@ -101,23 +51,10 @@ body.ge {
 }
 
 .ge-eyebrow {
-	display: inline-flex;
-	align-items: center;
-	gap: 8px;
-	font-size: 13px;
-	font-weight: 700;
-	letter-spacing: .12em;
-	text-transform: uppercase;
-	color: var(--brand);
-	margin-bottom: 16px;
-}
-
-.ge-eyebrow::before {
-	content: "";
-	width: 22px;
-	height: 3px;
-	border-radius: 3px;
-	background: var(--sun);
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--brand-ink);
+	margin-bottom: 12px;
 }
 
 .ge-h2 {
@@ -140,27 +77,22 @@ body.ge {
 	justify-content: center;
 	gap: 10px;
 	padding: 14px 26px;
-	border-radius: 999px;
+	border-radius: var(--r-md);
 	font: 700 16px/1 var(--font-body);
 	text-decoration: none;
-	border: 2px solid transparent;
+	border: 1px solid transparent;
 	cursor: pointer;
-	transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
-}
-
-.ge-btn:hover {
-	transform: translateY(-2px);
+	transition: background .15s ease, border-color .15s ease;
 }
 
 .ge-btn:focus-visible {
-	outline: 3px solid var(--sun);
+	outline: 2px solid var(--brand);
 	outline-offset: 3px;
 }
 
 .ge-btn-primary {
 	background: var(--brand);
-	color: #fff !important;
-	box-shadow: 0 8px 20px rgba(15, 92, 71, .28);
+	color: var(--on-brand) !important;
 }
 
 .ge-btn-primary:hover {
@@ -169,18 +101,18 @@ body.ge {
 
 .ge-btn-ghost {
 	background: transparent;
-	border-color: var(--ink);
+	border-color: var(--line-strong);
 	color: var(--ink);
 }
 
 .ge-btn-ghost:hover {
-	background: var(--ink);
-	color: var(--bg);
+	border-color: var(--brand);
+	color: var(--brand-ink);
 }
 
 .ge-btn-sun {
-	background: var(--sun);
-	color: #2a1f00 !important;
+	background: var(--surface);
+	color: var(--ink) !important;
 }
 
 /* ---------- nav ---------- */
@@ -188,9 +120,7 @@ body.ge {
 	position: sticky;
 	top: 0;
 	z-index: 50;
-	background: color-mix(in srgb, var(--bg) 88%, transparent);
-	backdrop-filter: blur(14px);
-	-webkit-backdrop-filter: blur(14px);
+	background: var(--bg);
 	border-bottom: 1px solid var(--line);
 }
 
@@ -231,7 +161,7 @@ body.ge {
 .ge-nav-links a {
 	display: block;
 	padding: 8px 14px;
-	border-radius: 999px;
+	border-radius: var(--r-md);
 	text-decoration: none;
 	font-weight: 600;
 	font-size: 15px;
@@ -274,7 +204,7 @@ body.ge {
 	width: 620px;
 	height: 620px;
 	border-radius: 50%;
-	background: radial-gradient(circle at 30% 30%, var(--sun-soft), transparent 68%);
+	
 	z-index: 0;
 }
 
@@ -292,19 +222,6 @@ body.ge {
 	font-weight: 800;
 }
 
-.ge-hero h1 .hl {
-	position: relative;
-	white-space: nowrap;
-	color: var(--brand);
-}
-
-.ge-hero h1 .hl svg {
-	position: absolute;
-	left: 0;
-	bottom: -.12em;
-	width: 100%;
-	height: .3em;
-}
 
 .ge-hero p.ge-lead {
 	font-size: clamp(18px, 2vw, 21px);
@@ -370,7 +287,6 @@ body.ge {
 	inset: 20px 0 auto 28px;
 	padding: 22px;
 	box-shadow: var(--shadow-lg);
-	transform: rotate(1.2deg);
 }
 
 .m-head {
@@ -389,7 +305,7 @@ body.ge {
 	font-size: 12px;
 	font-weight: 700;
 	padding: 5px 11px;
-	border-radius: 999px;
+	border-radius: var(--r-md);
 	background: var(--brand-soft);
 	color: var(--brand);
 }
@@ -464,13 +380,11 @@ body.ge {
 .ge-mock .f1 {
 	left: -8px;
 	bottom: 30px;
-	transform: rotate(-3deg);
 }
 
 .ge-mock .f2 {
 	right: -6px;
 	bottom: -4px;
-	transform: rotate(2deg);
 }
 
 .ge-mock .m-dot {
@@ -547,7 +461,6 @@ body.ge {
 }
 
 .ge-feature:hover {
-	transform: translateY(-4px);
 	box-shadow: var(--shadow-md);
 }
 
@@ -580,7 +493,7 @@ body.ge {
 	grid-column: span 2;
 	background: var(--brand);
 	border-color: var(--brand);
-	color: #e8f6ef;
+	color: color-mix(in srgb, var(--on-brand) 80%, transparent);
 }
 
 .ge-feature.full {
@@ -588,16 +501,16 @@ body.ge {
 }
 
 .ge-feature.wide h3 {
-	color: #fff;
+	color: var(--on-brand);
 }
 
 .ge-feature.wide p {
-	color: #cfe9de;
+	color: color-mix(in srgb, var(--on-brand) 80%, transparent);
 }
 
 .ge-feature.wide .ic {
-	background: rgba(255, 255, 255, .14) !important;
-	color: #fff !important;
+	background: color-mix(in srgb, var(--on-brand) 16%, transparent) !important;
+	color: var(--on-brand) !important;
 }
 
 @media (max-width: 900px) {
@@ -624,17 +537,17 @@ body.ge {
 
 .c-sun {
 	background: var(--sun-soft);
-	color: #9a6b00;
+	color: var(--warn);
 }
 
 .c-coral {
 	background: var(--coral-soft);
-	color: #d4472a;
+	color: var(--danger);
 }
 
 .c-sky {
 	background: var(--sky-soft);
-	color: #1f78b8;
+	color: var(--info);
 }
 
 /* ---------- how it works ---------- */
@@ -659,7 +572,7 @@ body.ge {
 	counter-increment: s;
 	content: "0" counter(s);
 	font: 800 64px/1 var(--font-display);
-	color: var(--sun);
+	color: var(--brand-ink);
 	letter-spacing: -0.04em;
 	display: block;
 	margin-bottom: 14px;
@@ -698,7 +611,6 @@ body.ge {
 }
 
 .ge-group:hover {
-	transform: translateY(-4px);
 	box-shadow: var(--shadow-md);
 }
 
@@ -784,7 +696,7 @@ body.ge {
 	position: relative;
 	overflow: hidden;
 	background: var(--brand);
-	color: #fff;
+	color: var(--on-brand);
 	border-radius: var(--r-xl);
 	padding: clamp(40px, 6vw, 80px);
 	text-align: center;
@@ -802,7 +714,7 @@ body.ge {
 	height: 320px;
 	left: -90px;
 	bottom: -150px;
-	background: rgba(246, 183, 60, .35);
+	background: color-mix(in srgb, var(--on-brand) 12%, transparent);
 }
 
 .ge-cta::after {
@@ -810,7 +722,7 @@ body.ge {
 	height: 240px;
 	right: -60px;
 	top: -100px;
-	background: rgba(255, 122, 89, .35);
+	background: color-mix(in srgb, var(--on-brand) 8%, transparent);
 }
 
 .ge-cta>* {
@@ -819,7 +731,7 @@ body.ge {
 }
 
 .ge-cta h2 {
-	color: #fff;
+	color: var(--on-brand);
 	font-size: clamp(32px, 5vw, 56px);
 	font-weight: 800;
 	max-width: 18ch;
@@ -827,7 +739,7 @@ body.ge {
 }
 
 .ge-cta p {
-	color: #cfe9de;
+	color: color-mix(in srgb, var(--on-brand) 80%, transparent);
 	margin: 16px auto 32px;
 	max-width: 46ch;
 	font-size: 19px;
@@ -946,7 +858,7 @@ textarea.ge-field {
 	border-radius: var(--r-md);
 	font-weight: 600;
 	box-shadow: var(--shadow-lg);
-	color: #fff;
+	color: var(--on-brand);
 }
 
 .ge-toast.ok {
@@ -974,10 +886,7 @@ body.ge-auth {
 	display: grid;
 	place-items: center;
 	padding: 24px;
-	background:
-		radial-gradient(520px 420px at 8% 12%, var(--sun-soft), transparent 70%),
-		radial-gradient(520px 420px at 95% 95%, var(--brand-soft), transparent 70%),
-		var(--bg);
+	
 	color: var(--ink);
 	font-family: var(--font-body);
 }
@@ -1116,7 +1025,7 @@ body.ge-auth {
 	height: 22px;
 	border-radius: 50%;
 	background: var(--brand);
-	color: #fff;
+	color: var(--on-brand);
 	font-size: 13px;
 	font-weight: 700;
 	display: grid;
@@ -1137,7 +1046,7 @@ body.ge-auth {
 
 .ge-auth .role-option.selected .role-icon {
 	background: var(--brand);
-	color: #fff;
+	color: var(--on-brand);
 }
 
 .ge-auth .role-title {
@@ -1154,19 +1063,18 @@ body.ge-auth {
 	width: 100%;
 	padding: 15px;
 	border: 0;
-	border-radius: 999px;
+	border-radius: var(--r-md);
 	background: var(--brand);
-	color: #fff;
+	color: var(--on-brand);
 	font: 700 17px var(--font-body);
 	cursor: pointer;
-	box-shadow: 0 8px 20px rgba(15, 92, 71, .25);
+	box-shadow: none;
 	transition: transform .15s, background .15s;
 }
 
 .ge-auth .login-btn:hover,
 .ge-auth .register-btn:hover {
 	background: var(--brand-2);
-	transform: translateY(-2px);
 }
 
 .ge-auth .login-btn:disabled,
@@ -1257,7 +1165,7 @@ body.ge-auth {
 	font-weight: 700;
 	color: var(--ink-2);
 	padding: 8px 14px;
-	border-radius: 999px;
+	border-radius: var(--r-md);
 }
 
 .ge-auth .back-link:hover {
@@ -1310,8 +1218,7 @@ body.ge-auth {
 .ge-plan.pop {
 	background: var(--brand);
 	border-color: var(--brand);
-	color: #e8f6ef;
-	transform: translateY(-10px);
+	color: color-mix(in srgb, var(--on-brand) 80%, transparent);
 	box-shadow: var(--shadow-lg);
 }
 
@@ -1320,7 +1227,7 @@ body.ge-auth {
 }
 
 .ge-plan.pop h3 {
-	color: #fff;
+	color: var(--on-brand);
 }
 
 .ge-plan .tag {
@@ -1330,7 +1237,7 @@ body.ge-auth {
 }
 
 .ge-plan.pop .tag {
-	color: #cfe9de;
+	color: color-mix(in srgb, var(--on-brand) 80%, transparent);
 }
 
 .ge-plan .flag {
@@ -1339,9 +1246,9 @@ body.ge-auth {
 	left: 50%;
 	transform: translateX(-50%);
 	padding: 5px 16px;
-	border-radius: 999px;
-	background: var(--sun);
-	color: #2a1f00;
+	border-radius: var(--r-md);
+	background: var(--ink);
+	color: var(--bg);
 	font-size: 13px;
 	font-weight: 800;
 }
@@ -1352,7 +1259,7 @@ body.ge-auth {
 }
 
 .ge-plan.pop .price {
-	color: #cfe9de;
+	color: color-mix(in srgb, var(--on-brand) 80%, transparent);
 }
 
 .ge-plan .price b {
@@ -1362,7 +1269,7 @@ body.ge-auth {
 }
 
 .ge-plan.pop .price b {
-	color: #fff;
+	color: var(--on-brand);
 }
 
 .ge-plan ul {
@@ -1390,12 +1297,12 @@ body.ge-auth {
 }
 
 .ge-plan.pop li svg {
-	color: var(--sun);
+	color: var(--on-brand);
 }
 
 .ge-plan.pop .ge-btn-primary {
-	background: var(--sun);
-	color: #2a1f00 !important;
+	background: var(--surface);
+	color: var(--ink) !important;
 	box-shadow: none;
 }
 
@@ -1410,3 +1317,7 @@ body.ge-auth {
 		transform: none;
 	}
 }
+
+/* Theme switch placement */
+.ge-auth > .theme-toggle { position: fixed; top: 16px; right: 16px; z-index: 20; }
+.ge-nav-cta { display: flex; align-items: center; gap: 10px; }
