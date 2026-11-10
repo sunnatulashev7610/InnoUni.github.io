@@ -58,7 +58,7 @@
 
 	<!-- SIDEBAR -->
 	<nav class="sidebar" id="sidebar">
-		<div class="role-switch" role="group" aria-label="Rol"><button type="button" data-role-btn="student" class="on">O'quvchi</button><button type="button" data-role-btn="teacher">O'qituvchi</button><button type="button" data-role-btn="admin">Admin</button></div>
+		<div class="role-switch" role="group" aria-label="Rol"><button type="button" data-role-btn="student" class="on">O'quvchi</button><button type="button" data-role-btn="teacher">O'qituvchi</button></div>
 		<div data-role-group="student">
 		<div class="sidebar-section">
 			<div class="sidebar-title">Asosiy</div>
@@ -180,30 +180,6 @@
 			<button class="nav-item" onclick="loadPage('settings', this)">
 				<i class="fas fa-cog"></i>
 				Sozlamalar
-			</button>
-		</div>
-		</div>
-		<div data-role-group="admin">
-		<div class="sidebar-section">
-			<div class="sidebar-title">Boshqaruv</div>
-			<button class="nav-item" onclick="loadPage('a-home', this)">
-				<i class="fas fa-gauge"></i>
-				Umumiy
-			</button>
-			<button class="nav-item" onclick="loadPage('a-users', this)">
-				<i class="fas fa-users-gear"></i>
-				Foydalanuvchilar
-			</button>
-			<button class="nav-item" onclick="loadPage('t-orders', this)">
-				<i class="fas fa-receipt"></i>
-				Buyurtmalar
-			</button>
-		</div>
-		<div class="sidebar-section">
-			<div class="sidebar-title">Sozlamalar</div>
-			<button class="nav-item" onclick="loadPage('profile', this)">
-				<i class="fas fa-user"></i>
-				Profil
 			</button>
 		</div>
 		</div>
@@ -341,9 +317,9 @@
 		// ---- Role switch (student / teacher view) ----
 		var currentRole = 'student';
 		function initialRole() {
-			var r = (location.search.match(/[?&]role=(student|teacher|admin)/) || [])[1];
+			var r = (location.search.match(/[?&]role=(student|teacher)/) || [])[1];
 			try { r = r || localStorage.getItem('geRole'); } catch (e) { /* storage may be blocked */ }
-			return r === 'teacher' || r === 'admin' ? r : 'student';
+			return r === 'teacher' ? 'teacher' : 'student';
 		}
 		function navFor(page) {
 			return document.querySelector('[data-role-group="' + currentRole + '"] .nav-item[onclick*="\'' + page + '\'"]');
@@ -351,10 +327,10 @@
 		function setRole(role) {
 			currentRole = role;
 			document.body.dataset.role = role;
-			document.getElementById('userRole').textContent = { teacher: "O'qituvchi", admin: 'Admin' }[role] || "O'quvchi";
+			document.getElementById('userRole').textContent = role === 'teacher' ? "O'qituvchi" : "O'quvchi";
 			document.querySelectorAll('[data-role-btn]').forEach(function (b) { b.classList.toggle('on', b.dataset.roleBtn === role); });
 			try { localStorage.setItem('geRole', role); } catch (e) { /* ignore */ }
-			var home = { teacher: 't-home', admin: 'a-home' }[role] || 'main.dashboard';
+			var home = role === 'teacher' ? 't-home' : 'main.dashboard';
 			loadPage(home, navFor(home));
 		}
 		document.addEventListener('click', function (e) {
@@ -688,15 +664,6 @@
 				if (sub) { pickSub(sub); return; }
 				var qs = e.target.closest('#quickScores [data-score]');
 				if (qs) { q('#gScore').value = qs.dataset.score; return; }
-				var aa = e.target.closest('[data-admin-act]');
-				if (aa) {
-					var tr = aa.closest('tr'), blocked = tr.dataset.blocked !== '1';
-					tr.dataset.blocked = blocked ? '1' : '0';
-					var pl = tr.querySelector('.state'); pl.textContent = blocked ? 'Bloklangan' : 'Faol'; pl.className = 'state pg-pill' + (blocked ? ' coral' : '');
-					aa.textContent = blocked ? 'Blokdan chiqarish' : 'Bloklash';
-					toast(blocked ? 'Foydalanuvchi bloklandi' : 'Blok olib tashlandi');
-					return;
-				}
 				var oa = e.target.closest('[data-order-act]');
 				if (oa) {
 					var row = oa.closest('.pg-order'), ok = oa.dataset.orderAct === 'ok';

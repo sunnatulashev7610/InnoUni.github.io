@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="robots" content="noindex, nofollow">
+	<title>Admin panel | Gather Edu</title>
+	<script>(function(){try{var t=localStorage.getItem('geTheme');if(!t)t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='light'}})()</script>
+	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..700&display=swap">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+	<link rel="stylesheet" href="../../style/theme.css">
+	<link rel="stylesheet" href="../../style/dashboard-shell.css">
+	<link rel="stylesheet" href="../../style/dashboard-pages.css">
+	<link rel="icon" type="image/png" sizes="32x32" href="../../imgs/logo/favicon-32.png">
+</head>
+<body>
+	<script>
+		// Guard: only a signed-in admin may see this page (the API enforces the same on every request)
+		(function () {
+			var ok = false;
+			try {
+				var t = localStorage.getItem('token'), r = localStorage.getItem('userRole');
+				var p = t && JSON.parse(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+				ok = !!p && p.role === 'admin' && r === 'admin' && (!p.exp || p.exp * 1000 > Date.now());
+			} catch (e) { ok = false; }
+			if (!ok) { document.documentElement.hidden = true; location.replace('admin-login.html'); }
+		})();
+	</script>
+	<header class="header">
+		<div class="header-content">
+			<div class="header-left">
+				<button type="button" class="menu-btn" id="menuBtn" aria-label="Menyuni ochish" aria-expanded="false" aria-controls="sidebar"><i class="fas fa-bars"></i></button>
+				<div class="logo"><img class="logo-img" src="../../imgs/logo/logo-icon.png" width="36" height="36" alt=""> Gather Edu</div>
+			</div>
+			<div class="header-actions">
+				<div class="user-menu">
+					<button type="button" class="theme-toggle" data-theme-toggle aria-label="Tungi rejimga o'tish" aria-pressed="false"><i class="fas fa-sun ico-sun"></i><i class="fas fa-moon ico-moon"></i></button>
+					<div class="user-profile"><div class="user-info"><div class="user-name" id="adminName">Admin</div><div class="user-role">Administrator</div></div></div>
+					<button type="button" class="pg-btn ghost" id="logoutBtn" style="padding:8px 14px">Chiqish</button>
+				</div>
+			</div>
+		</div>
+	</header>
+	<nav class="sidebar" id="sidebar">
+		<div class="sidebar-section">
+			<div class="sidebar-title">Boshqaruv</div>
+			<button class="nav-item active" onclick="loadPage('a-home', this)"><i class="fas fa-gauge"></i>Umumiy</button>
+			<button class="nav-item" onclick="loadPage('a-users', this)"><i class="fas fa-users-gear"></i>Foydalanuvchilar</button>
+			<button class="nav-item" onclick="loadPage('a-orders', this)"><i class="fas fa-receipt"></i>Buyurtmalar</button>
+		</div>
+	</nav>
+	<main class="main"><div class="content-area" id="content"><div class="loading"><div class="spinner"></div></div></div></main>
+	<script src="../../frontend/js/theme.js"></script>
+	<script>
+		var content = document.getElementById('content');
+		function loadPage(page, el) {
+			document.querySelectorAll('.nav-item').forEach(function (b) { b.classList.remove('active'); });
+			if (el) el.classList.add('active');
+			fetch('pages/' + page + '.html').then(function (r) { if (!r.ok) throw 0; return r.text(); })
+				.then(function (h) { content.innerHTML = h; })
+				.catch(function () { content.textContent = 'Sahifa topilmadi'; });
+		}
+		function toast(text) {
+			var t = document.createElement('div'); t.className = 'pg-toast'; t.textContent = text;
+			document.body.appendChild(t); setTimeout(function () { t.remove(); }, 3500);
+		}
+		try { var u = JSON.parse(localStorage.getItem('user') || '{}'); if (u.full_name) document.getElementById('adminName').textContent = u.full_name; } catch (e) {}
+		document.getElementById('logoutBtn').addEventListener('click', function () {
+			['token', 'user', 'userRole'].forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
+			location.href = 'admin-login.html';
+		});
+		content.addEventListener('click', function (e) {
+			var aa = e.target.closest('[data-admin-act]');
+			if (aa) {
+				var tr = aa.closest('tr'), blocked = tr.dataset.blocked !== '1';
+				tr.dataset.blocked = blocked ? '1' : '0';
+				var pl = tr.querySelector('.state'); pl.textContent = blocked ? 'Bloklangan' : 'Faol'; pl.className = 'state pg-pill' + (blocked ? ' coral' : '');
+				aa.textContent = blocked ? 'Blokdan chiqarish' : 'Bloklash';
+				toast(blocked ? 'Foydalanuvchi bloklandi' : 'Blok olib tashlandi');
+				return;
+			}
+			var ao = e.target.closest('[data-adm-order]');
+			if (ao) {
+				var ok = ao.dataset.admOrder === 'ok', row = ao.closest('tr'), st = row.querySelector('.state');
+				st.textContent = ok ? 'Tasdiqlangan' : 'Rad etilgan'; st.className = 'state pg-pill' + (ok ? '' : ' coral');
+				row.querySelector('.acts').textContent = '';
+				toast(ok ? 'Buyurtma tasdiqlandi' : 'Buyurtma rad etildi');
+			}
+		});
+		content.addEventListener('input', function (e) {
+			var s = e.target.closest('[data-search]');
+			if (!s) return;
+			var term = s.value.trim().toLowerCase();
+			content.querySelectorAll('#' + s.dataset.search + ' tr').forEach(function (tr) { tr.hidden = tr.textContent.toLowerCase().indexOf(term) === -1; });
+		});
+		(function () {
+			var sidebar = document.getElementById('sidebar'), btn = document.getElementById('menuBtn');
+			var back = document.createElement('div'); back.className = 'sidebar-backdrop'; document.body.appendChild(back);
+			function setOpen(o) { sidebar.classList.toggle('open', o); back.classList.toggle('show', o); btn.setAttribute('aria-expanded', String(o)); }
+			btn.addEventListener('click', function () { setOpen(!sidebar.classList.contains('open')); });
+			back.addEventListener('click', function () { setOpen(false); });
+			sidebar.addEventListener('click', function (e) { if (e.target.closest('.nav-item')) setOpen(false); });
+		})();
+		loadPage('a-home', document.querySelector('.nav-item'));
+	</script>
+</body>
+</html>
