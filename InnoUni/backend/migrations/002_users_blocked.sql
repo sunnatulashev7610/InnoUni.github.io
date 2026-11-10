@@ -1,0 +1,9 @@
+ALTER TABLE users ADD COLUMN blocked TINYINT(1) NOT NULL DEFAULT 0;
+CREATE TABLE IF NOT EXISTS admin_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    admin_id INT NOT NULL,
+    action VARCHAR(50) NOT NULL,
+    target_user_id INT,
+    detail VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

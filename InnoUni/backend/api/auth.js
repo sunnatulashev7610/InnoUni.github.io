@@ -99,6 +99,10 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid email or password' });
         }
 
+        if (user.blocked) {
+            return res.status(403).json({ error: 'This account is blocked' });
+        }
+
         // Check if role matches (if specified)
         if (role && user.role !== role) {
             return res.status(403).json({ 

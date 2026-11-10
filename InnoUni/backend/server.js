@@ -15,6 +15,7 @@ const teacherRouter = require('./api/teacher');
 const dashboardRouter = require('./api/dashboard');
 const teamsRouter = require('./api/teams');
 const ordersRouter = require('./api/orders');
+const adminRouter = require('./api/admin');
 const { runMigrations } = require('./migrate');
 const { escapeHtml } = require('./utils/escapeHtml');
 const { isValidEmail } = require('./utils/validation');
@@ -259,6 +260,7 @@ app.use('/api/teacher', teacherRouter);
 app.use('/api/dashboard', authenticateToken, dashboardRouter);
 app.use('/api/teams', teamsRouter);
 app.use('/api/orders', ordersRouter);
+app.use('/api/admin', adminRouter);
 
 // Role-based dashboard routing
 app.get('/dashboard/:userId', authenticateToken, async (req, res) => {

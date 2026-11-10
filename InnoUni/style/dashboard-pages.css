@@ -195,11 +195,12 @@ select.pg-input option { background: var(--surface); color: var(--ink); }
 .pg-faq summary { cursor: pointer; font-weight: 600; }
 
 /* Role switch + role-based sidebar */
-.role-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 3px; margin: 0 0 18px; border-radius: 10px; background: var(--surface-2); }
+.role-switch { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; padding: 3px; margin: 0 0 18px; border-radius: 10px; background: var(--surface-2); }
 .role-switch button { padding: 8px 6px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-2); font: 600 .82rem var(--font-body); cursor: pointer; }
 .role-switch button.on { background: var(--surface); color: var(--ink); outline: 1px solid var(--line); box-shadow: var(--shadow-sm); }
-body[data-role="student"] [data-role-group="teacher"], body[data-role="teacher"] [data-role-group="student"] { display: none; }
-body[data-role="student"] .only-teacher, body[data-role="teacher"] .only-student { display: none !important; }
+body[data-role] [data-role-group] { display: none; }
+body[data-role="student"] [data-role-group="student"], body[data-role="teacher"] [data-role-group="teacher"], body[data-role="admin"] [data-role-group="admin"] { display: block; }
+body[data-role="student"] .only-teacher, body[data-role="teacher"] .only-student, body[data-role="admin"] .only-student { display: none !important; }
 
 /* Teacher pages */
 .pg-todo { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 13px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; text-align: left; cursor: pointer; transition: border-color .15s; }
