@@ -459,12 +459,12 @@ router.get('/analytics/:userId', authenticateToken, teacherOnly, requireSelf(), 
         // Get completion trends
         const [completionTrends] = await db.execute(`
             SELECT 
-                DATE(ce.updated_at) as date,
+                DATE(ce.enrolled_at) as date,
                 COUNT(CASE WHEN ce.status = 'completed' THEN 1 END) as completions
             FROM course_enrollments ce
             JOIN courses c ON ce.course_id = c.id
-            WHERE c.teacher_id = ? AND ce.status = 'completed' AND ce.updated_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-            GROUP BY DATE(ce.updated_at)
+            WHERE c.teacher_id = ? AND ce.status = 'completed' AND ce.enrolled_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+            GROUP BY DATE(ce.enrolled_at)
             ORDER BY date ASC
         `, [userId, parseInt(period)]);
 
@@ -477,7 +477,7 @@ router.get('/analytics/:userId', authenticateToken, teacherOnly, requireSelf(), 
                 COUNT(ce.user_id) as total_students,
                 COUNT(CASE WHEN ce.status = 'completed' THEN 1 END) as completed_students,
                 AVG(ce.progress) as avg_progress,
-                COUNT(CASE WHEN ce.status = 'completed' AND ce.updated_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) THEN 1 END) as recent_completions
+                COUNT(CASE WHEN ce.status = 'completed' AND ce.enrolled_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) THEN 1 END) as recent_completions
             FROM courses c
             LEFT JOIN course_enrollments ce ON c.id = ce.course_id
             WHERE c.teacher_id = ?
