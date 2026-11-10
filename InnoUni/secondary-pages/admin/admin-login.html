@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="robots" content="noindex, nofollow">
+	<title>Admin kirish | Gather Edu</title>
+	<script>(function(){try{var t=localStorage.getItem('geTheme');if(!t)t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='light'}})()</script>
+	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400..700&display=swap">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+	<link rel="stylesheet" href="../../style/theme.css">
+	<link rel="stylesheet" href="../../style/gather.css">
+	<link rel="icon" type="image/png" sizes="32x32" href="../../imgs/logo/favicon-32.png">
+</head>
+<body class="ge ge-auth">
+	<button type="button" class="theme-toggle" data-theme-toggle aria-label="Tungi rejimga o'tish" aria-pressed="false"><i class="fas fa-sun ico-sun"></i><i class="fas fa-moon ico-moon"></i></button>
+	<div class="login-container">
+		<div class="login-header">
+			<div class="logo"><img class="logo-img" src="../../imgs/logo/logo-icon.png" width="36" height="36" alt="">Gather Edu</div>
+			<h1 class="login-title">Admin kirish</h1>
+			<p class="login-subtitle">Faqat administratorlar uchun</p>
+		</div>
+		<div class="error-message" id="errorMessage" role="alert"></div>
+		<form id="adminLoginForm">
+			<div class="form-group"><label for="email" class="form-label">Email manzil</label><input type="email" id="email" class="form-control" autocomplete="username" required></div>
+			<div class="form-group"><label for="password" class="form-label">Parol</label><input type="password" id="password" class="form-control" autocomplete="current-password" required></div>
+			<button type="submit" class="login-btn" id="loginBtn"><span id="btnText">Kirish</span></button>
+		</form>
+	</div>
+	<script src="../../frontend/js/utils.js"></script>
+	<script src="../../frontend/js/config.js"></script>
+	<script src="../../frontend/js/theme.js"></script>
+	<script>
+		(function () {
+			var err = document.getElementById('errorMessage');
+			function showError(m) { err.textContent = m; err.style.display = 'block'; }
+			document.getElementById('adminLoginForm').addEventListener('submit', async function (e) {
+				e.preventDefault();
+				var btn = document.getElementById('loginBtn'), txt = document.getElementById('btnText');
+				btn.disabled = true; txt.textContent = 'Kirish...'; err.style.display = 'none';
+				try {
+					var base = (window.config && window.config.apiBaseUrl) || '/api';
+					var res = await fetch(base + '/auth/login', {
+						method: 'POST', headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ email: document.getElementById('email').value.trim(), password: document.getElementById('password').value, role: 'admin' })
+					});
+					var data = await res.json();
+					if (!res.ok) { showError(res.status === 403 && data.error === 'Role mismatch' ? 'Bu akkaunt administrator emas' : (data.error || 'Kirishda xatolik')); return; }
+					if (!data.user || data.user.role !== 'admin') { showError('Bu akkaunt administrator emas'); return; }
+					localStorage.setItem('token', data.token);
+					localStorage.setItem('user', JSON.stringify(data.user));
+					localStorage.setItem('userRole', 'admin');
+					location.href = 'admin.html';
+				} catch (x) {
+					showError(window.config && window.config.backendMissing ? 'Server ulanmagan. BACKEND_API_URL kiritilmagan.' : 'Tarmoq xatoligi. Qayta urinib ko\'ring.');
+				} finally { btn.disabled = false; txt.textContent = 'Kirish'; }
+			});
+		})();
+	</script>
+</body>
+</html>

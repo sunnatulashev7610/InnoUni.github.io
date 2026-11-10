@@ -176,7 +176,7 @@ select.pg-input option { background: var(--surface); color: var(--ink); }
 .pg-toast { position: fixed; right: 24px; bottom: 24px; z-index: 2000; padding: 12px 18px; border-radius: 10px; background: var(--ink); color: var(--bg); font-weight: 600; font-size: .92rem; box-shadow: var(--shadow-lg); }
 
 /* Pricing */
-.pg-seg.three { grid-template-columns: repeat(3, 1fr); }
+.pg-seg.three { grid-template-columns: 1fr 1fr; }
 .pg-plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; align-items: stretch; max-width: 1000px; margin: 0 auto; }
 .pg-plan { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 26px; }
 .pg-plan h3 { font: 700 1.3rem var(--font-display); margin: 0; }
@@ -198,9 +198,8 @@ select.pg-input option { background: var(--surface); color: var(--ink); }
 .role-switch { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; padding: 3px; margin: 0 0 18px; border-radius: 10px; background: var(--surface-2); }
 .role-switch button { padding: 8px 6px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-2); font: 600 .82rem var(--font-body); cursor: pointer; }
 .role-switch button.on { background: var(--surface); color: var(--ink); outline: 1px solid var(--line); box-shadow: var(--shadow-sm); }
-body[data-role] [data-role-group] { display: none; }
-body[data-role="student"] [data-role-group="student"], body[data-role="teacher"] [data-role-group="teacher"], body[data-role="admin"] [data-role-group="admin"] { display: block; }
-body[data-role="student"] .only-teacher, body[data-role="teacher"] .only-student, body[data-role="admin"] .only-student { display: none !important; }
+body[data-role="student"] [data-role-group="teacher"], body[data-role="teacher"] [data-role-group="student"] { display: none; }
+body[data-role="student"] .only-teacher, body[data-role="teacher"] .only-student { display: none !important; }
 
 /* Teacher pages */
 .pg-todo { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 13px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; text-align: left; cursor: pointer; transition: border-color .15s; }
