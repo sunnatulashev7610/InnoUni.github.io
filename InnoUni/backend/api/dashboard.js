@@ -51,9 +51,9 @@ router.get('/stats/:userId', requireSelf(), async (req, res) => {
                 COUNT(*) as current_streak,
                 MAX(study_date) as last_study_date
             FROM (
-                SELECT DISTINCT DATE(created_at) as study_date
+                SELECT DISTINCT DATE(enrolled_at) as study_date
                 FROM course_enrollments
-                WHERE user_id = ? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+                WHERE user_id = ? AND enrolled_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
                 ORDER BY study_date DESC
             ) as study_dates
             WHERE study_date >= DATE_SUB(CURDATE(), INTERVAL 28 DAY)
@@ -71,7 +71,7 @@ router.get('/stats/:userId', requireSelf(), async (req, res) => {
         // Calculate learning hours (estimated based on course progress)
         const [learningHours] = await db.execute(`
             SELECT 
-                SUM(CE.progress * 2) as estimated_hours
+                SUM(ce.progress * 2) as estimated_hours
             FROM course_enrollments ce
             WHERE ce.user_id = ? AND ce.status = 'active'
         `, [userId]);
@@ -138,12 +138,12 @@ router.get('/activity/:userId', requireSelf(), async (req, res) => {
         const [taskActivity] = await db.execute(`
             SELECT 
                 'task' as type,
-                t.updated_at as timestamp,
+                t.created_at as timestamp,
                 t.title as title,
                 t.status as action
             FROM tasks t
             WHERE t.assigned_to = ? AND t.status = 'completed'
-            ORDER BY t.updated_at DESC
+            ORDER BY t.created_at DESC
             LIMIT ?
         `, [userId, parseInt(limit)]);
 

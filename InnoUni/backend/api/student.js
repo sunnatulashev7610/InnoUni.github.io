@@ -81,13 +81,13 @@ router.get('/dashboard/:userId', authenticateToken, studentOnly, requireSelf(), 
                 ROUND(AVG(ce.progress), 2) as avg_progress,
                 COUNT(DISTINCT gm.group_id) as active_groups,
                 COUNT(DISTINCT ua.achievement_id) as total_achievements,
-                SUM(CE.progress * 2) as estimated_study_hours,
+                SUM(ce.progress * 2) as estimated_study_hours,
                 (
                     SELECT COUNT(*) 
                     FROM (
-                        SELECT DISTINCT DATE(created_at) as study_date
+                        SELECT DISTINCT DATE(enrolled_at) as study_date
                         FROM course_enrollments
-                        WHERE user_id = ? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+                        WHERE user_id = ? AND enrolled_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
                     ) as dates
                     WHERE study_date >= DATE_SUB(CURDATE(), INTERVAL 28 DAY)
                 ) as current_streak
@@ -111,7 +111,7 @@ router.get('/dashboard/:userId', authenticateToken, studentOnly, requireSelf(), 
             AND c.id NOT IN (
                 SELECT course_id FROM course_enrollments WHERE user_id = ?
             )
-            GROUP BY c.id
+            GROUP BY c.id, c.title, c.description, c.category, c.avatar, u.full_name
             ORDER BY enrolled_students DESC, RAND()
             LIMIT 5
         `, [userId]);
