@@ -22,3 +22,15 @@ All routes need `Authorization: Bearer <token>`.
 
 ## Migrations
 SQL files in `migrations/` run once each, in name order, at server start (tracked in `schema_migrations`). Add `002_name.sql` for new changes; never edit an applied file.
+
+## Admin API (`/api/admin`, admin role only)
+| Method | Path | What |
+|---|---|---|
+| GET | `/stats` | Users by role, orders by status, team count |
+| GET | `/users?q=&role=` | Search users |
+| POST | `/users/:id/role` | `{role}`; not your own |
+| POST | `/users/:id/block` | `{blocked: true|false}`; not yourself; takes effect at next login (token lives up to 24h) |
+| GET | `/teams` | Teams with captain and member count |
+| GET | `/orders?status=` | All orders |
+
+Role and block changes are written to `admin_log`. The first admin is set by hand in the database: `UPDATE users SET role='admin' WHERE email='...';`
