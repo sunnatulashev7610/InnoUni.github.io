@@ -20,7 +20,7 @@ const currentEnvironment = isLocal ? 'development' : 'production';
 // GitHub Pages only serves static files - it cannot run the Node/MySQL backend.
 // Put the public address of the deployed backend here, e.g. 'https://innouni-api.onrender.com/api'
 // (that server must list https://<user>.github.io in CORS_ORIGINS). Leave '' to use the same origin ('/api').
-const BACKEND_API_URL = '';
+const BACKEND_API_URL = 'https://gatheredu-io.onrender.com/api';
 if (BACKEND_API_URL) {
     config.production.apiBaseUrl = BACKEND_API_URL;
 }
