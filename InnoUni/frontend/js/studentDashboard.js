@@ -16,7 +16,16 @@ class StudentDashboard {
             this.renderStudentDashboard();
         } catch (error) {
             console.error('Student dashboard initialization error:', error);
-            window.location.href = siteUrl('/secondary-pages/login/login.html');
+            // Only a sign-in problem sends the user back to login; other errors must be visible, not look like a bounce
+            if (/token|unauthor|expired|forbidden|access denied|not authenticated/i.test(String(error && error.message))) {
+                window.location.href = siteUrl('/secondary-pages/login/login.html');
+            } else {
+                const bar = document.createElement('div');
+                bar.setAttribute('role', 'alert');
+                bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2000;padding:12px 16px;background:#b3261e;color:#fff;font:14px system-ui';
+                bar.textContent = 'Ma\'lumotlarni yuklab bo\'lmadi: ' + (error && error.message || 'server javob bermadi') + '. Sahifani yangilab ko\'ring.';
+                document.body.prepend(bar);
+            }
         }
     }
 
@@ -33,9 +42,10 @@ class StudentDashboard {
     async loadStudentDashboardData() {
         try {
             const userId = this.currentUser.id;
+            // Recommendations are optional: the page must still open if they fail
             const [dashboardData, recommendations] = await Promise.all([
                 api.request(`/student/dashboard/${userId}`),
-                api.request(`/student/recommendations/${userId}`)
+                api.getRecommendations(userId).catch((e) => { console.warn('Recommendations unavailable:', e); return null; })
             ]);
 
             this.dashboardData = dashboardData;
