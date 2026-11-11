@@ -72,7 +72,7 @@
 				Guruhlar
 				<span class="nav-badge">5</span>
 			</button>
-			<button class="nav-item" onclick="loadPage('jamoalar', this)">
+			<button class="nav-item" data-feature="teams" hidden onclick="loadPage('jamoalar', this)">
 				<i class="fas fa-user-friends"></i>
 				Jamoalar
 			</button>
@@ -110,7 +110,7 @@
 				<i class="fas fa-book"></i>
 				Kurslar
 			</button>
-			<button class="nav-item" onclick="loadPage('library', this)">
+			<button class="nav-item" data-feature="library" hidden onclick="loadPage('library', this)">
 				<i class="fas fa-folder"></i>
 				Kutubxona
 			</button>
@@ -277,7 +277,16 @@
 	<script src="../../frontend/js/dashboard-teacher.js"></script>
 	<script>
 		// Enhanced loadPage function with loading states
+		// Built but switched off for now. To bring a feature back, set it to true (and show its menu item).
+		var FEATURES = { teams: false, library: false };
+		var PAGE_FEATURE = { jamoalar: 'teams', 'team-detail': 'teams', library: 'library' };
+		document.querySelectorAll('[data-feature]').forEach(function (n) { n.hidden = !FEATURES[n.dataset.feature]; });
 		function loadPage(page, element) {
+			if (PAGE_FEATURE[page] && !FEATURES[PAGE_FEATURE[page]]) {
+				// closed feature: go to the overview instead
+				page = currentRole === 'teacher' ? 't-home' : 'main.dashboard';
+				element = navFor(page) || element;
+			}
 			// Update active state
 			document.querySelectorAll(".nav-item")
 				.forEach(btn => btn.classList.remove("active"));

@@ -1,5 +1,6 @@
 // Teams + orders routes. In-memory fake database, no MySQL needed.
 process.env.JWT_SECRET = 'test-secret-test-secret-123';
+process.env.FEATURE_TEAMS = 'true'; // teams are off by default; these tests cover the code for when they are switched on
 
 const request = require('supertest');
 const jwt = require('jsonwebtoken');

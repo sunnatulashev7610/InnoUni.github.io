@@ -118,3 +118,6 @@ body {
 	.page-title { font-size: 1.5rem; }
 	.user-profile { padding: 4px; }
 }
+
+/* A menu item can be switched off with the hidden attribute (see FEATURES in dashboard.html) */
+.nav-item[hidden] { display: none; }

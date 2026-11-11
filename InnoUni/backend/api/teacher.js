@@ -1,5 +1,6 @@
 const express = require('express');
 const { ensureCourseGroup } = require('../utils/courseGroups');
+const { requireFeature } = require('../utils/features');
 const router = express.Router();
 const { teacherOnly, authenticateToken, requireSelf } = require('../middleware/roleBased');
 const { parseId, validateGrade, validateText, validateUrl } = require('../utils/validation');
@@ -551,7 +552,7 @@ router.post('/tasks/:taskId/grade', authenticateToken, teacherOnly, async (req, 
 });
 
 // Get teacher's library (uploaded materials)
-router.get('/library/:userId', authenticateToken, teacherOnly, requireSelf(), async (req, res) => {
+router.get('/library/:userId', requireFeature('library'), authenticateToken, teacherOnly, requireSelf(), async (req, res) => {
     try {
         const userId = req.params.userId;
 
