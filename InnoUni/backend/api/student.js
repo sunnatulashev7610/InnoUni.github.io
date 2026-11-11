@@ -470,6 +470,47 @@ router.put('/tasks/:taskId/complete', authenticateToken, studentOnly, async (req
     }
 });
 
+// A task the student may work on: assigned to them, or a course task of a course they are enrolled in
+async function findVisibleTask(db, taskId, userId) {
+    const [rows] = await db.execute(`
+        SELECT t.id, t.assigned_to
+        FROM tasks t
+        LEFT JOIN course_enrollments ce ON ce.course_id = t.course_id AND ce.user_id = ? AND ce.status = 'active'
+        WHERE t.id = ? AND (t.assigned_to = ? OR (t.assigned_to IS NULL AND ce.id IS NOT NULL))
+    `, [userId, taskId, userId]);
+    return rows[0] || null;
+}
+
+// All my tasks (assigned to me + course tasks), with my submission, grade and feedback
+router.get('/tasks', authenticateToken, studentOnly, async (req, res) => {
+    try {
+        const uid = req.user.userId;
+        const [rows] = await req.db.execute(`
+            SELECT t.id, t.title, t.description, t.course_id, c.title AS course_title,
+                DATE_FORMAT(t.due_date, '%Y-%m-%d') AS due_date,
+                s.status AS sub_status, s.grade, s.feedback, s.content, s.submitted_at
+            FROM tasks t
+            JOIN courses c ON c.id = t.course_id
+            LEFT JOIN course_enrollments ce ON ce.course_id = t.course_id AND ce.user_id = ? AND ce.status = 'active'
+            LEFT JOIN task_submissions s ON s.task_id = t.id AND s.student_id = ?
+            WHERE t.assigned_to = ? OR (t.assigned_to IS NULL AND ce.id IS NOT NULL)
+            ORDER BY (s.id IS NULL) DESC, (t.due_date IS NULL), t.due_date ASC, t.id DESC
+            LIMIT 200
+        `, [uid, uid, uid]);
+        res.json({
+            tasks: rows.map((t) => ({
+                id: t.id, title: t.title, description: t.description, courseId: t.course_id, course: t.course_title, dueDate: t.due_date,
+                status: t.sub_status === 'graded' ? 'graded' : t.sub_status === 'submitted' ? 'submitted' : 'todo',
+                grade: t.grade === null || t.grade === undefined ? null : Number(t.grade),
+                feedback: t.feedback || null, content: t.content || null, submittedAt: t.submitted_at || null
+            }))
+        });
+    } catch (error) {
+        console.error('My tasks error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // Submit (or re-submit, until it is graded) the answer to a task assigned to the student
 router.post('/tasks/:taskId/submit', authenticateToken, studentOnly, async (req, res) => {
     try {
@@ -486,12 +527,8 @@ router.post('/tasks/:taskId/submit', authenticateToken, studentOnly, async (req,
             return res.status(400).json({ error: contentResult.error });
         }
 
-        // Task must be assigned to this student
-        const [task] = await db.execute(
-            'SELECT id FROM tasks WHERE id = ? AND assigned_to = ?',
-            [taskId, userId]
-        );
-        if (task.length === 0) {
+        const task = await findVisibleTask(db, taskId, userId);
+        if (!task) {
             return res.status(404).json({ error: 'Task not found' });
         }
 
@@ -514,8 +551,10 @@ router.post('/tasks/:taskId/submit', authenticateToken, studentOnly, async (req,
             );
         }
 
-        // A submitted task counts as completed
-        await db.execute('UPDATE tasks SET status = "completed" WHERE id = ?', [taskId]);
+        // A task assigned to me counts as completed once submitted (a course task is shared, so its status stays)
+        if (task.assigned_to === userId) {
+            await db.execute('UPDATE tasks SET status = "completed" WHERE id = ?', [taskId]);
+        }
 
         res.status(existing.length === 0 ? 201 : 200).json({ message: 'Task submitted successfully' });
     } catch (error) {

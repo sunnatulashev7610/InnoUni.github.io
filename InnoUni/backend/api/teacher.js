@@ -377,34 +377,79 @@ router.get('/courses/:courseId/students', authenticateToken, teacherOnly, async 
     }
 });
 
-// Create and assign tasks to students
+// Create a task for a whole course (assigned_to omitted) or for one enrolled student
 router.post('/tasks', authenticateToken, teacherOnly, async (req, res) => {
     try {
         const db = req.db;
-        const { title, description, course_id, priority, due_date, assigned_to } = req.body;
         const teacherId = req.user.userId;
+        const courseId = parseId(req.body.course_id);
+        if (!courseId) return res.status(400).json({ error: 'Invalid course id' });
 
-        // Validate that course belongs to teacher
-        const [course] = await db.execute(
-            'SELECT id FROM courses WHERE id = ? AND teacher_id = ?',
-            [course_id, teacherId]
-        );
+        const title = validateText(req.body.title, { field: 'Title', maxLength: 255 });
+        if (title.error) return res.status(400).json({ error: title.error });
+        const description = validateText(req.body.description, { field: 'Description', required: false, maxLength: 5000 });
+        if (description.error) return res.status(400).json({ error: description.error });
 
-        if (course.length === 0) {
-            return res.status(403).json({ error: 'Access denied' });
+        let dueDate = null;
+        if (req.body.due_date !== undefined && req.body.due_date !== null && req.body.due_date !== '') {
+            const d = String(req.body.due_date);
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || Number.isNaN(Date.parse(d + 'T00:00:00Z')) || new Date(d + 'T00:00:00Z').toISOString().slice(0, 10) !== d) {
+                return res.status(400).json({ error: 'Due date must be a valid date (YYYY-MM-DD)' });
+            }
+            dueDate = d;
+        }
+        const priority = req.body.priority === undefined ? 'medium' : req.body.priority;
+        if (!['low', 'medium', 'high'].includes(priority)) return res.status(400).json({ error: 'Priority must be low, medium or high' });
+
+        // The course must belong to this teacher
+        const [course] = await db.execute('SELECT id FROM courses WHERE id = ? AND teacher_id = ?', [courseId, teacherId]);
+        if (course.length === 0) return res.status(403).json({ error: 'Access denied' });
+
+        let assignedTo = null;
+        if (req.body.assigned_to !== undefined && req.body.assigned_to !== null && req.body.assigned_to !== '') {
+            assignedTo = parseId(req.body.assigned_to);
+            if (!assignedTo) return res.status(400).json({ error: 'Invalid student id' });
+            const [enrolled] = await db.execute('SELECT id FROM course_enrollments WHERE course_id = ? AND user_id = ?', [courseId, assignedTo]);
+            if (enrolled.length === 0) return res.status(400).json({ error: 'The student is not enrolled in this course' });
         }
 
         const [result] = await db.execute(
             'INSERT INTO tasks (title, description, course_id, priority, due_date, assigned_to) VALUES (?, ?, ?, ?, ?, ?)',
-            [title, description, course_id, priority, due_date, assigned_to]
+            [title.value, description.value, courseId, priority, dueDate, assignedTo]
         );
-
-        res.status(201).json({
-            message: 'Task created successfully',
-            taskId: result.insertId
-        });
+        res.status(201).json({ message: 'Task created successfully', taskId: result.insertId });
     } catch (error) {
         console.error('Task creation error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Tasks of one course with submission counts (course-wide tasks count every enrolled student)
+router.get('/courses/:courseId/tasks', authenticateToken, teacherOnly, async (req, res) => {
+    const courseId = parseId(req.params.courseId);
+    if (!courseId) return res.status(400).json({ error: 'Invalid course id' });
+    try {
+        const course = await ownCourse(req.db, courseId, req.user.userId);
+        if (!course) return res.status(404).json({ error: 'Course not found' });
+        const [rows] = await req.db.execute(`
+            SELECT t.id, t.title, t.description, t.assigned_to, DATE_FORMAT(t.due_date, '%Y-%m-%d') AS due_date,
+                (SELECT COUNT(*) FROM task_submissions s WHERE s.task_id = t.id) AS submitted,
+                (SELECT COUNT(*) FROM task_submissions s WHERE s.task_id = t.id AND s.status = 'graded') AS graded,
+                (SELECT COUNT(*) FROM course_enrollments e WHERE e.course_id = t.course_id AND e.status = 'active') AS students
+            FROM tasks t
+            WHERE t.course_id = ?
+            ORDER BY t.id DESC
+            LIMIT 200
+        `, [courseId]);
+        res.json({
+            tasks: rows.map((t) => ({
+                id: t.id, title: t.title, description: t.description, assignedTo: t.assigned_to, dueDate: t.due_date,
+                submitted: Number(t.submitted) || 0, graded: Number(t.graded) || 0,
+                students: t.assigned_to ? 1 : Number(t.students) || 0
+            }))
+        });
+    } catch (error) {
+        console.error('Course tasks error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
@@ -515,18 +560,23 @@ router.post('/tasks/:taskId/grade', authenticateToken, teacherOnly, async (req, 
             return res.status(403).json({ error: 'Access denied' });
         }
 
-        // A task is assigned to one student: that student's submission is the one being graded.
-        // student_id may be sent to be explicit, but it must match the assignment.
-        if (!task.assigned_to) {
-            return res.status(400).json({ error: 'This task is not assigned to a student' });
+        // A task assigned to one student grades that student's submission. A course-wide task
+        // (no assigned student) needs student_id to say whose submission is being graded.
+        let studentId = task.assigned_to;
+        if (req.body.student_id !== undefined) {
+            const sid = parseId(req.body.student_id);
+            if (!sid) return res.status(400).json({ error: 'Invalid student id' });
+            if (studentId && sid !== studentId) {
+                return res.status(400).json({ error: 'student_id does not match the student this task is assigned to' });
+            }
+            studentId = sid;
         }
-        if (req.body.student_id !== undefined && parseId(req.body.student_id) !== task.assigned_to) {
-            return res.status(400).json({ error: 'student_id does not match the student this task is assigned to' });
+        if (!studentId) {
+            return res.status(400).json({ error: 'student_id is required for a course task' });
         }
-
         const [submissions] = await db.execute(
             'SELECT id FROM task_submissions WHERE task_id = ? AND student_id = ?',
-            [taskId, task.assigned_to]
+            [taskId, studentId]
         );
         if (submissions.length === 0) {
             return res.status(404).json({ error: 'The student has not submitted this task yet' });
@@ -541,7 +591,7 @@ router.post('/tasks/:taskId/grade', authenticateToken, teacherOnly, async (req, 
         res.json({
             message: 'Submission graded successfully',
             taskId,
-            studentId: task.assigned_to,
+            studentId,
             grade: gradeResult.value,
             feedback: feedbackResult.value
         });

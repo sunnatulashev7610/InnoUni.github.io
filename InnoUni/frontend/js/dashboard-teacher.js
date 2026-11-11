@@ -324,4 +324,109 @@
         }
         draw();
     });
+
+    // ---- Tasks and grading ----
+    G.register('t-grading', async function (root, session) {
+        root.textContent = '';
+        const pg = el('div', 'pg'); root.appendChild(pg);
+        pg.appendChild(head('Vazifalar va baholash', 'Kursga vazifa bering, javoblarni ko\'ring va baholang'));
+        const courses = (await get('/teacher/courses', session)).courses || [];
+        if (!courses.length) { pg.appendChild(el('p', 'pg-muted', 'Avval kurs yarating. Vazifalar kurslarga biriktiriladi.')); return; }
+
+        const pick = el('select', 'pg-input');
+        courses.forEach(function (c) { const o = el('option', '', c.title); o.value = c.id; pick.appendChild(o); });
+        if (G.ctx.courseId && courses.some(function (c) { return c.id === G.ctx.courseId; })) pick.value = String(G.ctx.courseId);
+        const pickBox = el('div', 'pg-card'); pickBox.appendChild(field('Kurs', pick, 'tgCourse')); pg.appendChild(pickBox);
+
+        const form = el('form', 'pg-card'); form.noValidate = true; form.style.marginTop = '14px';
+        form.appendChild(el('h3', '', 'Yangi vazifa'));
+        const title = textInput('', 255, 'Vazifa nomi');
+        const desc = textArea('', 5000); desc.placeholder = 'Nima qilish kerak?';
+        const due = el('input', 'pg-input'); due.type = 'date';
+        form.appendChild(field('Nomi', title, 'tgTitle')); form.appendChild(field('Tavsif', desc, 'tgDesc')); form.appendChild(field('Muddat (ixtiyoriy)', due, 'tgDue'));
+        const fmsg = message();
+        const add = el('button', 'pg-btn', 'Vazifa berish'); add.type = 'submit'; add.style.marginTop = '12px';
+        form.appendChild(add); form.appendChild(fmsg); pg.appendChild(form);
+
+        const list = el('div'); list.style.cssText = 'display:grid;gap:14px;margin-top:14px'; pg.appendChild(list);
+        let openTask = null;
+
+        function submissionBox(task, box) {
+            box.textContent = 'Yuklanmoqda...';
+            get('/teacher/tasks/' + task.id + '/submissions', session).then(function (subs) {
+                box.textContent = '';
+                if (!subs.length) { box.appendChild(el('p', 'pg-muted', 'Hali javob topshirilmagan.')); return; }
+                subs.forEach(function (sb) {
+                    const r = el('div', 'pg-card'); r.style.marginTop = '10px';
+                    const top = el('div', 'pg-row');
+                    top.appendChild(el('b', '', sb.student_name));
+                    top.appendChild(el('span', 'pg-pill' + (sb.status === 'graded' ? '' : ' sun'), sb.status === 'graded' ? 'Baho: ' + Number(sb.grade) : 'Baholanmagan'));
+                    r.appendChild(top);
+                    const body = el('p', '', sb.content); body.style.cssText = 'white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0';
+                    r.appendChild(body);
+                    const gf = el('form'); gf.noValidate = true;
+                    const g = el('input', 'pg-input'); g.type = 'number'; g.min = 0; g.max = 100; g.step = 1; g.placeholder = 'Baho (0-100)'; g.setAttribute('aria-label', 'Baho');
+                    if (sb.status === 'graded') g.value = Number(sb.grade);
+                    const f = textInput(sb.feedback || '', 2000, 'Izoh (ixtiyoriy)'); f.setAttribute('aria-label', 'Izoh');
+                    const gm = message();
+                    const gb = el('button', 'pg-btn', sb.status === 'graded' ? 'Bahoni yangilash' : 'Baholash'); gb.type = 'submit'; gb.style.marginTop = '8px';
+                    [g, f, gb, gm].forEach(function (n) { gf.appendChild(n); f === n && (n.style.marginTop = '8px'); });
+                    gf.addEventListener('submit', async function (ev) {
+                        ev.preventDefault(); gm.textContent = '';
+                        const num = Number(g.value);
+                        if (g.value === '' || !Number.isFinite(num) || num < 0 || num > 100) { gm.textContent = 'Bahoni 0 dan 100 gacha kiriting.'; return; }
+                        gb.disabled = true;
+                        try {
+                            await send('POST', '/teacher/tasks/' + task.id + '/grade', session, { grade: num, feedback: f.value, student_id: sb.student_id });
+                            G.toast('Baho saqlandi');
+                            await load();
+                        } catch (e) {
+                            if (e.auth) { location.href = '../login/login.html'; return; }
+                            gb.disabled = false; gm.textContent = errText(e);
+                        }
+                    });
+                    r.appendChild(gf); box.appendChild(r);
+                });
+            }).catch(function (e) { if (e.auth) { location.href = '../login/login.html'; return; } box.textContent = 'Javoblarni yuklab bo\'lmadi.'; });
+        }
+        async function load() {
+            const d = await get('/teacher/courses/' + pick.value + '/tasks', session);
+            list.textContent = '';
+            if (!d.tasks.length) { list.appendChild(el('p', 'pg-muted', 'Bu kursda hali vazifa yo\'q.')); return; }
+            d.tasks.forEach(function (t) {
+                const c = el('article', 'pg-card');
+                c.appendChild(el('h3', '', t.title));
+                const meta = el('div', 'pg-meta');
+                if (t.dueDate) meta.appendChild(el('span', '', 'Muddat: ' + t.dueDate));
+                meta.appendChild(el('span', '', t.submitted + '/' + t.students + ' topshirgan'));
+                meta.appendChild(el('span', '', t.graded + ' baholangan'));
+                c.appendChild(meta);
+                const box = el('div');
+                const b = btn(openTask === t.id ? 'Yopish' : 'Javoblar', 'ghost', function () {
+                    openTask = openTask === t.id ? null : t.id; load();
+                });
+                b.style.marginTop = '10px';
+                c.appendChild(b); c.appendChild(box);
+                if (openTask === t.id) submissionBox(t, box);
+                list.appendChild(c);
+            });
+        }
+        pick.addEventListener('change', function () { openTask = null; G.ctx.courseId = Number(pick.value); load().catch(function () { list.textContent = 'Yuklab bo\'lmadi.'; }); });
+        form.addEventListener('submit', async function (ev) {
+            ev.preventDefault(); fmsg.textContent = '';
+            if (!title.value.trim()) { fmsg.textContent = 'Vazifa nomini kiriting.'; return; }
+            add.disabled = true;
+            try {
+                await send('POST', '/teacher/tasks', session, { course_id: Number(pick.value), title: title.value, description: desc.value, due_date: due.value || undefined });
+                title.value = ''; desc.value = ''; due.value = '';
+                G.toast('Vazifa berildi');
+                await load();
+            } catch (e) {
+                if (e.auth) { location.href = '../login/login.html'; return; }
+                fmsg.textContent = errText(e);
+            }
+            add.disabled = false;
+        });
+        await load();
+    });
 })();

@@ -216,3 +216,55 @@ describe('group discussion page', () => {
         expect(doc.body.textContent).toContain('Xabar matnini yozing');
     });
 });
+
+describe('student tasks page', () => {
+    let sent;
+    const mk = (o) => ({ id: 1, title: 'Essay', description: 'd', courseId: 10, course: 'Py', dueDate: '2000-01-01', status: 'todo', grade: null, feedback: null, content: null, ...o });
+    async function setupTasks(tasks, failWith) {
+        const dom = new JSDOM('<!doctype html><body><div id="c"><p>demo</p></div></body>', { runScripts: 'outside-only' });
+        win = dom.window; doc = win.document; sent = [];
+        win.config = { apiBaseUrl: 'https://api.test/api' };
+        win.fetch = jest.fn(async (u, init = {}) => {
+            if (init.method === 'POST') { sent.push({ u, body: JSON.parse(init.body) }); return failWith ? { ok: false, status: 409, json: async () => ({ error: failWith }) } : { ok: true, status: 200, json: async () => ({}) }; }
+            return { ok: true, status: 200, json: async () => ({ tasks }) };
+        });
+        win.eval(src);
+        await win.GEData.hydrate('vazifalar', doc.getElementById('c'), { id: 5, token: 't', role: 'student' }, () => {}, (e) => { throw e; });
+    }
+    const tick = () => new Promise((r) => setTimeout(r, 0));
+
+    test('lists tasks with status, overdue, grade; hostile text stays text; filters work', async () => {
+        await setupTasks([mk({ title: '<img src=x onerror=1>' }), mk({ id: 2, status: 'graded', grade: 90, feedback: 'Yaxshi', dueDate: null }), mk({ id: 3, status: 'submitted', dueDate: null })]);
+        expect(doc.body.textContent).not.toContain('demo');
+        expect(doc.querySelectorAll('img').length).toBe(0);
+        expect(doc.body.textContent).toContain('Muddati o\'tgan');
+        expect(doc.body.textContent).toContain('Baho: 90/100');
+        expect(doc.body.textContent).toContain('Yaxshi');
+        [...doc.querySelectorAll('.pg-chip')].find((c) => c.textContent.startsWith('Topshirilgan')).click();
+        expect(doc.querySelectorAll('article').length).toBe(1);
+    });
+    test('submitting sends the answer and moves the task to submitted', async () => {
+        await setupTasks([mk()]);
+        [...doc.querySelectorAll('button')].find((b) => b.textContent === 'Topshirish').click();
+        doc.querySelector('textarea').value = 'Mening javobim';
+        doc.querySelector('form').dispatchEvent(new win.Event('submit', { cancelable: true }));
+        await tick();
+        expect(sent[0]).toEqual({ u: 'https://api.test/api/student/tasks/1/submit', body: { content: 'Mening javobim' } });
+        expect(doc.body.textContent).toContain('Javobni o\'zgartirish');
+    });
+    test('empty answer is blocked; a graded-conflict shows a clear message', async () => {
+        await setupTasks([mk()], 'This submission has already been graded and can no longer be changed');
+        [...doc.querySelectorAll('button')].find((b) => b.textContent === 'Topshirish').click();
+        doc.querySelector('form').dispatchEvent(new win.Event('submit', { cancelable: true }));
+        await tick();
+        expect(sent).toHaveLength(0);
+        doc.querySelector('textarea').value = 'x';
+        doc.querySelector('form').dispatchEvent(new win.Event('submit', { cancelable: true }));
+        await tick();
+        expect(doc.body.textContent).toContain('allaqachon baholangan');
+    });
+    test('empty state', async () => {
+        await setupTasks([]);
+        expect(doc.body.textContent).toContain('Hozircha vazifa yo\'q');
+    });
+});
