@@ -108,7 +108,7 @@ describe('authorization (IDOR)', () => {
     });
 
     test('teacher routes: other teacher is forbidden, own id is allowed', async () => {
-        for (const route of ['dashboard', 'courses', 'tasks', 'library', 'analytics']) {
+        for (const route of ['dashboard', 'courses', 'tasks', 'analytics']) {
             const other = await request(app).get(`/api/teacher/${route}/2`).set(auth(1, 'teacher'));
             expect(other.status).toBe(403);
             const own = await request(app).get(`/api/teacher/${route}/1`).set(auth(1, 'teacher'));

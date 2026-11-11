@@ -15,6 +15,7 @@ const teacherRouter = require('./api/teacher');
 const groupsRouter = require('./api/groups');
 const dashboardRouter = require('./api/dashboard');
 const teamsRouter = require('./api/teams');
+const { requireFeature } = require('./utils/features');
 const ordersRouter = require('./api/orders');
 const adminRouter = require('./api/admin');
 const { runMigrations } = require('./migrate');
@@ -260,7 +261,7 @@ app.use('/api/student', studentRouter);
 app.use('/api/teacher', teacherRouter);
 app.use('/api/groups', groupsRouter);
 app.use('/api/dashboard', authenticateToken, dashboardRouter);
-app.use('/api/teams', teamsRouter);
+app.use('/api/teams', requireFeature('teams'), teamsRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/admin', adminRouter);
 
