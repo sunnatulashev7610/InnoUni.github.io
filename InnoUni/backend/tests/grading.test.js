@@ -38,9 +38,11 @@ const fakeDb = {
             const c = t && state.courses.find((x) => x.id === t.course_id);
             return [t && c.teacher_id === teacherId ? [{ id: t.id, title: t.title, assigned_to: t.assigned_to }] : []];
         }
-        if (sql.startsWith('SELECT id FROM tasks WHERE id = ? AND assigned_to = ?')) {
-            const [taskId, userId] = p;
-            return [state.tasks.filter((t) => t.id === taskId && t.assigned_to === userId).map((t) => ({ id: t.id }))];
+        if (sql.startsWith('SELECT t.id, t.assigned_to FROM tasks t LEFT JOIN course_enrollments ce')) {
+            const [userId, taskId] = p;
+            const enrolled = (state.enrolled || []).some((e) => e.u === userId);
+            return [state.tasks.filter((t) => t.id === taskId && (t.assigned_to === userId || (t.assigned_to === null && enrolled)))
+                .map((t) => ({ id: t.id, assigned_to: t.assigned_to }))];
         }
         if (sql.startsWith('SELECT id, status FROM task_submissions WHERE task_id = ? AND student_id = ?')) {
             return [state.submissions.filter((s) => s.task_id === p[0] && s.student_id === p[1])
@@ -190,9 +192,21 @@ describe('teacher grading', () => {
         expect(state.submissions[0].status).toBe('submitted');
     });
 
-    test('a task without an assigned student cannot be graded', async () => {
-        const res = await grade(2, { grade: 80 });
-        expect(res.status).toBe(400);
+    test('a course task needs student_id to be graded, and then works', async () => {
+        state.enrolled = [{ u: STUDENT }];
+        await submit(2, 'my answer');
+        expect((await grade(2, { grade: 80 })).status).toBe(400);
+        expect((await grade(2, { grade: 80, student_id: 'x' })).status).toBe(400);
+        expect((await grade(2, { grade: 80, student_id: OTHER_STUDENT })).status).toBe(404); // has not submitted
+        expect((await grade(2, { grade: 80, student_id: STUDENT })).status).toBe(200);
+        expect(state.submissions[0]).toMatchObject({ status: 'graded', grade: 80 });
+    });
+
+    test('a course task: only enrolled students can submit; its shared status is untouched', async () => {
+        expect((await submit(2, 'x')).status).toBe(404);                 // not enrolled
+        state.enrolled = [{ u: STUDENT }];
+        expect((await submit(2, 'x')).status).toBe(201);
+        expect(state.tasks.find((t) => t.id === 2).status).toBe('pending');
     });
 
     test('student_id must match the assignment', async () => {

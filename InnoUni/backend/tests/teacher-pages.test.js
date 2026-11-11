@@ -119,3 +119,49 @@ test('editor without a chosen course returns to the list', async () => {
     await run('t-course-edit');
     expect(win.loadPage.mock.calls[0][0]).toBe('t-courses');
 });
+
+describe('teacher tasks and grading page', () => {
+    let tcalls;
+    async function setupT() {
+        const dom = new JSDOM('<!doctype html><body><div id="c"><p>demo</p></div></body>', { runScripts: 'outside-only' });
+        win = dom.window; doc = win.document; tcalls = [];
+        win.config = { apiBaseUrl: 'https://api.test/api' };
+        win.fetch = jest.fn(async (url, init = {}) => {
+            const u = url.replace('https://api.test/api', ''); const m = init.method || 'GET';
+            tcalls.push({ m, u, body: init.body && JSON.parse(init.body) });
+            const ok = (j) => ({ ok: true, status: 200, json: async () => j });
+            if (u === '/teacher/courses') return ok({ courses: [{ id: 10, title: 'Python', status: 'active', videos: 1, guides: 0, students: 2 }] });
+            if (/\/courses\/10\/tasks$/.test(u)) return ok({ tasks: [{ id: 7, title: 'Essay', dueDate: '2026-12-01', submitted: 1, graded: 0, students: 2 }] });
+            if (/\/tasks\/7\/submissions$/.test(u)) return ok([{ id: 1, student_id: 5, student_name: '<b>Ali</b>', content: 'javob', status: 'submitted', grade: null, feedback: null }]);
+            return ok({});
+        });
+        win.eval(dataSrc); win.eval(teacherSrc);
+        await win.GEData.hydrate('t-grading', doc.getElementById('c'), session, () => {}, (e) => { throw e; });
+    }
+    test('shows tasks with counts, creates a course task', async () => {
+        await setupT();
+        expect(doc.body.textContent).not.toContain('demo');
+        expect(doc.body.textContent).toContain('1/2 topshirgan');
+        doc.getElementById('tgTitle').value = 'Yangi';
+        doc.getElementById('tgDue').value = '2026-12-05';
+        doc.getElementById('tgTitle').closest('form').dispatchEvent(new win.Event('submit', { cancelable: true }));
+        await flush();
+        expect(tcalls.find((c) => c.m === 'POST' && c.u === '/teacher/tasks').body).toMatchObject({ course_id: 10, title: 'Yangi', due_date: '2026-12-05' });
+    });
+    test('blocks an empty title; opens answers as text and grades with student_id', async () => {
+        await setupT();
+        doc.getElementById('tgTitle').closest('form').dispatchEvent(new win.Event('submit', { cancelable: true }));
+        await flush();
+        expect(doc.body.textContent).toContain('Vazifa nomini kiriting');
+        byText('button', 'Javoblar').click(); await flush(); await flush();
+        expect([...doc.querySelectorAll('b')].every((n) => n.children.length === 0)).toBe(true); // markup was not parsed
+        expect(doc.body.textContent).toContain('<b>Ali</b>');
+        const gf = doc.querySelector('[aria-label="Baho"]').closest('form');
+        doc.querySelector('[aria-label="Baho"]').value = '150';
+        gf.dispatchEvent(new win.Event('submit', { cancelable: true })); await flush();
+        expect(doc.body.textContent).toContain('0 dan 100 gacha');
+        doc.querySelector('[aria-label="Baho"]').value = '88';
+        gf.dispatchEvent(new win.Event('submit', { cancelable: true })); await flush();
+        expect(tcalls.find((c) => /grade$/.test(c.u)).body).toEqual({ grade: 88, feedback: '', student_id: 5 });
+    });
+});

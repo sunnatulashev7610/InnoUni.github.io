@@ -426,6 +426,97 @@
         await load();
     };
 
+    // ---- Tasks (student): course tasks + tasks assigned to me; submit, see grade and feedback ----
+    function todayIso() {
+        const d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    const TASK_FILTERS = [['all', 'Hammasi'], ['todo', 'Topshirilmagan'], ['submitted', 'Topshirilgan'], ['graded', 'Baholangan']];
+
+    pages.vazifalar = async function (root, session) {
+        root.textContent = '';
+        const pg = el('div', 'pg'); root.appendChild(pg);
+        const hd = el('div', 'pg-head'); const hdd = el('div');
+        hdd.appendChild(el('h1', '', 'Vazifalar'));
+        hdd.appendChild(el('p', '', 'Yozilgan kurslaringiz vazifalari. Javobni topshiring va bahoni shu yerda ko\'ring'));
+        hd.appendChild(hdd); pg.appendChild(hd);
+        const chips = el('div', 'pg-chips'); chips.setAttribute('data-managed', ''); pg.appendChild(chips);
+        const list = el('div'); list.style.cssText = 'display:grid;gap:14px'; pg.appendChild(list);
+        list.textContent = 'Yuklanmoqda...';
+
+        const tasks = (await get('/student/tasks', session)).tasks;
+        let filter = 'all';
+        let openId = null;
+
+        function drawChips() {
+            chips.textContent = '';
+            TASK_FILTERS.forEach(function (f) {
+                const n = f[0] === 'all' ? tasks.length : tasks.filter(function (t) { return t.status === f[0]; }).length;
+                const b = el('button', 'pg-chip' + (filter === f[0] ? ' on' : ''), f[1] + ' (' + n + ')');
+                b.type = 'button'; b.dataset.cat = f[0];
+                b.addEventListener('click', function () { filter = f[0]; draw(); });
+                chips.appendChild(b);
+            });
+        }
+        function card(t) {
+            const c = el('article', 'pg-card');
+            const top = el('div'); top.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center';
+            top.appendChild(el('span', 'pg-pill sky', t.course));
+            const label = { todo: 'Topshirilmagan', submitted: 'Topshirilgan', graded: 'Baholangan' }[t.status];
+            top.appendChild(el('span', 'pg-pill' + (t.status === 'todo' ? ' sun' : ''), label));
+            if (t.status === 'todo' && t.dueDate && t.dueDate < todayIso()) top.appendChild(el('span', 'pg-pill sun', 'Muddati o\'tgan'));
+            c.appendChild(top);
+            const h = el('h3', '', t.title); h.style.marginTop = '10px'; c.appendChild(h);
+            if (t.dueDate) c.appendChild(el('div', 'pg-muted', 'Muddat: ' + t.dueDate));
+            if (t.description) { const d = el('p', '', t.description); d.style.cssText = 'margin:8px 0 0;white-space:pre-wrap;overflow-wrap:anywhere'; c.appendChild(d); }
+            if (t.status === 'graded') {
+                const g = el('div', 'pg-row'); g.style.marginTop = '12px';
+                g.appendChild(el('b', '', 'Baho: ' + t.grade + '/100'));
+                c.appendChild(g);
+                if (t.feedback) { const f = el('p', 'pg-muted', 'O\'qituvchi izohi: ' + t.feedback); f.style.cssText = 'margin:6px 0 0;white-space:pre-wrap'; c.appendChild(f); }
+            } else {
+                const toggle = el('button', 'pg-btn' + (t.status === 'todo' ? ' sun' : ' ghost'), t.status === 'todo' ? 'Topshirish' : 'Javobni o\'zgartirish');
+                toggle.type = 'button'; toggle.style.marginTop = '12px';
+                toggle.addEventListener('click', function () { openId = openId === t.id ? null : t.id; draw(); });
+                c.appendChild(toggle);
+                if (openId === t.id) {
+                    const form = el('form'); form.noValidate = true; form.style.marginTop = '10px';
+                    const ta = el('textarea', 'pg-input'); ta.rows = 5; ta.maxLength = 10000; ta.value = t.content || '';
+                    ta.placeholder = 'Javobingizni yoki ishingizga havolani yozing...'; ta.setAttribute('aria-label', 'Javob');
+                    const msg = el('p', 'pg-muted'); msg.setAttribute('role', 'alert'); msg.style.minHeight = '1.2em';
+                    const go = el('button', 'pg-btn', 'Yuborish'); go.type = 'submit'; go.style.marginTop = '8px';
+                    form.appendChild(ta); form.appendChild(go); form.appendChild(msg);
+                    form.addEventListener('submit', async function (ev) {
+                        ev.preventDefault(); msg.textContent = '';
+                        if (!ta.value.trim()) { msg.textContent = 'Javob matnini yozing.'; return; }
+                        go.disabled = true;
+                        try {
+                            await send('POST', '/student/tasks/' + t.id + '/submit', session, { content: ta.value });
+                            t.status = 'submitted'; t.content = ta.value.trim(); openId = null; draw();
+                        } catch (e) {
+                            if (e.auth) { location.href = '../login/login.html'; return; }
+                            go.disabled = false;
+                            msg.textContent = /graded/.test(e.message) ? 'Bu ish allaqachon baholangan, o\'zgartirib bo\'lmaydi.' : e.message;
+                        }
+                    });
+                    c.appendChild(form);
+                }
+            }
+            return c;
+        }
+        function draw() {
+            drawChips();
+            list.textContent = '';
+            const shown = tasks.filter(function (t) { return filter === 'all' || t.status === filter; });
+            if (!shown.length) {
+                list.appendChild(el('p', 'pg-muted', tasks.length ? 'Bu bo\'limda vazifa yo\'q.' : 'Hozircha vazifa yo\'q. Kursga yozilsangiz, o\'qituvchi bergan vazifalar shu yerda ko\'rinadi.'));
+                return;
+            }
+            shown.forEach(function (t) { list.appendChild(card(t)); });
+        }
+        draw();
+    };
+
     // Returns a promise (resolved when done). Auth errors are passed to onAuthError, other errors to onError.
     window.GEData = {
         hydrate: function (page, root, session, onAuthError, onError) {
