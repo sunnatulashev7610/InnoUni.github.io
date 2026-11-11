@@ -74,13 +74,13 @@ describe('navigation works under any hosting prefix (GitHub Pages)', () => {
 
     test('siteUrl resolves from every page depth', () => {
         const { siteUrl } = require('../../frontend/js/utils.js');
-        const at = (pathname) => siteUrl('frontend/student.html', { pathname });
-        expect(at('/index.html')).toBe('/frontend/student.html');
-        expect(at('/InnoUni/index.html')).toBe('/InnoUni/frontend/student.html');
-        expect(at('/repo/InnoUni/secondary-pages/login/login.html')).toBe('/repo/InnoUni/frontend/student.html');
-        expect(at('/repo/InnoUni/secondary-pages/dashboard/pages/x.html')).toBe('/repo/InnoUni/frontend/student.html');
-        expect(at('/repo/InnoUni/frontend/teacher.html')).toBe('/repo/InnoUni/frontend/student.html');
-        expect(at('/dashboard/5')).toBe('/frontend/student.html');
+        const at = (pathname) => siteUrl('secondary-pages/dashboard/dashboard.html', { pathname });
+        expect(at('/index.html')).toBe('/secondary-pages/dashboard/dashboard.html');
+        expect(at('/InnoUni/index.html')).toBe('/InnoUni/secondary-pages/dashboard/dashboard.html');
+        expect(at('/repo/InnoUni/secondary-pages/login/login.html')).toBe('/repo/InnoUni/secondary-pages/dashboard/dashboard.html');
+        expect(at('/repo/InnoUni/secondary-pages/dashboard/pages/x.html')).toBe('/repo/InnoUni/secondary-pages/dashboard/dashboard.html');
+        expect(at('/repo/InnoUni/frontend/js/utils.js')).toBe('/repo/InnoUni/secondary-pages/dashboard/dashboard.html');
+        expect(at('/dashboard/5')).toBe('/secondary-pages/dashboard/dashboard.html');
     });
 
     test('root index.html forwards to InnoUni/index.html', () => {

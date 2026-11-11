@@ -262,7 +262,7 @@ app.use('/api/teams', teamsRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/admin', adminRouter);
 
-// Role-based dashboard routing
+// Old bookmarked /dashboard/:userId links go to the dashboard page (the role comes from the login token)
 app.get('/dashboard/:userId', authenticateToken, async (req, res) => {
     try {
         const userId = Number(req.params.userId);
@@ -273,22 +273,7 @@ app.get('/dashboard/:userId', authenticateToken, async (req, res) => {
             return res.status(403).json({ error: 'Access denied' });
         }
 
-        const userRole = req.user.role;
-
-        // Redirect to appropriate dashboard based on role
-        switch (userRole) {
-            case 'student':
-                res.sendFile(path.join(__dirname, '../frontend/student.html'));
-                break;
-            case 'teacher':
-                res.sendFile(path.join(__dirname, '../frontend/teacher.html'));
-                break;
-            case 'admin':
-                res.sendFile(path.join(__dirname, '../frontend/teacher.html')); // Admin gets teacher dashboard
-                break;
-            default:
-                res.status(403).json({ error: 'Invalid user role' });
-        }
+        res.redirect('/secondary-pages/dashboard/dashboard.html');
     } catch (error) {
         console.error('Dashboard routing error:', error);
         res.status(500).json({ error: 'Internal server error' });

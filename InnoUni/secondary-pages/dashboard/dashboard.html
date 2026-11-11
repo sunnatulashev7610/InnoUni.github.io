@@ -46,10 +46,11 @@
 					
 					<div class="user-profile">
 						<div class="user-info">
-							<div class="user-name">Sunnat Ulashev</div>
+							<div class="user-name" id="userName">Sunnat Ulashev</div>
 							<div class="user-role" id="userRole">O'quvchi</div>
 						</div>
 						<img src="https://picsum.photos/seed/user/35/35" alt="User" class="user-avatar">
+						<button type="button" class="pg-btn ghost" id="logoutBtn" hidden style="padding:8px 14px">Chiqish</button>
 					</div>
 				</div>
 			</div>
@@ -316,10 +317,41 @@
 		// Initialize dashboard
 		// ---- Role switch (student / teacher view) ----
 		var currentRole = 'student';
+		// Signed in (token from the login page): the role comes from the account and cannot be switched.
+		// No session: demo mode, where the visitor may preview the student and teacher views.
+		function readSession() {
+			var t = null;
+			try { t = localStorage.getItem('token'); } catch (e) { /* storage may be blocked */ }
+			if (!t) return null;
+			try {
+				var p = JSON.parse(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+				if (p.exp && p.exp * 1000 < Date.now()) throw new Error('expired');
+				var u = {};
+				try { u = JSON.parse(localStorage.getItem('user') || '{}'); } catch (e) { /* ignore */ }
+				return { role: p.role, name: u.full_name || '' };
+			} catch (e) {
+				['token', 'user', 'userRole'].forEach(function (k) { try { localStorage.removeItem(k); } catch (x) { /* ignore */ } });
+				location.replace('../login/login.html');
+				return undefined;
+			}
+		}
+		var session = readSession();
+		if (session && session.role === 'admin') location.replace('../admin/admin.html');
 		function initialRole() {
+			if (session) return session.role === 'teacher' ? 'teacher' : 'student';
 			var r = (location.search.match(/[?&]role=(student|teacher)/) || [])[1];
 			try { r = r || localStorage.getItem('geRole'); } catch (e) { /* storage may be blocked */ }
 			return r === 'teacher' ? 'teacher' : 'student';
+		}
+		function applySession() {
+			if (!session) return;
+			var sw = document.querySelector('.role-switch'); if (sw) sw.style.display = 'none';
+			if (session.name) document.getElementById('userName').textContent = session.name;
+			var lo = document.getElementById('logoutBtn'); lo.hidden = false;
+			lo.addEventListener('click', function () {
+				['token', 'user', 'userRole'].forEach(function (k) { try { localStorage.removeItem(k); } catch (x) { /* ignore */ } });
+				location.href = '../login/login.html';
+			});
 		}
 		function navFor(page) {
 			return document.querySelector('[data-role-group="' + currentRole + '"] .nav-item[onclick*="\'' + page + '\'"]');
@@ -329,17 +361,19 @@
 			document.body.dataset.role = role;
 			document.getElementById('userRole').textContent = role === 'teacher' ? "O'qituvchi" : "O'quvchi";
 			document.querySelectorAll('[data-role-btn]').forEach(function (b) { b.classList.toggle('on', b.dataset.roleBtn === role); });
-			try { localStorage.setItem('geRole', role); } catch (e) { /* ignore */ }
+			if (!session) { try { localStorage.setItem('geRole', role); } catch (e) { /* ignore */ } }
 			var home = role === 'teacher' ? 't-home' : 'main.dashboard';
 			loadPage(home, navFor(home));
 		}
 		document.addEventListener('click', function (e) {
 			var rb = e.target.closest('[data-role-btn]');
-			if (rb) setRole(rb.dataset.roleBtn);
+			if (rb && !session) setRole(rb.dataset.roleBtn);
 		});
 
 		document.addEventListener('DOMContentLoaded', function() {
 			// Load default page
+			if (session === undefined) return;
+			applySession();
 			setRole(initialRole());
 			
 			// Add search functionality

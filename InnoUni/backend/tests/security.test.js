@@ -123,7 +123,8 @@ describe('authorization (IDOR)', () => {
 
     test('/dashboard/:userId compares ids as numbers', async () => {
         const own = await request(app).get('/dashboard/1').set(auth(1, 'student'));
-        expect(own.status).toBe(200);
+        expect(own.status).toBe(302);
+        expect(own.headers.location).toBe('/secondary-pages/dashboard/dashboard.html');
         const other = await request(app).get('/dashboard/2').set(auth(1, 'student'));
         expect(other.status).toBe(403);
     });
