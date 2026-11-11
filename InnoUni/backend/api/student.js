@@ -179,6 +179,34 @@ router.get('/courses', authenticateToken, studentOnly, async (req, res) => {
     }
 });
 
+// Lessons and guides of a course I am enrolled in
+router.get('/courses/:courseId/content', authenticateToken, studentOnly, async (req, res) => {
+    try {
+        const courseId = Number(req.params.courseId);
+        if (!Number.isInteger(courseId) || courseId < 1) return res.status(400).json({ error: 'Invalid course id' });
+        const [rows] = await req.db.execute(`
+            SELECT c.id, c.title, c.description, c.category, u.full_name AS teacher, ce.progress AS my_progress
+            FROM courses c
+            JOIN course_enrollments ce ON ce.course_id = c.id AND ce.user_id = ? AND ce.status = 'active'
+            LEFT JOIN users u ON c.teacher_id = u.id
+            WHERE c.id = ? AND c.status = 'active'
+        `, [req.user.userId, courseId]);
+        if (rows.length === 0) return res.status(404).json({ error: 'Course not found or you are not enrolled' });
+        const c = rows[0];
+        const [items] = await req.db.execute(
+            'SELECT id, kind, title, url, position FROM course_content WHERE course_id = ? ORDER BY position, id',
+            [courseId]
+        );
+        res.json({
+            course: { id: c.id, title: c.title, description: c.description, category: c.category, teacher: c.teacher, progress: Number(c.my_progress) || 0 },
+            items
+        });
+    } catch (error) {
+        console.error('Course content error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 router.post('/courses/:courseId/enroll', authenticateToken, studentOnly, async (req, res) => {
     try {
         const db = req.db;

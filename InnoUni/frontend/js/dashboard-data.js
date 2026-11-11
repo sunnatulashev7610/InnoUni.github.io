@@ -15,12 +15,15 @@
         return res.json();
     }
 
-    async function send(method, path, session) {
-        const res = await fetch(apiBase() + path, { method: method, headers: { Authorization: 'Bearer ' + session.token } });
+    async function send(method, path, session, body) {
+        const headers = { Authorization: 'Bearer ' + session.token };
+        const init = { method: method, headers: headers };
+        if (body !== undefined) { headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(body); }
+        const res = await fetch(apiBase() + path, init);
         if (res.status === 401) { const err = new Error('auth'); err.auth = true; throw err; }
-        const body = await res.json().catch(function () { return {}; });
-        if (!res.ok) throw new Error(body.error || 'HTTP ' + res.status);
-        return body;
+        const out = await res.json().catch(function () { return {}; });
+        if (!res.ok) throw new Error(out.error || 'HTTP ' + res.status);
+        return out;
     }
 
     function ago(ts) {
@@ -135,6 +138,12 @@
             meta.appendChild(b);
         }
         card.appendChild(meta);
+        if (c.enrolled) {
+            const open = el('button', 'pg-btn ghost', 'Darslarni ochish'); open.type = 'button';
+            open.style.cssText = 'width:100%;justify-content:center;margin-top:12px';
+            open.addEventListener('click', function () { window.GEData.ctx.courseId = c.id; window.GEData.open('course-detail', 'courses'); });
+            card.appendChild(open);
+        }
         return card;
     }
 
@@ -187,6 +196,82 @@
         drawGrid();
     };
 
+    // ---- Course detail (student): real videos and guides ----
+    function youtubeId(url) {
+        try {
+            const u = new URL(url);
+            const h = u.hostname.replace(/^www\./, '');
+            let id = null;
+            if (h === 'youtu.be') id = u.pathname.slice(1);
+            else if (h === 'youtube.com' || h === 'm.youtube.com') {
+                if (u.pathname === '/watch') id = u.searchParams.get('v');
+                else { const m = u.pathname.match(/^\/(embed|shorts)\/([^/]+)/); if (m) id = m[2]; }
+            }
+            return id && /^[\w-]{6,20}$/.test(id) ? id : null;
+        } catch (e) { return null; }
+    }
+
+    pages['course-detail'] = async function (root, session) {
+        const pg = root.querySelector('.pg') || root;
+        const id = window.GEData.ctx.courseId;
+        pg.textContent = '';
+        const back = el('button', 'pg-back'); back.type = 'button';
+        back.appendChild(el('i', 'fas fa-arrow-left')); back.appendChild(document.createTextNode(' Barcha kurslar'));
+        back.addEventListener('click', function () { window.GEData.open('courses', 'courses'); });
+        pg.appendChild(back);
+        if (!id) { pg.appendChild(el('p', 'pg-muted', 'Kursni "Kurslar" sahifasidan tanlang.')); return; }
+
+        let data;
+        try { data = await get('/student/courses/' + id + '/content', session); }
+        catch (e) {
+            if (e.auth) throw e;
+            pg.appendChild(el('p', 'pg-muted', 'Bu kursga yozilmagansiz yoki kurs topilmadi.'));
+            return;
+        }
+        const c = data.course; const items = data.items || [];
+        const hero = el('section', 'pg-card'); hero.style.marginTop = '14px';
+        if (c.category) hero.appendChild(el('span', 'pg-pill sun', c.category));
+        const h = el('h1', '', c.title); h.style.marginTop = '8px'; hero.appendChild(h);
+        if (c.description) hero.appendChild(el('p', 'pg-muted', c.description));
+        hero.appendChild(el('div', 'pg-muted', c.teacher || 'O\'qituvchi belgilanmagan'));
+        pg.appendChild(hero);
+
+        const player = el('div', 'pg-card'); player.style.marginTop = '14px'; player.hidden = true;
+        const pTitle = el('h3'); const frame = el('div'); frame.style.cssText = 'position:relative;padding-top:56.25%;margin-top:10px';
+        player.appendChild(pTitle); player.appendChild(frame); pg.appendChild(player);
+
+        function play(it) {
+            const yt = youtubeId(it.url);
+            if (!yt) { window.open(it.url, '_blank', 'noopener,noreferrer'); return; }
+            player.hidden = false; pTitle.textContent = it.title; frame.textContent = '';
+            const f = document.createElement('iframe');
+            f.src = 'https://www.youtube-nocookie.com/embed/' + yt;
+            f.title = it.title; f.allowFullscreen = true; f.referrerPolicy = 'strict-origin-when-cross-origin';
+            f.setAttribute('allow', 'encrypted-media; picture-in-picture; fullscreen');
+            f.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:10px';
+            frame.appendChild(f);
+            player.scrollIntoView && player.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        function list(kind, label, iconCls, action) {
+            const box = el('div', 'pg-card'); box.style.marginTop = '14px';
+            box.appendChild(el('h3', 'pg-h3', label));
+            const mine = items.filter(function (x) { return x.kind === kind; });
+            if (!mine.length) box.appendChild(el('p', 'pg-muted', 'Hozircha yo\'q. O\'qituvchi qo\'shganda shu yerda ko\'rinadi.'));
+            mine.forEach(function (it, i) {
+                const r = el('div', 'pg-lesson');
+                r.appendChild(el('span', 'n', String(i + 1).padStart(2, '0')));
+                r.appendChild(el('i', iconCls));
+                const t = el('div'); t.style.flex = '1'; t.appendChild(el('b', '', it.title)); r.appendChild(t);
+                const b = el('button', 'pg-btn ghost', action); b.type = 'button';
+                b.addEventListener('click', function () { play(it); });
+                r.appendChild(b); box.appendChild(r);
+            });
+            return box;
+        }
+        pg.appendChild(list('video', 'Video darslar', 'fas fa-circle-play', 'Ko\'rish'));
+        pg.appendChild(list('guide', 'Qo\'llanmalar', 'fas fa-file-lines', 'Ochish'));
+    };
+
     // Returns a promise (resolved when done). Auth errors are passed to onAuthError, other errors to onError.
     window.GEData = {
         hydrate: function (page, root, session, onAuthError, onError) {
@@ -195,6 +280,19 @@
             return fn(root, session).catch(function (err) {
                 if (err && err.auth) onAuthError(); else onError(err);
             });
+        },
+        register: function (name, fn) { pages[name] = fn; },
+        api: { get: get, send: send },
+        el: el,
+        ctx: {}, // values handed from one page to the next, e.g. the course being edited
+        toast: function (text) {
+            const t = el('div', 'pg-toast', text);
+            document.body.appendChild(t);
+            setTimeout(function () { t.remove(); }, 3500);
+        },
+        open: function (page, navPage) {
+            const nav = navPage && document.querySelector('.nav-item[onclick*="\'' + navPage + '\'"]');
+            window.loadPage(page, nav || document.querySelector('.nav-item.active'));
         },
         _ago: ago, _activityText: activityText
     };

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { teacherOnly, authenticateToken, requireSelf } = require('../middleware/roleBased');
-const { parseId, validateGrade, validateText } = require('../utils/validation');
+const { parseId, validateGrade, validateText, validateUrl } = require('../utils/validation');
 
 // Get teacher dashboard data
 router.get('/dashboard/:userId', authenticateToken, teacherOnly, requireSelf(), async (req, res) => {
@@ -136,56 +136,89 @@ router.get('/courses/:userId', authenticateToken, teacherOnly, requireSelf(), as
     }
 });
 
-// Create a new course
-router.post('/courses', authenticateToken, teacherOnly, async (req, res) => {
+const MAX_CONTENT_PER_COURSE = 200;
+
+// The teacher's own course, or null (not found and "not yours" look the same)
+async function ownCourse(db, courseId, teacherId) {
+    const [rows] = await db.execute('SELECT id, title, description, category, status FROM courses WHERE id = ? AND teacher_id = ?', [courseId, teacherId]);
+    return rows[0] || null;
+}
+
+// My courses with content and student counts (for the course list)
+router.get('/courses', authenticateToken, teacherOnly, async (req, res) => {
     try {
-        const db = req.db;
-        const { title, description, category } = req.body;
-        const teacherId = req.user.userId;
-
-        // Validation
-        if (!title || !category) {
-            return res.status(400).json({ error: 'Title and category are required' });
-        }
-
-        const [result] = await db.execute(
-            'INSERT INTO courses (title, description, category, teacher_id) VALUES (?, ?, ?, ?)',
-            [title, description, category, teacherId]
-        );
-
-        res.status(201).json({
-            message: 'Course created successfully',
-            courseId: result.insertId
+        const [courses] = await req.db.execute(`
+            SELECT c.id, c.title, c.description, c.category, c.status, c.created_at,
+                (SELECT COUNT(*) FROM course_content x WHERE x.course_id = c.id AND x.kind = 'video') AS videos,
+                (SELECT COUNT(*) FROM course_content x WHERE x.course_id = c.id AND x.kind = 'guide') AS guides,
+                (SELECT COUNT(*) FROM course_enrollments e WHERE e.course_id = c.id AND e.status = 'active') AS students
+            FROM courses c
+            WHERE c.teacher_id = ?
+            ORDER BY c.id DESC
+        `, [req.user.userId]);
+        res.json({
+            courses: courses.map((c) => ({ ...c, videos: Number(c.videos), guides: Number(c.guides), students: Number(c.students) }))
         });
+    } catch (error) {
+        console.error('My courses error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Create a course. It starts as a draft ('inactive'); students see it only after it is published.
+router.post('/courses', authenticateToken, teacherOnly, async (req, res) => {
+    const title = validateText(req.body.title, { field: 'Title', maxLength: 255 });
+    if (title.error) return res.status(400).json({ error: title.error });
+    const category = validateText(req.body.category, { field: 'Category', maxLength: 100 });
+    if (category.error) return res.status(400).json({ error: category.error });
+    const description = validateText(req.body.description, { field: 'Description', required: false, maxLength: 2000 });
+    if (description.error) return res.status(400).json({ error: description.error });
+    try {
+        const [result] = await req.db.execute(
+            "INSERT INTO courses (title, description, category, teacher_id, status) VALUES (?, ?, ?, ?, 'inactive')",
+            [title.value, description.value, category.value, req.user.userId]
+        );
+        res.status(201).json({ message: 'Course created successfully', courseId: result.insertId });
     } catch (error) {
         console.error('Course creation error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
 
-// Update course details
+// Update a course. Only the fields that are sent change. Publishing needs at least one lesson or guide.
 router.put('/courses/:courseId', authenticateToken, teacherOnly, async (req, res) => {
+    const courseId = parseId(req.params.courseId);
+    if (!courseId) return res.status(400).json({ error: 'Invalid course id' });
+    const sets = [];
+    const params = [];
+    if (req.body.title !== undefined) {
+        const t = validateText(req.body.title, { field: 'Title', maxLength: 255 });
+        if (t.error) return res.status(400).json({ error: t.error });
+        sets.push('title = ?'); params.push(t.value);
+    }
+    if (req.body.category !== undefined) {
+        const c = validateText(req.body.category, { field: 'Category', maxLength: 100 });
+        if (c.error) return res.status(400).json({ error: c.error });
+        sets.push('category = ?'); params.push(c.value);
+    }
+    if (req.body.description !== undefined) {
+        const d = validateText(req.body.description, { field: 'Description', required: false, maxLength: 2000 });
+        if (d.error) return res.status(400).json({ error: d.error });
+        sets.push('description = ?'); params.push(d.value);
+    }
+    if (req.body.status !== undefined) {
+        if (!['active', 'inactive'].includes(req.body.status)) return res.status(400).json({ error: 'Status must be active or inactive' });
+        sets.push('status = ?'); params.push(req.body.status);
+    }
+    if (!sets.length) return res.status(400).json({ error: 'Nothing to update' });
     try {
-        const db = req.db;
-        const courseId = req.params.courseId;
-        const { title, description, category, status } = req.body;
-        const teacherId = req.user.userId;
-
-        // Check if course belongs to teacher
-        const [course] = await db.execute(
-            'SELECT id FROM courses WHERE id = ? AND teacher_id = ?',
-            [courseId, teacherId]
-        );
-
-        if (course.length === 0) {
-            return res.status(403).json({ error: 'Access denied' });
+        const course = await ownCourse(req.db, courseId, req.user.userId);
+        if (!course) return res.status(404).json({ error: 'Course not found' });
+        if (req.body.status === 'active') {
+            const [n] = await req.db.execute('SELECT COUNT(*) AS n FROM course_content WHERE course_id = ?', [courseId]);
+            if (!Number(n[0].n)) return res.status(400).json({ error: 'Add at least one lesson or guide before publishing' });
         }
-
-        await db.execute(
-            'UPDATE courses SET title = ?, description = ?, category = ?, status = ? WHERE id = ?',
-            [title, description, category, status, courseId]
-        );
-
+        await req.db.execute(`UPDATE courses SET ${sets.join(', ')} WHERE id = ?`, [...params, courseId]);
         res.json({ message: 'Course updated successfully' });
     } catch (error) {
         console.error('Course update error:', error);
@@ -193,17 +226,90 @@ router.put('/courses/:courseId', authenticateToken, teacherOnly, async (req, res
     }
 });
 
-// Upload course materials
-router.post('/courses/:courseId/materials', authenticateToken, teacherOnly, async (req, res) => {
+// Course details with its lessons (videos) and guides, in order
+router.get('/courses/:courseId/content', authenticateToken, teacherOnly, async (req, res) => {
+    const courseId = parseId(req.params.courseId);
+    if (!courseId) return res.status(400).json({ error: 'Invalid course id' });
     try {
-        const courseId = req.params.courseId;
-        const teacherId = req.user.userId;
-
-        // Check ownership (would need to implement materials table)
-        // For now, return success response
-        res.json({ message: 'Material upload endpoint - needs materials table implementation' });
+        const course = await ownCourse(req.db, courseId, req.user.userId);
+        if (!course) return res.status(404).json({ error: 'Course not found' });
+        const [items] = await req.db.execute('SELECT id, kind, title, url, position FROM course_content WHERE course_id = ? ORDER BY position, id', [courseId]);
+        res.json({ course, items });
     } catch (error) {
-        console.error('Material upload error:', error);
+        console.error('Course content error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Add a video lesson or a guide (a link: YouTube/Vimeo/Drive for videos, PDF or document link for guides)
+router.post('/courses/:courseId/content', authenticateToken, teacherOnly, async (req, res) => {
+    const courseId = parseId(req.params.courseId);
+    if (!courseId) return res.status(400).json({ error: 'Invalid course id' });
+    if (!['video', 'guide'].includes(req.body.kind)) return res.status(400).json({ error: 'Kind must be video or guide' });
+    const title = validateText(req.body.title, { field: 'Title', maxLength: 200 });
+    if (title.error) return res.status(400).json({ error: title.error });
+    const url = validateUrl(req.body.url);
+    if (url.error) return res.status(400).json({ error: url.error });
+    try {
+        const course = await ownCourse(req.db, courseId, req.user.userId);
+        if (!course) return res.status(404).json({ error: 'Course not found' });
+        const [stat] = await req.db.execute('SELECT COUNT(*) AS n, COALESCE(MAX(position), 0) AS last FROM course_content WHERE course_id = ?', [courseId]);
+        if (Number(stat[0].n) >= MAX_CONTENT_PER_COURSE) return res.status(400).json({ error: `A course can have at most ${MAX_CONTENT_PER_COURSE} items` });
+        const [r] = await req.db.execute(
+            'INSERT INTO course_content (course_id, kind, title, url, position) VALUES (?, ?, ?, ?, ?)',
+            [courseId, req.body.kind, title.value, url.value, Number(stat[0].last) + 1]
+        );
+        res.status(201).json({ id: r.insertId });
+    } catch (error) {
+        console.error('Add content error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Remove an item. A published course must keep at least one item.
+router.delete('/courses/:courseId/content/:itemId', authenticateToken, teacherOnly, async (req, res) => {
+    const courseId = parseId(req.params.courseId);
+    const itemId = parseId(req.params.itemId);
+    if (!courseId || !itemId) return res.status(400).json({ error: 'Invalid id' });
+    try {
+        const course = await ownCourse(req.db, courseId, req.user.userId);
+        if (!course) return res.status(404).json({ error: 'Course not found' });
+        if (course.status === 'active') {
+            const [n] = await req.db.execute('SELECT COUNT(*) AS n FROM course_content WHERE course_id = ?', [courseId]);
+            if (Number(n[0].n) <= 1) return res.status(400).json({ error: 'A published course needs at least one item. Unpublish it first.' });
+        }
+        const [r] = await req.db.execute('DELETE FROM course_content WHERE id = ? AND course_id = ?', [itemId, courseId]);
+        if (!r.affectedRows) return res.status(404).json({ error: 'Item not found' });
+        res.json({ message: 'Removed' });
+    } catch (error) {
+        console.error('Remove content error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Move an item one step up or down among items of its own kind
+router.post('/courses/:courseId/content/:itemId/move', authenticateToken, teacherOnly, async (req, res) => {
+    const courseId = parseId(req.params.courseId);
+    const itemId = parseId(req.params.itemId);
+    if (!courseId || !itemId) return res.status(400).json({ error: 'Invalid id' });
+    if (!['up', 'down'].includes(req.body.direction)) return res.status(400).json({ error: 'Direction must be up or down' });
+    try {
+        const course = await ownCourse(req.db, courseId, req.user.userId);
+        if (!course) return res.status(404).json({ error: 'Course not found' });
+        // Neighbours are taken within the same kind, so a video never swaps with a guide
+        const [all] = await req.db.execute('SELECT id, kind, position FROM course_content WHERE course_id = ? ORDER BY position, id', [courseId]);
+        const me = all.find((x) => x.id === itemId);
+        if (!me) return res.status(404).json({ error: 'Item not found' });
+        const same = all.filter((x) => x.kind === me.kind);
+        const i = same.findIndex((x) => x.id === itemId);
+        const other = same[req.body.direction === 'up' ? i - 1 : i + 1];
+        if (other) {
+            await req.db.execute('UPDATE course_content SET position = ? WHERE id = ?', [other.position, me.id]);
+            await req.db.execute('UPDATE course_content SET position = ? WHERE id = ?', [me.position, other.id]);
+        }
+        res.json({ message: 'Moved' });
+    } catch (error) {
+        console.error('Move content error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });

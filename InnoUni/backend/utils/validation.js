@@ -57,7 +57,19 @@ function validateText(text, { field, required = true, maxLength }) {
     return { value: trimmed.length ? trimmed : null };
 }
 
+// Returns { value } for an http(s) link of at most `maxLength` characters, or { error }
+function validateUrl(url, { field = 'Link', maxLength = 500 } = {}) {
+    if (typeof url !== 'string' || url.trim() === '') return { error: `${field} is required` };
+    const trimmed = url.trim();
+    if (trimmed.length > maxLength) return { error: `${field} must be at most ${maxLength} characters` };
+    let parsed;
+    try { parsed = new URL(trimmed); } catch (e) { return { error: `${field} must be a valid link` }; }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return { error: `${field} must start with http:// or https://` };
+    return { value: parsed.toString() };
+}
+
 module.exports = {
+    validateUrl,
     validatePassword, isValidEmail, PASSWORD_MIN_LENGTH,
     parseId, validateGrade, validateText, GRADE_MIN, GRADE_MAX
 };
