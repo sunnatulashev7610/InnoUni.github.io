@@ -83,3 +83,47 @@ test('no courses shows a hint', async () => {
     await run();
     expect(doc.querySelector('#pgFilterTarget').textContent).toMatch(/Hozircha kurslar yo'q/);
 });
+
+describe('course detail (student)', () => {
+    const detail = { course: { id: 1, title: 'React', description: 'd', category: 'Frontend', teacher: 'Malika', progress: 0 }, items: [
+        { id: 1, kind: 'video', title: 'YT', url: 'https://youtu.be/abcdefghijk', position: 1 },
+        { id: 2, kind: 'video', title: 'Other', url: 'https://vimeo.com/1', position: 2 },
+        { id: 3, kind: 'guide', title: 'PDF', url: 'https://x.uz/a.pdf', position: 3 }] };
+    function setupDetail(status = 200) {
+        const dom = new JSDOM('<!doctype html><body><div class="pg"></div></body>', { runScripts: 'outside-only' });
+        win = dom.window; doc = win.document;
+        win.config = { apiBaseUrl: 'https://api.test/api' };
+        win.loadPage = jest.fn();
+        win.open = jest.fn();
+        win.fetch = jest.fn(async () => ({ ok: status === 200, status, json: async () => (status === 200 ? detail : { error: 'x' }) }));
+        win.eval(src);
+        win.GEData.ctx.courseId = 1;
+    }
+    const go = () => win.GEData.hydrate('course-detail', doc.body, session, () => { throw new Error('auth'); }, (e) => { throw e; });
+
+    test('lists videos and guides; YouTube plays inline in a nocookie iframe, other links open in a new tab', async () => {
+        setupDetail();
+        await go();
+        expect(doc.body.textContent).toContain('Video darslar');
+        expect(doc.body.textContent).toContain('Qo\'llanmalar');
+        const btns = [...doc.querySelectorAll('.pg-lesson button')];
+        btns[0].click();
+        expect(doc.querySelector('iframe').src).toBe('https://www.youtube-nocookie.com/embed/abcdefghijk');
+        btns[1].click();
+        expect(win.open).toHaveBeenCalledWith('https://vimeo.com/1', '_blank', 'noopener,noreferrer');
+    });
+    test('not enrolled shows a message', async () => {
+        setupDetail(404);
+        await go();
+        expect(doc.body.textContent).toContain('yozilmagansiz');
+    });
+    test('enrolled card has an open button that stores the course id', async () => {
+        setup(base());
+        await run();
+        const b = [...doc.querySelectorAll('#pgFilterTarget button')].find((x) => x.textContent === 'Darslarni ochish');
+        win.loadPage = jest.fn();
+        b.click();
+        expect(win.GEData.ctx.courseId).toBe(1);
+        expect(win.loadPage.mock.calls[0][0]).toBe('course-detail');
+    });
+});
