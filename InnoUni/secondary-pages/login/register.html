@@ -97,7 +97,6 @@
 
     <script src="../../frontend/js/utils.js"></script>
     <script src="../../frontend/js/config.js"></script>
-    <script src="../../frontend/js/api.js"></script>
     <script>
         // Role selection
         let selectedRole = 'student';
@@ -174,7 +173,7 @@
             hideMessages();
 
             try {
-                // Same API address logic as frontend/js/api.js: local server while developing, same origin otherwise
+                // API address: local server while developing, same origin otherwise
                 const API_BASE = (window.config && window.config.apiBaseUrl) ||
                     (['localhost', '127.0.0.1'].includes(window.location.hostname) ? 'http://localhost:3000/api' : '/api');
 
@@ -222,7 +221,7 @@
                                 localStorage.setItem('userRole', loginData.user.role);
 
                                 // Redirect based on role
-                                window.location.href = siteUrl(loginData.user.role === 'teacher' ? 'frontend/teacher.html' : 'frontend/student.html');
+                                window.location.href = siteUrl(loginData.user.role === 'admin' ? 'secondary-pages/admin/admin.html' : 'secondary-pages/dashboard/dashboard.html');
                             } else {
                                 showError('Avto-login xatolik. Iltimos, qo\'lda kirish.');
                             }
