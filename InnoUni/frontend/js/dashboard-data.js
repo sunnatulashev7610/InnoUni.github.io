@@ -15,12 +15,15 @@
         return res.json();
     }
 
-    async function send(method, path, session) {
-        const res = await fetch(apiBase() + path, { method: method, headers: { Authorization: 'Bearer ' + session.token } });
+    async function send(method, path, session, body) {
+        const headers = { Authorization: 'Bearer ' + session.token };
+        const init = { method: method, headers: headers };
+        if (body !== undefined) { headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(body); }
+        const res = await fetch(apiBase() + path, init);
         if (res.status === 401) { const err = new Error('auth'); err.auth = true; throw err; }
-        const body = await res.json().catch(function () { return {}; });
-        if (!res.ok) throw new Error(body.error || 'HTTP ' + res.status);
-        return body;
+        const out = await res.json().catch(function () { return {}; });
+        if (!res.ok) throw new Error(out.error || 'HTTP ' + res.status);
+        return out;
     }
 
     function ago(ts) {
@@ -195,6 +198,19 @@
             return fn(root, session).catch(function (err) {
                 if (err && err.auth) onAuthError(); else onError(err);
             });
+        },
+        register: function (name, fn) { pages[name] = fn; },
+        api: { get: get, send: send },
+        el: el,
+        ctx: {}, // values handed from one page to the next, e.g. the course being edited
+        toast: function (text) {
+            const t = el('div', 'pg-toast', text);
+            document.body.appendChild(t);
+            setTimeout(function () { t.remove(); }, 3500);
+        },
+        open: function (page, navPage) {
+            const nav = navPage && document.querySelector('.nav-item[onclick*="\'' + navPage + '\'"]');
+            window.loadPage(page, nav || document.querySelector('.nav-item.active'));
         },
         _ago: ago, _activityText: activityText
     };
