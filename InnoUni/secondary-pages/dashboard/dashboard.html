@@ -272,6 +272,8 @@
 	</main>
 
 	<script src="../../frontend/js/theme.js"></script>
+	<script src="../../frontend/js/config.js"></script>
+	<script src="../../frontend/js/dashboard-data.js"></script>
 	<script>
 		// Enhanced loadPage function with loading states
 		function loadPage(page, element) {
@@ -301,6 +303,20 @@
 				})
 				.then(data => {
 					contentArea.innerHTML = data;
+					if (session) {
+						window.GEData.hydrate(page, contentArea, session, function () {
+							['token', 'user', 'userRole'].forEach(function (k) { try { localStorage.removeItem(k); } catch (x) { /* ignore */ } });
+							location.href = '../login/login.html';
+						}, function (err) {
+							console.error('Data load error:', err);
+							var bar = document.createElement('p');
+							bar.setAttribute('role', 'alert');
+							bar.className = 'fg-muted';
+							bar.style.cssText = 'padding:12px 16px;margin:0 16px;border:1px solid var(--line);border-radius:10px';
+							bar.textContent = "Ma'lumotlarni yuklab bo'lmadi. Server uyg'onayotgan bo'lishi mumkin, bir daqiqadan keyin sahifani yangilang.";
+							contentArea.prepend(bar);
+						});
+					}
 				})
 				.catch(error => {
 					console.error('Error loading page:', error);
@@ -328,7 +344,7 @@
 				if (p.exp && p.exp * 1000 < Date.now()) throw new Error('expired');
 				var u = {};
 				try { u = JSON.parse(localStorage.getItem('user') || '{}'); } catch (e) { /* ignore */ }
-				return { role: p.role, name: u.full_name || '' };
+				return { role: p.role, name: u.full_name || '', id: p.userId || u.id, token: t };
 			} catch (e) {
 				['token', 'user', 'userRole'].forEach(function (k) { try { localStorage.removeItem(k); } catch (x) { /* ignore */ } });
 				location.replace('../login/login.html');
