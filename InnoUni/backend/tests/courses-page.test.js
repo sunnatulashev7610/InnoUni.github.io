@@ -140,22 +140,79 @@ describe('groups page', () => {
     }
     test('student sees course groups and can open the course', async () => {
         await setupGroups('student', { groups: [{ id: 3, name: '<b>Python</b>', courseId: 8, role: 'member', members: 4 }] });
-        expect(win.fetch.mock.calls[0][0]).toBe('https://api.test/api/student/groups');
+        expect(win.fetch.mock.calls[0][0]).toBe('https://api.test/api/groups');
         expect(doc.querySelector('h3').textContent).toBe('<b>Python</b>');
         expect(doc.querySelectorAll('b').length).toBe(0);
-        doc.querySelector('.pg-btn').click();
+        const btns = [...doc.querySelectorAll('.pg-btn')];
+        btns[0].click();
+        expect(win.GEData.ctx.groupId).toBe(3);
+        expect(win.loadPage.mock.calls[0][0]).toBe('group-detail');
+        win.loadPage.mockClear();
+        btns[1].click();
         expect(win.GEData.ctx.courseId).toBe(8);
         expect(win.loadPage.mock.calls[0][0]).toBe('course-detail');
     });
-    test('teacher sees a group per course and opens the editor', async () => {
-        await setupGroups('teacher', { courses: [{ id: 8, title: 'Python', students: 3, status: 'active' }] });
-        expect(win.fetch.mock.calls[0][0]).toBe('https://api.test/api/teacher/courses');
+    test('teacher sees groups and can manage the course', async () => {
+        await setupGroups('teacher', { groups: [{ id: 3, name: 'Python', courseId: 8, role: 'leader', members: 4 }] });
         expect(doc.body.textContent).toContain('4 a\'zo');
-        doc.querySelector('.pg-btn').click();
+        expect(doc.body.textContent).toContain('Murabbiy');
+        [...doc.querySelectorAll('.pg-btn')][1].click();
         expect(win.loadPage.mock.calls[0][0]).toBe('t-course-edit');
     });
     test('empty state', async () => {
         await setupGroups('student', { groups: [] });
         expect(doc.body.textContent).toContain('Hali guruhingiz yo\'q');
+    });
+});
+
+describe('group discussion page', () => {
+    let posts; let sent;
+    function setupChat(role, mine = 5) {
+        posts = [{ id: 2, kind: 'topic', body: '<img src=x onerror=1>', created_at: new Date().toISOString(), user_id: 2, full_name: 'Malika' },
+                 { id: 1, kind: 'message', body: 'Salom', created_at: new Date().toISOString(), user_id: 5, full_name: 'Ali' }];
+        sent = [];
+        const dom = new JSDOM('<!doctype html><body><div class="pg"></div></body>', { runScripts: 'outside-only' });
+        win = dom.window; doc = win.document;
+        win.config = { apiBaseUrl: 'https://api.test/api' };
+        win.loadPage = jest.fn();
+        win.fetch = jest.fn(async (u, init = {}) => {
+            const m = init.method || 'GET';
+            if (m !== 'GET') { sent.push({ m, u, body: init.body && JSON.parse(init.body) }); return { ok: true, status: 200, json: async () => ({}) }; }
+            if (/\/posts/.test(u)) return { ok: true, status: 200, json: async () => ({ posts, more: false }) };
+            return { ok: true, status: 200, json: async () => ({ group: { id: 1, name: 'Py', courseId: 7 }, role, members: [{ id: 2, full_name: 'Malika', role: 'leader' }, { id: 5, full_name: 'Ali', role: 'member' }] }) };
+        });
+        win.eval(src);
+        win.GEData.ctx.groupId = 1;
+        return win.GEData.hydrate('group-detail', doc.body, { id: mine, token: 't', role }, () => {}, (e) => { throw e; });
+    }
+    const flush2 = () => new Promise((r) => setTimeout(r, 0));
+
+    test('renders posts as text, topic pill, members', async () => {
+        await setupChat('member');
+        expect(doc.querySelectorAll('img').length).toBe(0);
+        expect(doc.body.textContent).toContain('<img src=x');
+        expect(doc.body.textContent).toContain('Mavzu');
+        expect(doc.body.textContent).toContain('2 a\'zo');
+    });
+    test('student: delete only on own posts, no topic checkbox', async () => {
+        await setupChat('member', 5);
+        expect(doc.querySelectorAll('[aria-label="O\'chirish"]').length).toBe(1);
+        expect(doc.querySelector('input[type=checkbox]')).toBeNull();
+    });
+    test('leader can delete all and post a topic', async () => {
+        await setupChat('leader', 2);
+        expect(doc.querySelectorAll('[aria-label="O\'chirish"]').length).toBe(2);
+        doc.querySelector('textarea').value = 'Yangi mavzu';
+        doc.querySelector('input[type=checkbox]').checked = true;
+        doc.querySelector('form').dispatchEvent(new win.Event('submit', { cancelable: true }));
+        await flush2();
+        expect(sent[0]).toMatchObject({ m: 'POST', body: { body: 'Yangi mavzu', kind: 'topic' } });
+    });
+    test('empty message is not sent', async () => {
+        await setupChat('member');
+        doc.querySelector('form').dispatchEvent(new win.Event('submit', { cancelable: true }));
+        await flush2();
+        expect(sent).toHaveLength(0);
+        expect(doc.body.textContent).toContain('Xabar matnini yozing');
     });
 });
