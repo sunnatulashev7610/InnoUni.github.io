@@ -272,6 +272,49 @@
         pg.appendChild(list('guide', 'Qo\'llanmalar', 'fas fa-file-lines', 'Ochish'));
     };
 
+    // ---- Groups: every course has one group (teacher leads, students join by enrolling) ----
+    pages.groups = async function (root, session) {
+        const pg = root.querySelector('.pg') || root;
+        const teacher = session.role === 'teacher';
+        pg.textContent = '';
+        const hd = el('div', 'pg-head'); const hdd = el('div');
+        hdd.appendChild(el('h1', '', 'Guruhlar'));
+        hdd.appendChild(el('p', '', teacher ? 'Har bir kursingiz uchun guruh avtomatik ochiladi' : 'Yozilgan kurslaringiz guruhlari. Kursga yozilganingizda guruhga avtomatik qo\'shilasiz'));
+        hd.appendChild(hdd); pg.appendChild(hd);
+        const grid = el('div', 'pg-grid'); pg.appendChild(grid);
+
+        let list;
+        if (teacher) {
+            const d = await get('/teacher/courses', session);
+            list = d.courses.map(function (c) { return { id: c.id, courseId: c.id, name: c.title, members: c.students + 1, role: 'leader' }; });
+        } else {
+            const d = await get('/student/groups', session);
+            list = d.groups;
+        }
+        if (!list.length) {
+            grid.appendChild(el('p', 'pg-muted', teacher ? 'Kurs yaratganingizda guruh shu yerda paydo bo\'ladi.' : 'Hali guruhingiz yo\'q. Kursga yozilsangiz, kurs guruhi shu yerda ko\'rinadi.'));
+            return;
+        }
+        list.forEach(function (g) {
+            const card = el('article', 'pg-card pg-item');
+            const cover = el('div', 'pg-cover', initials(g.name)); cover.style.background = 'var(--c' + ((g.id % 6) + 1) + ')';
+            card.appendChild(cover);
+            card.appendChild(el('span', 'pg-pill ' + (g.role === 'leader' ? 'sun' : ''), g.role === 'leader' ? 'Murabbiy' : 'A\'zo'));
+            const h = el('h3', '', g.name); h.style.marginTop = '10px'; card.appendChild(h);
+            const meta = el('div', 'pg-meta'); meta.appendChild(el('span', '', g.members + ' a\'zo')); card.appendChild(meta);
+            if (g.courseId) {
+                const b = el('button', 'pg-btn ghost', teacher ? 'A\'zolar va kurs' : 'Kursga o\'tish'); b.type = 'button';
+                b.style.cssText = 'width:100%;justify-content:center;margin-top:12px';
+                b.addEventListener('click', function () {
+                    window.GEData.ctx.courseId = g.courseId;
+                    if (teacher) window.GEData.open('t-course-edit', 't-courses'); else window.GEData.open('course-detail', 'courses');
+                });
+                card.appendChild(b);
+            }
+            grid.appendChild(card);
+        });
+    };
+
     // Returns a promise (resolved when done). Auth errors are passed to onAuthError, other errors to onError.
     window.GEData = {
         hydrate: function (page, root, session, onAuthError, onError) {

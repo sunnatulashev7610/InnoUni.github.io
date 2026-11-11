@@ -127,3 +127,35 @@ describe('course detail (student)', () => {
         expect(win.loadPage.mock.calls[0][0]).toBe('course-detail');
     });
 });
+
+describe('groups page', () => {
+    function setupGroups(role, payload) {
+        const dom = new JSDOM('<!doctype html><body><div class="pg"></div></body>', { runScripts: 'outside-only' });
+        win = dom.window; doc = win.document;
+        win.config = { apiBaseUrl: 'https://api.test/api' };
+        win.loadPage = jest.fn();
+        win.fetch = jest.fn(async (u) => ({ ok: true, status: 200, json: async () => payload }));
+        win.eval(src);
+        return win.GEData.hydrate('groups', doc.body, { id: 1, token: 't', role }, () => {}, (e) => { throw e; });
+    }
+    test('student sees course groups and can open the course', async () => {
+        await setupGroups('student', { groups: [{ id: 3, name: '<b>Python</b>', courseId: 8, role: 'member', members: 4 }] });
+        expect(win.fetch.mock.calls[0][0]).toBe('https://api.test/api/student/groups');
+        expect(doc.querySelector('h3').textContent).toBe('<b>Python</b>');
+        expect(doc.querySelectorAll('b').length).toBe(0);
+        doc.querySelector('.pg-btn').click();
+        expect(win.GEData.ctx.courseId).toBe(8);
+        expect(win.loadPage.mock.calls[0][0]).toBe('course-detail');
+    });
+    test('teacher sees a group per course and opens the editor', async () => {
+        await setupGroups('teacher', { courses: [{ id: 8, title: 'Python', students: 3, status: 'active' }] });
+        expect(win.fetch.mock.calls[0][0]).toBe('https://api.test/api/teacher/courses');
+        expect(doc.body.textContent).toContain('4 a\'zo');
+        doc.querySelector('.pg-btn').click();
+        expect(win.loadPage.mock.calls[0][0]).toBe('t-course-edit');
+    });
+    test('empty state', async () => {
+        await setupGroups('student', { groups: [] });
+        expect(doc.body.textContent).toContain('Hali guruhingiz yo\'q');
+    });
+});

@@ -6,17 +6,28 @@ const { validateUrl } = require('../utils/validation');
 
 const T1 = 2, T2 = 3, STUDENT = 5;
 let s;
-const reset = () => { s = { courses: [], content: [], id: 1 }; };
+const reset = () => { s = { courses: [], content: [], id: 1, groups: [], members: [] }; };
 const norm = (q) => q.replace(/\s+/g, ' ').trim();
 
 const fakeDb = {
     async execute(raw, p = []) {
         const q = norm(raw);
+        if (q.startsWith('INSERT IGNORE INTO `groups`')) {
+            if (!s.groups.some((g) => g.course_id === p[3])) s.groups.push({ id: 100 + s.groups.length, name: p[0], course_id: p[3] });
+            return [{}];
+        }
+        if (q.startsWith('SELECT id FROM `groups` WHERE course_id = ?')) return [s.groups.filter((g) => g.course_id === p[0])];
+        if (q.startsWith('INSERT IGNORE INTO group_members')) {
+            if (!s.members.some((m) => m.group_id === p[0] && m.user_id === p[1])) s.members.push({ group_id: p[0], user_id: p[1] });
+            return [{}];
+        }
+        if (q.startsWith('UPDATE `groups` SET name = ? WHERE course_id = ?')) { s.groups.filter((g) => g.course_id === p[1]).forEach((g) => { g.name = p[0]; }); return [{}]; }
+        if (q.startsWith('SELECT u.id, u.full_name, gm.role FROM group_members')) return [s.members.filter((m) => m.group_id === p[0]).map((m) => ({ id: m.user_id, full_name: 'U' + m.user_id, role: 'member' }))];
         if (q.startsWith('INSERT INTO courses')) {
             const c = { id: s.id++, title: p[0], description: p[1], category: p[2], teacher_id: p[3], status: 'inactive' };
             s.courses.push(c); return [{ insertId: c.id }];
         }
-        if (q.startsWith('SELECT id, title, description, category, status FROM courses WHERE id = ? AND teacher_id = ?')) {
+        if (q.startsWith('SELECT id, title, description, category, status, teacher_id FROM courses WHERE id = ? AND teacher_id = ?')) {
             return [s.courses.filter((c) => c.id === p[0] && c.teacher_id === p[1])];
         }
         if (q.startsWith('SELECT c.id, c.title')) {
@@ -161,4 +172,27 @@ test('validateUrl normalises and rejects', () => {
     expect(validateUrl('data:text/html,x').error).toBeDefined();
     expect(validateUrl('https://x.uz/' + 'a'.repeat(500)).error).toMatch(/at most/);
     expect(validateUrl(null).error).toBeDefined();
+});
+
+describe('course group', () => {
+    beforeEach(reset);
+    const mk = () => request(app).post('/api/teacher/courses').set(as(T1)).send({ title: 'Py', category: 'Backend', description: 'd' });
+    test('creating a course creates its group with the teacher as a member', async () => {
+        await mk();
+        expect(s.groups).toHaveLength(1);
+        expect(s.groups[0]).toMatchObject({ name: 'Py', course_id: 1 });
+        expect(s.members).toEqual([{ group_id: 100, user_id: T1 }]);
+    });
+    test('renaming the course renames the group', async () => {
+        await mk();
+        await request(app).put('/api/teacher/courses/1').set(as(T1)).send({ title: 'New name' });
+        expect(s.groups[0].name).toBe('New name');
+    });
+    test('teacher sees members; another teacher gets 404', async () => {
+        await mk();
+        const ok = await request(app).get('/api/teacher/courses/1/group').set(as(T1));
+        expect(ok.status).toBe(200);
+        expect(ok.body.group).toEqual({ id: 100, name: 'Py' });
+        expect((await request(app).get('/api/teacher/courses/1/group').set(as(T2))).status).toBe(404);
+    });
 });

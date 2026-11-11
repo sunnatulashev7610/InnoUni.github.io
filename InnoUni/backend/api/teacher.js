@@ -1,4 +1,5 @@
 const express = require('express');
+const { ensureCourseGroup } = require('../utils/courseGroups');
 const router = express.Router();
 const { teacherOnly, authenticateToken, requireSelf } = require('../middleware/roleBased');
 const { parseId, validateGrade, validateText, validateUrl } = require('../utils/validation');
@@ -140,7 +141,7 @@ const MAX_CONTENT_PER_COURSE = 200;
 
 // The teacher's own course, or null (not found and "not yours" look the same)
 async function ownCourse(db, courseId, teacherId) {
-    const [rows] = await db.execute('SELECT id, title, description, category, status FROM courses WHERE id = ? AND teacher_id = ?', [courseId, teacherId]);
+    const [rows] = await db.execute('SELECT id, title, description, category, status, teacher_id FROM courses WHERE id = ? AND teacher_id = ?', [courseId, teacherId]);
     return rows[0] || null;
 }
 
@@ -178,6 +179,7 @@ router.post('/courses', authenticateToken, teacherOnly, async (req, res) => {
             "INSERT INTO courses (title, description, category, teacher_id, status) VALUES (?, ?, ?, ?, 'inactive')",
             [title.value, description.value, category.value, req.user.userId]
         );
+        await ensureCourseGroup(req.db, { id: result.insertId, title: title.value, description: description.value, teacher_id: req.user.userId });
         res.status(201).json({ message: 'Course created successfully', courseId: result.insertId });
     } catch (error) {
         console.error('Course creation error:', error);
@@ -219,9 +221,31 @@ router.put('/courses/:courseId', authenticateToken, teacherOnly, async (req, res
             if (!Number(n[0].n)) return res.status(400).json({ error: 'Add at least one lesson or guide before publishing' });
         }
         await req.db.execute(`UPDATE courses SET ${sets.join(', ')} WHERE id = ?`, [...params, courseId]);
+        if (req.body.title !== undefined) {
+            await req.db.execute('UPDATE `groups` SET name = ? WHERE course_id = ?', [params[sets.indexOf('title = ?')], courseId]);
+        }
         res.json({ message: 'Course updated successfully' });
     } catch (error) {
         console.error('Course update error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// The course group and its members (created automatically with the course)
+router.get('/courses/:courseId/group', authenticateToken, teacherOnly, async (req, res) => {
+    const courseId = parseId(req.params.courseId);
+    if (!courseId) return res.status(400).json({ error: 'Invalid course id' });
+    try {
+        const course = await ownCourse(req.db, courseId, req.user.userId);
+        if (!course) return res.status(404).json({ error: 'Course not found' });
+        const groupId = await ensureCourseGroup(req.db, course);
+        const [members] = await req.db.execute(
+            'SELECT u.id, u.full_name, gm.role FROM group_members gm JOIN users u ON u.id = gm.user_id WHERE gm.group_id = ? ORDER BY gm.role = \'leader\' DESC, u.full_name LIMIT 500',
+            [groupId]
+        );
+        res.json({ group: { id: groupId, name: course.title }, members });
+    } catch (error) {
+        console.error('Course group error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
