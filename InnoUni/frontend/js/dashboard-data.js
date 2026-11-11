@@ -283,14 +283,7 @@
         hd.appendChild(hdd); pg.appendChild(hd);
         const grid = el('div', 'pg-grid'); pg.appendChild(grid);
 
-        let list;
-        if (teacher) {
-            const d = await get('/teacher/courses', session);
-            list = d.courses.map(function (c) { return { id: c.id, courseId: c.id, name: c.title, members: c.students + 1, role: 'leader' }; });
-        } else {
-            const d = await get('/student/groups', session);
-            list = d.groups;
-        }
+        const list = (await get('/groups', session)).groups;
         if (!list.length) {
             grid.appendChild(el('p', 'pg-muted', teacher ? 'Kurs yaratganingizda guruh shu yerda paydo bo\'ladi.' : 'Hali guruhingiz yo\'q. Kursga yozilsangiz, kurs guruhi shu yerda ko\'rinadi.'));
             return;
@@ -302,9 +295,13 @@
             card.appendChild(el('span', 'pg-pill ' + (g.role === 'leader' ? 'sun' : ''), g.role === 'leader' ? 'Murabbiy' : 'A\'zo'));
             const h = el('h3', '', g.name); h.style.marginTop = '10px'; card.appendChild(h);
             const meta = el('div', 'pg-meta'); meta.appendChild(el('span', '', g.members + ' a\'zo')); card.appendChild(meta);
+            const chat = el('button', 'pg-btn', 'Muhokama'); chat.type = 'button';
+            chat.style.cssText = 'width:100%;justify-content:center;margin-top:12px';
+            chat.addEventListener('click', function () { window.GEData.ctx.groupId = g.id; window.GEData.open('group-detail', 'groups'); });
+            card.appendChild(chat);
             if (g.courseId) {
-                const b = el('button', 'pg-btn ghost', teacher ? 'A\'zolar va kurs' : 'Kursga o\'tish'); b.type = 'button';
-                b.style.cssText = 'width:100%;justify-content:center;margin-top:12px';
+                const b = el('button', 'pg-btn ghost', teacher ? 'Kursni boshqarish' : 'Kursga o\'tish'); b.type = 'button';
+                b.style.cssText = 'width:100%;justify-content:center;margin-top:8px';
                 b.addEventListener('click', function () {
                     window.GEData.ctx.courseId = g.courseId;
                     if (teacher) window.GEData.open('t-course-edit', 't-courses'); else window.GEData.open('course-detail', 'courses');
@@ -313,6 +310,120 @@
             }
             grid.appendChild(card);
         });
+    };
+
+    // ---- Group discussion (both roles) ----
+    pages['group-detail'] = async function (root, session) {
+        const pg = root.querySelector('.pg') || root;
+        const gid = window.GEData.ctx.groupId;
+        pg.textContent = '';
+        const back = el('button', 'pg-back'); back.type = 'button';
+        back.appendChild(el('i', 'fas fa-arrow-left')); back.appendChild(document.createTextNode(' Barcha guruhlar'));
+        back.addEventListener('click', function () { window.GEData.open('groups', 'groups'); });
+        pg.appendChild(back);
+        if (!gid) { pg.appendChild(el('p', 'pg-muted', 'Guruhni "Guruhlar" sahifasidan tanlang.')); return; }
+
+        let info;
+        try { info = await get('/groups/' + gid, session); }
+        catch (e) { if (e.auth) throw e; pg.appendChild(el('p', 'pg-muted', 'Bu guruhga a\'zo emassiz yoki guruh topilmadi.')); return; }
+        const leader = info.role === 'leader';
+
+        const hero = el('section', 'pg-card'); hero.style.marginTop = '14px';
+        hero.appendChild(el('h1', '', info.group.name));
+        hero.appendChild(el('p', 'pg-muted', info.members.length + ' a\'zo'));
+        pg.appendChild(hero);
+
+        const wrap = el('div', 'pg-detail'); pg.appendChild(wrap);
+        const main = el('div'); main.style.cssText = 'display:grid;gap:16px;align-content:start'; wrap.appendChild(main);
+
+        const form = el('form', 'pg-card'); form.noValidate = true;
+        const text = el('textarea', 'pg-input'); text.rows = 3; text.maxLength = 2000; text.placeholder = 'Savol yoki fikringizni yozing...'; text.setAttribute('aria-label', 'Xabar');
+        form.appendChild(text);
+        let topic = null;
+        if (leader) {
+            const lab = el('label', 'pg-muted'); lab.style.cssText = 'display:block;margin-top:8px';
+            topic = document.createElement('input'); topic.type = 'checkbox';
+            lab.appendChild(topic); lab.appendChild(document.createTextNode(' Mavzu sifatida e\'lon qilish'));
+            form.appendChild(lab);
+        }
+        const msg = el('p', 'pg-muted'); msg.setAttribute('role', 'alert'); msg.style.minHeight = '1.2em';
+        const send_ = el('button', 'pg-btn', 'Yuborish'); send_.type = 'submit'; send_.style.marginTop = '8px';
+        form.appendChild(send_); form.appendChild(msg);
+        main.appendChild(form);
+
+        const feed = el('div'); feed.style.cssText = 'display:grid;gap:12px'; main.appendChild(feed);
+        const moreBox = el('div'); main.appendChild(moreBox);
+        let oldest = null;
+
+        function postCard(p) {
+            const c = el('div', 'pg-card'); c.dataset.postId = p.id;
+            if (p.kind === 'topic') c.appendChild(el('span', 'pg-pill sky', 'Mavzu'));
+            const who = el('div', 'pg-file'); who.style.marginTop = p.kind === 'topic' ? '10px' : '0';
+            const av = el('span', 'pg-av', initials(p.full_name)); av.style.background = 'var(--c' + ((p.user_id % 6) + 1) + ')'; who.appendChild(av);
+            const d = el('div'); d.style.flex = '1';
+            d.appendChild(el('b', '', p.full_name));
+            d.appendChild(el('div', 'pg-muted', ago(p.created_at))); who.appendChild(d);
+            if (p.user_id === session.id || leader) {
+                const x = el('button', 'pg-btn ghost'); x.type = 'button'; x.setAttribute('aria-label', 'O\'chirish');
+                x.appendChild(el('i', 'fas fa-trash'));
+                x.addEventListener('click', async function () {
+                    x.disabled = true;
+                    try { await send('DELETE', '/groups/' + gid + '/posts/' + p.id, session); c.remove(); }
+                    catch (e) { if (e.auth) { location.href = '../login/login.html'; return; } x.disabled = false; msg.textContent = e.message; }
+                });
+                who.appendChild(x);
+            }
+            c.appendChild(who);
+            const body = el('p', '', p.body); body.style.cssText = 'margin:10px 0 0;white-space:pre-wrap;overflow-wrap:anywhere'; c.appendChild(body);
+            return c;
+        }
+        function showPosts(list, append) {
+            if (!append) feed.textContent = '';
+            list.forEach(function (p) { feed.appendChild(postCard(p)); });
+            if (list.length) oldest = list[list.length - 1].id;
+            if (!feed.children.length) feed.appendChild(el('p', 'pg-muted', 'Hali xabar yo\'q. Birinchi bo\'lib yozing.'));
+        }
+        function drawMore(more) {
+            moreBox.textContent = '';
+            if (!more) return;
+            const b = el('button', 'pg-btn ghost', 'Eskilarini ko\'rsatish'); b.type = 'button';
+            b.addEventListener('click', async function () {
+                b.disabled = true;
+                try {
+                    const r = await get('/groups/' + gid + '/posts?before=' + oldest, session);
+                    showPosts(r.posts, true); drawMore(r.more);
+                } catch (e) { if (e.auth) { location.href = '../login/login.html'; return; } b.disabled = false; msg.textContent = e.message; }
+            });
+            moreBox.appendChild(b);
+        }
+        async function load() {
+            const r = await get('/groups/' + gid + '/posts', session);
+            showPosts(r.posts, false); drawMore(r.more);
+        }
+        form.addEventListener('submit', async function (ev) {
+            ev.preventDefault(); msg.textContent = '';
+            if (!text.value.trim()) { msg.textContent = 'Xabar matnini yozing.'; return; }
+            send_.disabled = true;
+            try {
+                await send('POST', '/groups/' + gid + '/posts', session, { body: text.value, kind: topic && topic.checked ? 'topic' : 'message' });
+                text.value = ''; if (topic) topic.checked = false;
+                await load();
+            } catch (e) { if (e.auth) { location.href = '../login/login.html'; return; } msg.textContent = e.message; }
+            send_.disabled = false;
+        });
+
+        const side = el('aside'); side.style.cssText = 'display:grid;gap:18px;align-content:start'; wrap.appendChild(side);
+        const people = el('div', 'pg-card'); people.appendChild(el('h3', 'pg-h3', 'A\'zolar'));
+        info.members.forEach(function (m) {
+            const r = el('div', 'pg-file'); r.style.padding = '9px 0';
+            const av = el('span', 'pg-av', initials(m.full_name)); av.style.cssText = 'width:36px;height:36px;font-size:12px;background:var(--c' + ((m.id % 6) + 1) + ')';
+            r.appendChild(av);
+            const n = el('b', '', m.full_name); n.style.flex = '1'; r.appendChild(n);
+            if (m.role === 'leader') r.appendChild(el('span', 'pg-pill sun', 'O\'qituvchi'));
+            people.appendChild(r);
+        });
+        side.appendChild(people);
+        await load();
     };
 
     // Returns a promise (resolved when done). Auth errors are passed to onAuthError, other errors to onError.
