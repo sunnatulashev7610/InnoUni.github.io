@@ -1,6 +1,6 @@
 const express = require('express');
 const { authenticateToken, adminOnly } = require('../middleware/roleBased');
-const { parseId } = require('../utils/validation');
+const { parseId, validateText } = require('../utils/validation');
 
 const router = express.Router();
 router.use(authenticateToken, adminOnly);
@@ -83,15 +83,36 @@ router.get('/teams', async (req, res) => {
     } catch (e) { fail(res, e); }
 });
 
-// All orders, optional ?status=
+// All orders, optional ?status= and ?kind=. Only tariff orders are decided here; the rest are answered by teachers.
 router.get('/orders', async (req, res) => {
-    const { status } = req.query;
-    if (status && !['pending', 'confirmed', 'rejected'].includes(status)) return res.status(400).json({ error: 'Invalid status' });
+    const { status, kind } = req.query;
+    if (status && !['pending', 'offered', 'confirmed', 'rejected', 'cancelled'].includes(status)) return res.status(400).json({ error: 'Invalid status' });
+    if (kind && !['course', 'material', 'tariff'].includes(kind)) return res.status(400).json({ error: 'Invalid kind' });
     try {
+        const where = []; const params = [];
+        if (status) { where.push('o.status = ?'); params.push(status); }
+        if (kind) { where.push('o.kind = ?'); params.push(kind); }
         const [orders] = await req.db.execute(
-            `SELECT o.id, o.kind, o.item_title, o.amount, o.status, o.created_at, u.full_name FROM orders o JOIN users u ON o.user_id = u.id${status ? ' WHERE o.status = ?' : ''} ORDER BY o.id DESC LIMIT 200`,
-            status ? [status] : []);
+            `SELECT o.id, o.kind, o.item_title, o.note, o.price, o.reply, o.status, o.created_at, u.full_name FROM orders o JOIN users u ON o.user_id = u.id${where.length ? ' WHERE ' + where.join(' AND ') : ''} ORDER BY o.id DESC LIMIT 200`,
+            params);
         res.json({ orders });
+    } catch (e) { fail(res, e); }
+});
+
+// Confirm or reject a tariff order
+router.post('/orders/:id/decision', async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: 'Invalid order id' });
+    if (!['confirmed', 'rejected'].includes(req.body.status)) return res.status(400).json({ error: 'Status must be confirmed or rejected' });
+    const reply = validateText(req.body.reply, { field: 'Reply', required: false, maxLength: 1000 });
+    if (reply.error) return res.status(400).json({ error: reply.error });
+    try {
+        const [r] = await req.db.execute(
+            'UPDATE orders SET status = ?, reply = ?, handled_by = ? WHERE id = ? AND kind = \'tariff\' AND status = \'pending\'',
+            [req.body.status, reply.value, req.user.userId, id]);
+        if (!r.affectedRows) return res.status(404).json({ error: 'No pending tariff order with this id' });
+        await log(req.db, req.user.userId, 'order_' + req.body.status, null, 'order #' + id);
+        res.json({ id, status: req.body.status });
     } catch (e) { fail(res, e); }
 });
 
