@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { studentOnly, authenticateToken, requireSelf } = require('../middleware/roleBased');
 const { parseId, validateText } = require('../utils/validation');
+const { addToCourseGroup } = require('../utils/courseGroups');
 
 // Get student dashboard data
 router.get('/dashboard/:userId', authenticateToken, studentOnly, requireSelf(), async (req, res) => {
@@ -225,7 +226,7 @@ router.post('/courses/:courseId/enroll', authenticateToken, studentOnly, async (
 
         // Check if course exists and is active
         const [course] = await db.execute(
-            'SELECT id FROM courses WHERE id = ? AND status = "active"',
+            'SELECT id, title, description, teacher_id FROM courses WHERE id = ? AND status = "active"',
             [courseId]
         );
 
@@ -238,10 +239,30 @@ router.post('/courses/:courseId/enroll', authenticateToken, studentOnly, async (
             'INSERT INTO course_enrollments (course_id, user_id) VALUES (?, ?)',
             [courseId, userId]
         );
+        await addToCourseGroup(db, course[0], userId); // the course group is joined automatically
 
         res.json({ message: 'Successfully enrolled in course' });
     } catch (error) {
         console.error('Course enrollment error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// My groups (course groups included)
+router.get('/groups', authenticateToken, studentOnly, async (req, res) => {
+    try {
+        const [rows] = await req.db.execute(`
+            SELECT g.id, g.name, g.description, g.course_id, gm.role,
+                (SELECT COUNT(*) FROM group_members m WHERE m.group_id = g.id) AS members
+            FROM group_members gm
+            JOIN \`groups\` g ON g.id = gm.group_id
+            WHERE gm.user_id = ?
+            ORDER BY g.id DESC
+            LIMIT 100
+        `, [req.user.userId]);
+        res.json({ groups: rows.map((g) => ({ id: g.id, name: g.name, description: g.description, courseId: g.course_id, role: g.role, members: Number(g.members) || 0 })) });
+    } catch (error) {
+        console.error('My groups error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
@@ -299,12 +320,15 @@ router.post('/groups/:groupId/join', authenticateToken, studentOnly, async (req,
 
         // Check if group exists and is active
         const [group] = await db.execute(
-            'SELECT id FROM `groups` WHERE id = ? AND status = "active"',
+            'SELECT id, course_id FROM `groups` WHERE id = ? AND status = "active"',
             [groupId]
         );
 
         if (group.length === 0) {
             return res.status(404).json({ error: 'Group not found or inactive' });
+        }
+        if (group[0].course_id) {
+            return res.status(400).json({ error: 'Course groups are joined by enrolling in the course' });
         }
 
         // Check group member limit
@@ -336,6 +360,11 @@ router.post('/groups/:groupId/leave', authenticateToken, studentOnly, async (req
         const db = req.db;
         const groupId = req.params.groupId;
         const userId = req.user.userId;
+
+        const [own] = await db.execute('SELECT course_id FROM `groups` WHERE id = ?', [groupId]);
+        if (own.length && own[0].course_id) {
+            return res.status(400).json({ error: 'You cannot leave a course group' });
+        }
 
         // Check if member
         const [member] = await db.execute(

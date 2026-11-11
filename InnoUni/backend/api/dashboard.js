@@ -253,7 +253,7 @@ router.get('/recommendations/:userId', requireSelf(), async (req, res) => {
             SELECT g.id, g.name, g.description, COUNT(gm.user_id) as member_count
             FROM \`groups\` g
             LEFT JOIN group_members gm ON g.id = gm.group_id
-            WHERE g.status = 'active' 
+            WHERE g.status = 'active' AND g.course_id IS NULL
             AND g.id NOT IN (
                 SELECT group_id FROM group_members WHERE user_id = ?
             )

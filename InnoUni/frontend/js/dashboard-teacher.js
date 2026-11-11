@@ -207,6 +207,21 @@
         left.appendChild(info);
 
         // content lists
+        const people = el('div', 'pg-card'); people.style.marginTop = '18px';
+        people.appendChild(el('h3', '', 'Kurs guruhi'));
+        const peopleBody = el('div', 'pg-muted', 'Yuklanmoqda...'); people.appendChild(peopleBody);
+        left.appendChild(people);
+        get('/teacher/courses/' + id + '/group', session).then(function (g) {
+            peopleBody.textContent = '';
+            peopleBody.className = '';
+            const students = g.members.filter(function (m) { return m.role !== 'leader'; });
+            const note = el('p', 'pg-muted', students.length ? students.length + ' ta o\'quvchi yozilgan' : 'Hali o\'quvchi yozilmagan. Kursni e\'lon qilgach, yozilganlar shu yerda ko\'rinadi.');
+            peopleBody.appendChild(note);
+            students.forEach(function (m) {
+                const r = el('div', 'pg-row'); r.appendChild(el('b', '', m.full_name)); peopleBody.appendChild(r);
+            });
+        }).catch(function () { peopleBody.textContent = 'Guruhni yuklab bo\'lmadi.'; });
+
         const lists = el('div'); lists.style.marginTop = '18px'; left.appendChild(lists);
         const listMsg = message();
 
