@@ -275,6 +275,7 @@
 	<script src="../../frontend/js/config.js"></script>
 	<script src="../../frontend/js/dashboard-data.js"></script>
 	<script src="../../frontend/js/dashboard-teacher.js"></script>
+	<script src="../../frontend/js/dashboard-orders.js"></script>
 	<script>
 		// Enhanced loadPage function with loading states
 		// Built but switched off for now. To bring a feature back, set it to true (and show its menu item).
@@ -486,6 +487,12 @@
 			// ---- Pricing page: monthly/yearly switch and "choose plan" -> pre-filled order ----
 			function openOrderWith(type, item, fmtIndex) {
 				var btn = navFor(currentRole === 'teacher' ? 't-orders' : 'orders');
+				if (session) {
+					// real mode: the orders page builds its own form and reads this preset
+					window.GEData.ctx.orderPreset = { type: type, item: item, yearly: fmtIndex === 1 };
+					loadPage('orders', btn);
+					return;
+				}
 				loadPage('orders', btn);
 				var tries = 0;
 				var timer = setInterval(function () {

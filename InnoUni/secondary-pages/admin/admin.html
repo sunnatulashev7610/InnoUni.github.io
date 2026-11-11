@@ -51,13 +51,21 @@
 	</nav>
 	<main class="main"><div class="content-area" id="content"><div class="loading"><div class="spinner"></div></div></div></main>
 	<script src="../../frontend/js/theme.js"></script>
+	<script src="../../frontend/js/config.js"></script>
+	<script src="../../frontend/js/admin-orders.js"></script>
 	<script>
 		var content = document.getElementById('content');
 		function loadPage(page, el) {
 			document.querySelectorAll('.nav-item').forEach(function (b) { b.classList.remove('active'); });
 			if (el) el.classList.add('active');
 			fetch('pages/' + page + '.html').then(function (r) { if (!r.ok) throw 0; return r.text(); })
-				.then(function (h) { content.innerHTML = h; })
+				.then(function (h) {
+					content.innerHTML = h;
+					var tk = null; try { tk = localStorage.getItem('token'); } catch (e) {}
+					if (page === 'a-orders' && tk && window.AdminOrders) {
+						window.AdminOrders.render(content, tk, function () { location.href = 'admin-login.html'; }, toast);
+					}
+				})
 				.catch(function () { content.textContent = 'Sahifa topilmadi'; });
 		}
 		function toast(text) {
