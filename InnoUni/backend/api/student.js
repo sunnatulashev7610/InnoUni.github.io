@@ -151,6 +151,34 @@ router.get('/dashboard/:userId', authenticateToken, studentOnly, requireSelf(), 
 });
 
 // Enroll in a course
+// Course catalogue: every active course, with my enrollment (if any)
+router.get('/courses', authenticateToken, studentOnly, async (req, res) => {
+    try {
+        const [rows] = await req.db.execute(`
+            SELECT c.id, c.title, c.description, c.category, c.avatar, u.full_name AS teacher,
+                (SELECT COUNT(*) FROM course_enrollments e WHERE e.course_id = c.id AND e.status = 'active') AS students,
+                ce.progress AS my_progress, ce.status AS my_status
+            FROM courses c
+            LEFT JOIN users u ON c.teacher_id = u.id
+            LEFT JOIN course_enrollments ce ON ce.course_id = c.id AND ce.user_id = ?
+            WHERE c.status = 'active'
+            ORDER BY c.id DESC
+            LIMIT 200
+        `, [req.user.userId]);
+        res.json({
+            courses: rows.map((c) => ({
+                id: c.id, title: c.title, description: c.description, category: c.category, avatar: c.avatar,
+                teacher: c.teacher, students: Number(c.students) || 0,
+                enrolled: c.my_status !== null && c.my_status !== undefined,
+                progress: c.my_progress === null || c.my_progress === undefined ? 0 : Number(c.my_progress)
+            }))
+        });
+    } catch (error) {
+        console.error('Course catalogue error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 router.post('/courses/:courseId/enroll', authenticateToken, studentOnly, async (req, res) => {
     try {
         const db = req.db;

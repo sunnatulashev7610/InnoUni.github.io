@@ -767,6 +767,7 @@
 			});
 			content.addEventListener('click', function (e) {
 				var chip = e.target.closest('.pg-chip');
+				if (chip && (!chip.isConnected || chip.closest('[data-managed]'))) return; // real-data pages filter themselves
 				if (chip) {
 					var cat = chip.dataset.cat;
 					chip.parentNode.querySelectorAll('.pg-chip').forEach(function (c) { c.classList.toggle('on', c === chip); });

@@ -15,6 +15,14 @@
         return res.json();
     }
 
+    async function send(method, path, session) {
+        const res = await fetch(apiBase() + path, { method: method, headers: { Authorization: 'Bearer ' + session.token } });
+        if (res.status === 401) { const err = new Error('auth'); err.auth = true; throw err; }
+        const body = await res.json().catch(function () { return {}; });
+        if (!res.ok) throw new Error(body.error || 'HTTP ' + res.status);
+        return body;
+    }
+
     function ago(ts) {
         const min = Math.max(0, Math.round((Date.now() - new Date(ts).getTime()) / 60000));
         if (min < 1) return 'hozir';
@@ -85,6 +93,98 @@
             setFill(cards[3], 100 * stats.learning.current_streak / 28);
             if (list) renderActivity(list, activity);
         }
+    };
+
+
+    // ---- Courses (student) ----
+    function el(tag, cls, text) {
+        const n = document.createElement(tag);
+        if (cls) n.className = cls;
+        if (text !== undefined) n.textContent = text;
+        return n;
+    }
+    function initials(title) {
+        const w = String(title || '?').trim().split(/\s+/).slice(0, 2);
+        return w.map(function (x) { return x.charAt(0).toUpperCase(); }).join('');
+    }
+    const PILLS = ['', 'sky', 'sun'];
+
+    function courseCard(c, onEnroll) {
+        const card = el('article', 'pg-card pg-item');
+        card.dataset.cat = (c.category || '').toLowerCase();
+        card.dataset.mine = c.enrolled ? '1' : '0';
+        const cover = el('div', 'pg-cover', initials(c.title));
+        cover.style.background = 'var(--c' + ((c.id % 6) + 1) + ')';
+        card.appendChild(cover);
+        if (c.category) card.appendChild(el('span', 'pg-pill ' + PILLS[c.id % PILLS.length], c.category));
+        const h = el('h3', '', c.title); h.style.marginTop = '10px'; card.appendChild(h);
+        card.appendChild(el('div', 'pg-muted', c.teacher || 'O\'qituvchi belgilanmagan'));
+        if (c.description) { const d = el('p', 'pg-muted', c.description); d.style.cssText = 'margin:8px 0 0;font-size:.88rem'; card.appendChild(d); }
+        if (c.enrolled) {
+            const bar = el('div', 'pg-bar'); bar.style.marginTop = '14px';
+            const i = document.createElement('i'); i.style.width = Math.max(0, Math.min(100, c.progress)) + '%'; i.style.background = 'var(--c' + ((c.id % 6) + 1) + ')';
+            bar.appendChild(i); card.appendChild(bar);
+        }
+        const meta = el('div', 'pg-meta');
+        meta.appendChild(el('span', '', c.students + ' o\'quvchi'));
+        if (c.enrolled) {
+            const pct = el('b', '', Math.round(c.progress) + '%'); pct.style.color = 'var(--ink)'; meta.appendChild(pct);
+        } else {
+            const b = el('button', 'pg-btn sun', 'Yozilish'); b.type = 'button'; b.style.padding = '6px 14px';
+            b.addEventListener('click', function () { onEnroll(c, b); });
+            meta.appendChild(b);
+        }
+        card.appendChild(meta);
+        return card;
+    }
+
+    pages.courses = async function (root, session) {
+        const grid = root.querySelector('#pgFilterTarget');
+        const chips = root.querySelector('.pg-chips');
+        const head = root.querySelector('.pg-head p');
+        if (head) head.textContent = 'Mavjud kurslar va siz yozilganlari';
+        const create = [...root.querySelectorAll('.pg-head .pg-btn')].find(function (b) { return /Yangi kurs/.test(b.textContent); });
+        if (create) create.remove();
+        chips.removeAttribute('data-filter-group');
+        chips.setAttribute('data-managed', ''); // real mode filters here, not in the demo handler
+        grid.textContent = 'Yuklanmoqda...';
+
+        const data = await get('/student/courses', session);
+        let courses = data.courses;
+        let filter = 'all';
+
+        function drawChips() {
+            chips.textContent = '';
+            const cats = [...new Set(courses.map(function (c) { return c.category; }).filter(Boolean))];
+            [['all', 'Hammasi'], ['mine', 'Mening kurslarim']].concat(cats.map(function (c) { return [c.toLowerCase(), c]; })).forEach(function (p) {
+                const b = el('button', 'pg-chip' + (filter === p[0] ? ' on' : ''), p[1]); b.type = 'button'; b.dataset.cat = p[0];
+                b.addEventListener('click', function () { filter = p[0]; drawChips(); drawGrid(); });
+                chips.appendChild(b);
+            });
+        }
+        async function enroll(c, btn) {
+            btn.disabled = true;
+            try {
+                await send('POST', '/student/courses/' + c.id + '/enroll', session);
+                c.enrolled = true; c.students += 1; c.progress = 0;
+                drawGrid();
+            } catch (e) {
+                if (e.auth) { location.href = '../login/login.html'; return; }
+                btn.disabled = false;
+                btn.textContent = e.message === 'Already enrolled in this course' ? 'Allaqachon yozilgansiz' : 'Xatolik, qayta urining';
+            }
+        }
+        function drawGrid() {
+            grid.textContent = '';
+            const shown = courses.filter(function (c) { return filter === 'all' || (filter === 'mine' ? c.enrolled : (c.category || '').toLowerCase() === filter); });
+            if (!shown.length) {
+                grid.appendChild(el('p', 'pg-muted', courses.length ? 'Bu bo\'limda kurs yo\'q.' : 'Hozircha kurslar yo\'q. O\'qituvchilar kurs qo\'shganda shu yerda ko\'rinadi.'));
+                return;
+            }
+            shown.forEach(function (c) { grid.appendChild(courseCard(c, enroll)); });
+        }
+        drawChips();
+        drawGrid();
     };
 
     // Returns a promise (resolved when done). Auth errors are passed to onAuthError, other errors to onError.
