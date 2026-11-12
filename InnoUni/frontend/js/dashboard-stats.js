@@ -237,14 +237,17 @@
         const teacher = session.role === 'teacher';
         let user = {}; try { user = JSON.parse(localStorage.getItem('user') || '{}'); } catch (e) { /* ignore */ }
         const s = await get(teacher ? '/summary/teacher' : '/summary/student', session);
+        // Current values come from the server (the saved copy in localStorage may be older)
+        try { const me = await get('/auth/profile', session); if (me && me.user) user = Object.assign({}, user, me.user); } catch (e) { if (e.auth) throw e; }
         const pg = page(root);
         pg.appendChild(head('Profil', 'Hisobingiz haqida ma\'lumot'));
         const top = el('div', 'pg-card pg-file'); top.style.marginBottom = '18px';
-        const av = el('span', 'pg-av', initials(session.name)); av.style.cssText = 'background:var(--c1);width:64px;height:64px;font-size:22px'; top.appendChild(av);
-        const d = el('div'); const n = el('h2', '', session.name || 'Foydalanuvchi'); n.style.margin = '0';
+        const av = el('span', 'pg-av', initials(user.full_name || session.name)); av.style.cssText = 'background:var(--c1);width:64px;height:64px;font-size:22px'; top.appendChild(av);
+        const d = el('div'); const n = el('h2', '', user.full_name || session.name || 'Foydalanuvchi'); n.style.margin = '0';
         d.appendChild(n);
         d.appendChild(el('div', 'pg-muted', teacher ? 'O\'qituvchi' : 'O\'quvchi'));
-        if (user.email) d.appendChild(el('div', 'pg-muted', user.email));
+        const mail = el('div', 'pg-muted', user.email || ''); d.appendChild(mail);
+        const bioLine = el('div', 'pg-muted', user.bio || ''); bioLine.style.marginTop = '4px'; d.appendChild(bioLine);
         top.appendChild(d); pg.appendChild(top);
 
         const row = cardRow();
@@ -277,5 +280,79 @@
             });
             pg.appendChild(c);
         }
+
+        // ---- Edit profile ----
+        function field(label, input, id) {
+            const w = el('div'); const l = el('label', 'pg-lbl', label); l.htmlFor = id; input.id = id;
+            w.appendChild(l); w.appendChild(input); return w;
+        }
+        function input(type, value, max) { const i = el('input', 'pg-input'); i.type = type; i.maxLength = max; i.value = value || ''; return i; }
+        function note() { const m = el('p', 'pg-muted'); m.setAttribute('role', 'alert'); m.style.cssText = 'min-height:1.2em;margin-top:10px'; return m; }
+
+        const form = el('form'); form.noValidate = true;
+        const edit = card('Ma\'lumotlarni tahrirlash'); edit.style.marginTop = '18px';
+        const iName = input('text', user.full_name || session.name, 100); iName.autocomplete = 'name';
+        const iMail = input('email', user.email, 255); iMail.autocomplete = 'email';
+        const iPhone = input('tel', user.phone, 20); iPhone.placeholder = '+998 90 123 45 67'; iPhone.autocomplete = 'tel';
+        const iBio = el('textarea', 'pg-input'); iBio.rows = 3; iBio.maxLength = 500; iBio.value = user.bio || ''; iBio.placeholder = 'O\'zingiz haqingizda qisqacha';
+        form.appendChild(field('To\'liq ism', iName, 'pfName'));
+        form.appendChild(field('Email', iMail, 'pfEmail'));
+        form.appendChild(field('Telefon', iPhone, 'pfPhone'));
+        form.appendChild(field('Qisqacha o\'zim haqimda', iBio, 'pfBio'));
+        const msg = note(); form.appendChild(msg);
+        const save = el('button', 'pg-btn', 'Saqlash'); save.type = 'submit'; form.appendChild(save);
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            msg.textContent = '';
+            if (iName.value.trim().length < 2) { msg.textContent = 'Ismni kiriting (kamida 2 belgi).'; return; }
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(iMail.value.trim())) { msg.textContent = 'Email noto\'g\'ri.'; return; }
+            save.disabled = true; save.textContent = 'Saqlanmoqda...';
+            try {
+                const out = await G.api.send('PUT', '/auth/profile', session, { full_name: iName.value, email: iMail.value, phone: iPhone.value, bio: iBio.value });
+                const u = out.user || {};
+                let stored = {}; try { stored = JSON.parse(localStorage.getItem('user') || '{}'); } catch (x) { /* ignore */ }
+                try { localStorage.setItem('user', JSON.stringify(Object.assign(stored, u))); } catch (x) { /* storage may be blocked */ }
+                session.name = u.full_name || session.name;
+                const hdr = document.getElementById('userName'); if (hdr) hdr.textContent = session.name;
+                n.textContent = session.name; mail.textContent = u.email || ''; bioLine.textContent = u.bio || '';
+                av.textContent = initials(session.name);
+                iName.value = u.full_name || ''; iMail.value = u.email || ''; iPhone.value = u.phone || ''; iBio.value = u.bio || '';
+                G.toast('Profil saqlandi');
+            } catch (err) {
+                if (err.auth) { msg.textContent = 'Sessiya tugagan. Qayta kiring.'; return; }
+                msg.textContent = /taken/i.test(err.message) ? 'Bu email band.' : /email/i.test(err.message) ? 'Email noto\'g\'ri.' : /phone/i.test(err.message) ? 'Telefon raqami noto\'g\'ri.' : 'Saqlab bo\'lmadi. Keyinroq urinib ko\'ring.';
+            } finally { save.disabled = false; save.textContent = 'Saqlash'; }
+        });
+        edit.appendChild(form); pg.appendChild(edit);
+
+        // ---- Change password ----
+        const pass = card('Parolni o\'zgartirish'); pass.style.marginTop = '18px';
+        const pform = el('form'); pform.noValidate = true;
+        const pOld = input('password', '', 72); pOld.autocomplete = 'current-password';
+        const pNew = input('password', '', 72); pNew.autocomplete = 'new-password';
+        const pNew2 = input('password', '', 72); pNew2.autocomplete = 'new-password';
+        pform.appendChild(field('Joriy parol', pOld, 'pfOld'));
+        pform.appendChild(field('Yangi parol (kamida 8 belgi)', pNew, 'pfNew'));
+        pform.appendChild(field('Yangi parolni takrorlang', pNew2, 'pfNew2'));
+        const pmsg = note(); pform.appendChild(pmsg);
+        const psave = el('button', 'pg-btn', 'Parolni yangilash'); psave.type = 'submit'; pform.appendChild(psave);
+        pform.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            pmsg.textContent = '';
+            if (!pOld.value) { pmsg.textContent = 'Joriy parolni kiriting.'; return; }
+            if (pNew.value.length < 8) { pmsg.textContent = 'Yangi parol kamida 8 belgi bo\'lsin.'; return; }
+            if (pNew.value !== pNew2.value) { pmsg.textContent = 'Yangi parollar bir xil emas.'; return; }
+            psave.disabled = true; psave.textContent = 'Yangilanmoqda...';
+            try {
+                await G.api.send('PUT', '/auth/password', session, { current_password: pOld.value, new_password: pNew.value });
+                pOld.value = ''; pNew.value = ''; pNew2.value = '';
+                G.toast('Parol yangilandi');
+            } catch (err) {
+                // The server answers 401 for a wrong current password
+                if (err.auth) { pmsg.textContent = 'Joriy parol noto\'g\'ri.'; return; }
+                pmsg.textContent = /incorrect/i.test(err.message) ? 'Joriy parol noto\'g\'ri.' : /Too many/i.test(err.message) ? 'Juda ko\'p urinish. Keyinroq urinib ko\'ring.' : /at (least|most)/i.test(err.message) ? 'Yangi parol talabga mos emas (8-72 belgi).' : 'Parolni yangilab bo\'lmadi.';
+            } finally { psave.disabled = false; psave.textContent = 'Parolni yangilash'; }
+        });
+        pass.appendChild(pform); pg.appendChild(pass);
     });
 })();
