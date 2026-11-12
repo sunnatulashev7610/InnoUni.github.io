@@ -28,3 +28,15 @@ services:
         sync: false
       - key: DB_NAME
         value: gather_edu
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      - key: CONTACT_TO
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_WEBHOOK_SECRET
+        generateValue: true
+      - key: TELEGRAM_ADMIN_CHAT_ID
+        sync: false
