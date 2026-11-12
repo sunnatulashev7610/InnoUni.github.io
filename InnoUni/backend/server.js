@@ -259,6 +259,7 @@ app.use((req, res, next) => {
 // API Routes
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/password', authLimiter); // guards the current-password check against guessing
 app.use('/api/auth', authRouter);
 app.use('/api/student', studentRouter);
 app.use('/api/teacher', teacherRouter);

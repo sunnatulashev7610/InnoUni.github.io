@@ -163,31 +163,69 @@ router.get('/profile', authenticateToken, async (req, res) => {
     }
 });
 
-// Update user profile
+// Update user profile. Only the fields that are sent change; every field is validated.
 router.put('/profile', authenticateToken, async (req, res) => {
     try {
         const db = req.db;
         const userId = req.user.userId;
-        const { full_name, email, phone, bio } = req.body;
+        const body = req.body || {};
+        const updates = {};
 
-        // Check if email is being changed and if it's already taken
-        if (email) {
+        if (body.full_name !== undefined) {
+            const name = typeof body.full_name === 'string' ? body.full_name.trim().replace(/\s+/g, ' ') : '';
+            if (name.length < 2 || name.length > 100) {
+                return res.status(400).json({ error: 'Name must be 2-100 characters' });
+            }
+            updates.full_name = name;
+        }
+        if (body.email !== undefined) {
+            const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+            if (!isValidEmail(email)) {
+                return res.status(400).json({ error: 'Invalid email' });
+            }
+            updates.email = email;
+        }
+        if (body.phone !== undefined) {
+            const phone = body.phone === null ? '' : typeof body.phone === 'string' ? body.phone.trim() : null;
+            if (phone === null || phone.length > 20 || (phone && !/^\+?[0-9 ()-]{7,20}$/.test(phone))) {
+                return res.status(400).json({ error: 'Invalid phone number' });
+            }
+            updates.phone = phone || null;
+        }
+        if (body.bio !== undefined) {
+            const bio = body.bio === null ? '' : typeof body.bio === 'string' ? body.bio.trim() : null;
+            if (bio === null || bio.length > 500) {
+                return res.status(400).json({ error: 'Bio must be at most 500 characters' });
+            }
+            updates.bio = bio || null;
+        }
+
+        const columns = Object.keys(updates);
+        if (columns.length === 0) {
+            return res.status(400).json({ error: 'Nothing to update' });
+        }
+
+        if (updates.email) {
             const [existingUsers] = await db.execute(
                 'SELECT id FROM users WHERE email = ? AND id != ?',
-                [email, userId]
+                [updates.email, userId]
             );
-
             if (existingUsers.length > 0) {
                 return res.status(400).json({ error: 'Email is already taken' });
             }
         }
 
+        // Column names come from the fixed list above, never from the request
         await db.execute(
-            'UPDATE users SET full_name = ?, email = ?, phone = ?, bio = ? WHERE id = ?',
-            [full_name, email, phone, bio, userId]
+            `UPDATE users SET ${columns.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`,
+            [...columns.map((c) => updates[c]), userId]
         );
 
-        res.json({ message: 'Profile updated successfully' });
+        const [rows] = await db.execute(
+            'SELECT id, full_name, email, phone, bio, avatar, role, created_at FROM users WHERE id = ?',
+            [userId]
+        );
+        res.json({ message: 'Profile updated successfully', user: rows[0] });
     } catch (error) {
         console.error('Profile update error:', error);
         res.status(500).json({ error: 'Internal server error' });

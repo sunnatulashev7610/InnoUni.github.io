@@ -83,3 +83,73 @@ test('profile shows the real name and email, no invented data', async () => {
     expect(c.textContent).toContain('a@b.uz');
     expect(c.querySelectorAll('.pg-lesson').length).toBeGreaterThan(0);
 });
+
+function profileBoot(role, putResult) {
+    const b = boot(role);
+    const base = b.w.fetch;
+    b.w.document.body.insertAdjacentHTML('beforeend', '<div id="userName">Sam Test</div>');
+    b.w.fetch = jest.fn(async (url, opts) => {
+        if (opts && opts.method === 'PUT') return putResult(url, opts);
+        if (url.includes('/auth/profile')) return { ok: true, status: 200, json: async () => ({ user: { full_name: 'Sam Test', email: 'a@b.uz', phone: '+998901112233', bio: 'Bio matni' } }) };
+        return base(url, opts);
+    });
+    return b;
+}
+const submit = (w, form) => form.dispatchEvent(new w.Event('submit', { cancelable: true, bubbles: true }));
+const tick = () => new Promise((r) => setTimeout(r, 10));
+
+test('profile form is filled with the saved data', async () => {
+    const { c, run } = profileBoot('student', async () => ({ ok: true, status: 200, json: async () => ({}) }));
+    await run('profile');
+    expect(c.querySelector('#pfName').value).toBe('Sam Test');
+    expect(c.querySelector('#pfPhone').value).toBe('+998901112233');
+    expect(c.textContent).toContain('Bio matni');
+});
+
+test('saving the profile sends the data and updates the header and storage', async () => {
+    const { w, c, run } = profileBoot('teacher', async () => ({ ok: true, status: 200, json: async () => ({ user: { full_name: 'Yangi Ism', email: 'new@b.uz', phone: null, bio: 'Yangi bio' } }) }));
+    await run('profile');
+    c.querySelector('#pfName').value = 'Yangi Ism'; c.querySelector('#pfEmail').value = 'new@b.uz';
+    submit(w, c.querySelector('#pfName').form); await tick();
+    const call = w.fetch.mock.calls.find(([, o]) => o && o.method === 'PUT');
+    expect(call[0]).toContain('/auth/profile');
+    expect(JSON.parse(call[1].body)).toMatchObject({ full_name: 'Yangi Ism', email: 'new@b.uz' });
+    expect(w.document.getElementById('userName').textContent).toBe('Yangi Ism');
+    expect(JSON.parse(w.localStorage.getItem('user')).email).toBe('new@b.uz');
+    expect(c.querySelector('h2').textContent).toBe('Yangi Ism');
+});
+
+test('profile form validates before sending and explains a taken email', async () => {
+    const { w, c, run } = profileBoot('student', async () => ({ ok: false, status: 400, json: async () => ({ error: 'Email is already taken' }) }));
+    await run('profile');
+    c.querySelector('#pfEmail').value = 'bad';
+    submit(w, c.querySelector('#pfName').form); await tick();
+    expect(c.textContent).toContain('Email noto');
+    expect(w.fetch.mock.calls.some(([, o]) => o && o.method === 'PUT')).toBe(false);
+    c.querySelector('#pfEmail').value = 'x@y.uz';
+    submit(w, c.querySelector('#pfName').form); await tick();
+    expect(c.textContent).toContain('Bu email band');
+});
+
+test('password form checks the match, then sends and clears the fields', async () => {
+    const { w, c, run } = profileBoot('student', async () => ({ ok: true, status: 200, json: async () => ({ message: 'ok' }) }));
+    await run('profile');
+    const form = c.querySelector('#pfOld').form;
+    c.querySelector('#pfOld').value = 'oldpass123'; c.querySelector('#pfNew').value = 'newpass123'; c.querySelector('#pfNew2').value = 'different1';
+    submit(w, form); await tick();
+    expect(c.textContent).toContain('bir xil emas');
+    expect(w.fetch.mock.calls.some(([, o]) => o && o.method === 'PUT')).toBe(false);
+    c.querySelector('#pfNew2').value = 'newpass123';
+    submit(w, form); await tick();
+    const call = w.fetch.mock.calls.find(([, o]) => o && o.method === 'PUT');
+    expect(JSON.parse(call[1].body)).toEqual({ current_password: 'oldpass123', new_password: 'newpass123' });
+    expect(c.querySelector('#pfOld').value).toBe('');
+});
+
+test('a wrong current password (401) shows a message instead of crashing', async () => {
+    const { w, c, run } = profileBoot('student', async () => ({ ok: false, status: 401, json: async () => ({ error: 'Current password is incorrect' }) }));
+    await run('profile');
+    c.querySelector('#pfOld').value = 'wrongpass1'; c.querySelector('#pfNew').value = 'newpass123'; c.querySelector('#pfNew2').value = 'newpass123';
+    submit(w, c.querySelector('#pfOld').form); await tick();
+    expect(c.textContent).toContain('Joriy parol noto');
+});
