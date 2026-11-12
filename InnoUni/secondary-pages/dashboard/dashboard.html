@@ -282,7 +282,19 @@
 		var FEATURES = { teams: false, library: false };
 		var PAGE_FEATURE = { jamoalar: 'teams', 'team-detail': 'teams', library: 'library' };
 		document.querySelectorAll('[data-feature]').forEach(function (n) { n.hidden = !FEATURES[n.dataset.feature]; });
+		// Demo visitors (no sign-in) only look from the outside: no course or group interior, no real orders.
+		var DEMO_LOCKED = { 'course-detail': 1, 'group-detail': 1 };
+		function demoNotice(text) {
+			var old = document.querySelector('.pg-toast.demo'); if (old) old.remove();
+			var t = document.createElement('div'); t.className = 'pg-toast demo';
+			t.textContent = text || "Demo rejimida bu bo'lim yopiq. Ro'yxatdan o'ting yoki hisobingizga kiring.";
+			document.body.appendChild(t); setTimeout(function () { t.remove(); }, 4000);
+		}
 		function loadPage(page, element) {
+			if (DEMO_LOCKED[page] && !session) {
+				demoNotice("Demo rejimida kurs va guruh ichiga kirib bo'lmaydi. Ro'yxatdan o'ting yoki hisobingizga kiring.");
+				return;
+			}
 			if (PAGE_FEATURE[page] && !FEATURES[PAGE_FEATURE[page]]) {
 				// closed feature: go to the overview instead
 				page = currentRole === 'teacher' ? 't-home' : 'main.dashboard';
@@ -371,7 +383,21 @@
 			return r === 'teacher' ? 'teacher' : 'student';
 		}
 		function applySession() {
-			if (!session) return;
+			if (!session) {
+				// Demo mode: say clearly that it is look-only
+				var bar = document.createElement('div');
+				bar.className = 'demo-bar'; bar.setAttribute('role', 'note');
+				bar.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;padding:10px 16px;margin-bottom:14px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line);font-size:.92rem';
+				var tx = document.createElement('span');
+				tx.textContent = "Demo rejim: kurslar, guruhlar va buyurtmalar faqat ko'rish uchun.";
+				var acts = document.createElement('span'); acts.style.cssText = 'display:flex;gap:12px;font-weight:600';
+				[['Ro\'yxatdan o\'tish', '../login/register.html'], ['Kirish', '../login/login.html']].forEach(function (l) {
+					var a = document.createElement('a'); a.textContent = l[0]; a.href = l[1]; acts.appendChild(a);
+				});
+				bar.appendChild(tx); bar.appendChild(acts);
+				var main = document.querySelector('.main'); main.insertBefore(bar, main.firstChild);
+				return;
+			}
 			var sw = document.querySelector('.role-switch'); if (sw) sw.style.display = 'none';
 			if (session.name) document.getElementById('userName').textContent = session.name;
 			var lo = document.getElementById('logoutBtn'); lo.hidden = false;
@@ -537,6 +563,7 @@
 			content.addEventListener('submit', function (e) {
 				if (e.target.id !== 'orderForm') return;
 				e.preventDefault();
+				if (!session) { demoNotice("Demo rejimida buyurtma berib bo'lmaydi. Ro'yxatdan o'ting yoki hisobingizga kiring."); return; }
 				var type = content.querySelector('.pg-seg .on').dataset.orderType;
 				var sel = content.querySelector('#orderItem'), opt = sel.options[sel.selectedIndex];
 				var list = content.querySelector('#pgFilterTarget');
