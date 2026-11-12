@@ -19,6 +19,8 @@ const teamsRouter = require('./api/teams');
 const { requireFeature } = require('./utils/features');
 const ordersRouter = require('./api/orders');
 const adminRouter = require('./api/admin');
+const telegramRouter = require('./api/telegram');
+const telegram = require('./utils/telegram');
 const { runMigrations } = require('./migrate');
 const { escapeHtml } = require('./utils/escapeHtml');
 const { isValidEmail } = require('./utils/validation');
@@ -266,6 +268,7 @@ app.use('/api/dashboard', authenticateToken, dashboardRouter);
 app.use('/api/teams', requireFeature('teams'), teamsRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/telegram', telegramRouter);
 
 // Old bookmarked /dashboard/:userId links go to the dashboard page (the role comes from the login token)
 app.get('/dashboard/:userId', authenticateToken, async (req, res) => {
@@ -303,41 +306,49 @@ app.post('/api/contact', contactLimiter, async (req, res) => {
             return res.status(400).json({ error: 'Invalid name, email or message' });
         }
 
-        if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-            console.error('Contact form: EMAIL_USER / EMAIL_PASS are not configured');
+        const emailReady = Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASS);
+        const telegramReady = telegram.isConfigured() && Boolean(process.env.TELEGRAM_ADMIN_CHAT_ID);
+        if (!emailReady && !telegramReady) {
+            console.error('Contact form: neither EMAIL_USER/EMAIL_PASS nor the Telegram bot is configured');
             return res.status(503).json({ error: 'Contact form is temporarily unavailable.' });
         }
 
-        // Create email transporter
-        const transporter = nodemailer.createTransport({
-            service: process.env.EMAIL_SERVICE || 'gmail',
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS
-            }
-        });
-
-        // Email options: "from" is our own account (spoofing the visitor's address gets mail rejected),
-        // the visitor can be answered through replyTo.
-        const safeName = escapeHtml(name);
-        const mailOptions = {
-            from: process.env.EMAIL_USER,
-            replyTo: email,
-            to: process.env.CONTACT_TO || process.env.EMAIL_USER,
-            subject: `New Contact Form Message from ${name.replace(/[\r\n]+/g, ' ')}`,
-            html: `
+        const cleanName = name.replace(/[\r\n]+/g, ' ');
+        const sendEmail = async () => {
+            const transporter = nodemailer.createTransport({
+                service: process.env.EMAIL_SERVICE || 'gmail',
+                auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+            });
+            // "from" is our own account (spoofing the visitor's address gets mail rejected);
+            // the visitor can be answered through replyTo.
+            await transporter.sendMail({
+                from: process.env.EMAIL_USER,
+                replyTo: email,
+                to: process.env.CONTACT_TO || process.env.EMAIL_USER,
+                subject: `New Contact Form Message from ${cleanName}`,
+                html: `
                 <h3>New Contact Form Submission</h3>
-                <p><strong>Name:</strong> ${safeName}</p>
+                <p><strong>Name:</strong> ${escapeHtml(name)}</p>
                 <p><strong>Email:</strong> ${escapeHtml(email)}</p>
                 <p><strong>Message:</strong></p>
                 <p>${escapeHtml(message).replace(/\r?\n/g, '<br>')}</p>
                 <hr>
                 <p><small>Sent from Gather Edu Contact Form</small></p>
             `
+            });
         };
+        const sendTelegram = () =>
+            telegram.notifyAdmin(`Sayt formasi: ${cleanName}\n${email}\n\n${message.slice(0, 3000)}`);
 
-        // Send email
-        await transporter.sendMail(mailOptions);
+        // Deliver through every configured channel; the visitor sees success if at least one worked
+        const channels = [];
+        if (emailReady) channels.push(sendEmail());
+        if (telegramReady) channels.push(sendTelegram());
+        const results = await Promise.allSettled(channels);
+        results.filter((r) => r.status === 'rejected').forEach((r) => console.error('Contact delivery error:', r.reason));
+        if (!results.some((r) => r.status === 'fulfilled')) {
+            throw new Error('All contact channels failed');
+        }
 
         res.status(200).json({
             success: true,
@@ -384,6 +395,13 @@ if (require.main === module) {
         app.listen(PORT, () => {
             console.log(`Server running on port ${PORT}`);
         });
+        // Render sets RENDER_EXTERNAL_URL; elsewhere set PUBLIC_URL. Failure is only logged.
+        const publicUrl = (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/+$/, '');
+        if (telegram.isConfigured() && process.env.TELEGRAM_WEBHOOK_SECRET && publicUrl) {
+            telegram.setWebhook(`${publicUrl}/api/telegram/webhook`, process.env.TELEGRAM_WEBHOOK_SECRET)
+                .then(() => console.log('Telegram webhook set'))
+                .catch((e) => console.error(e.message));
+        }
     });
 }
 
