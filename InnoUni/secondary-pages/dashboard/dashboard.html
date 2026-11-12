@@ -276,6 +276,7 @@
 	<script src="../../frontend/js/dashboard-data.js"></script>
 	<script src="../../frontend/js/dashboard-teacher.js"></script>
 	<script src="../../frontend/js/dashboard-orders.js"></script>
+	<script src="../../frontend/js/dashboard-stats.js"></script>
 	<script>
 		// Enhanced loadPage function with loading states
 		// Built but switched off for now. To bring a feature back, set it to true (and show its menu item).
@@ -294,6 +295,11 @@
 			if (DEMO_LOCKED[page] && !session) {
 				demoNotice("Demo rejimida kurs va guruh ichiga kirib bo'lmaydi. Ro'yxatdan o'ting yoki hisobingizga kiring.");
 				return;
+			}
+			if (session && (page === 'live' || page === 't-schedule')) {
+				// live lessons come later: no real data, so the pages are closed for signed-in users
+				page = currentRole === 'teacher' ? 't-home' : 'main.dashboard';
+				element = navFor(page) || element;
 			}
 			if (PAGE_FEATURE[page] && !FEATURES[PAGE_FEATURE[page]]) {
 				// closed feature: go to the overview instead
@@ -327,6 +333,7 @@
 				.then(data => {
 					contentArea.innerHTML = data;
 					if (session) {
+						window.GEData.badges(session);
 						window.GEData.hydrate(page, contentArea, session, function () {
 							['token', 'user', 'userRole'].forEach(function (k) { try { localStorage.removeItem(k); } catch (x) { /* ignore */ } });
 							location.href = '../login/login.html';
@@ -399,6 +406,9 @@
 				return;
 			}
 			var sw = document.querySelector('.role-switch'); if (sw) sw.style.display = 'none';
+			// Real mode: no sample numbers. Hide the bell badge (no notification system) and the live-lesson links.
+			document.querySelectorAll('.notification-badge').forEach(function (b) { b.hidden = true; b.style.display = 'none'; });
+			document.querySelectorAll('.nav-item[onclick*="\'live\'"], .nav-item[onclick*="\'t-schedule\'"]').forEach(function (b) { b.hidden = true; });
 			if (session.name) document.getElementById('userName').textContent = session.name;
 			var lo = document.getElementById('logoutBtn'); lo.hidden = false;
 			lo.addEventListener('click', function () {
