@@ -84,16 +84,25 @@
             cards.forEach(function (c) { setFill(c, 0); });
             if (list) list.textContent = 'Yuklanmoqda...';
 
-            const [stats, activity] = await Promise.all([
-                get('/dashboard/stats/' + session.id, session),
+            const [sum, activity] = await Promise.all([
+                get('/summary/student', session),
                 get('/dashboard/activity/' + session.id + '?limit=6', session)
             ]);
-            const v = [stats.courses.active, stats.tasks.due_this_week, stats.groups.active, stats.learning.current_streak];
+            const t = sum.tasks;
+            const total = t.todo + t.submitted + t.graded;
+            // The 4th card used to show a "streak" that nothing records; it now shows the real average grade
+            const last = cards[3];
+            if (last) {
+                const lab = last.querySelector('.stat-label'); if (lab) lab.textContent = 'O\'rtacha ball';
+                const ic = last.querySelector('.stat-icon i'); if (ic) ic.className = 'fas fa-star';
+            }
+            const v = [sum.activeCourses, t.dueSoon + t.overdue, sum.groups, sum.avgGrade === null ? '–' : sum.avgGrade];
             nums.forEach(function (n, i) { if (v[i] !== undefined) n.textContent = String(v[i]); });
-            setFill(cards[0], Number(stats.courses.avg_progress) || 0);
-            setFill(cards[1], stats.tasks.total ? 100 * (stats.tasks.total - stats.tasks.overdue) / stats.tasks.total : 100);
-            setFill(cards[2], stats.groups.active ? 100 : 0);
-            setFill(cards[3], 100 * stats.learning.current_streak / 28);
+            const prog = sum.courses.length ? sum.courses.reduce(function (a, c) { return a + c.progress; }, 0) / sum.courses.length : 0;
+            setFill(cards[0], prog);
+            setFill(cards[1], total ? 100 * (t.submitted + t.graded) / total : 0);
+            setFill(cards[2], sum.groups ? 100 : 0);
+            setFill(cards[3], sum.avgGrade || 0);
             if (list) renderActivity(list, activity);
         }
     };
@@ -527,6 +536,18 @@
             });
         },
         register: function (name, fn) { pages[name] = fn; },
+        // Menu badges and the header bell show real counts, or nothing
+        badges: async function (session) {
+            document.querySelectorAll('.nav-badge, .notification-badge').forEach(function (b) { b.hidden = true; });
+            const c = await get('/summary/counts', session);
+            const set = function (page, n) {
+                const item = document.querySelector('.nav-item[onclick*="\'' + page + '\'"] .nav-badge');
+                if (!item) return;
+                item.textContent = String(n); item.hidden = !(n > 0);
+            };
+            if (c.role === 'student') { set('groups', c.groups); set('vazifalar', c.tasksTodo); set('orders', c.ordersAnswered); }
+            if (c.role === 'teacher') { set('t-grading', c.toGrade); set('t-orders', c.ordersPending); set('groups', c.groups); }
+        },
         api: { get: get, send: send },
         el: el,
         ctx: {}, // values handed from one page to the next, e.g. the course being edited

@@ -7,7 +7,7 @@ const home = fs.readFileSync(path.join(__dirname, '../../secondary-pages/dashboa
 const body = home.slice(home.indexOf('<body>') + 6, home.indexOf('<script>', home.indexOf('<body>')));
 
 const session = { id: 7, token: 'tok', name: 'Ali Valiyev', role: 'student' };
-const stats = { courses: { active: 3, avg_progress: 40 }, tasks: { total: 4, overdue: 1, due_this_week: 2 }, groups: { active: 5 }, learning: { current_streak: 14 } };
+const stats = { activeCourses: 3, completedCourses: 0, groups: 5, avgGrade: 82.5, tasks: { todo: 3, overdue: 1, dueSoon: 2, submitted: 1, graded: 0 }, courses: [{ id: 1, title: 'A', progress: 40 }] };
 
 let window;
 let document;
@@ -18,7 +18,7 @@ function setup(activity, fail) {
     window.config = { apiBaseUrl: 'https://api.test/api' };
     window.fetch = jest.fn(async (url) => {
         if (fail) return { ok: false, status: fail, json: async () => ({}) };
-        return { ok: true, status: 200, json: async () => (url.includes('/stats/') ? stats : activity) };
+        return { ok: true, status: 200, json: async () => (url.includes('/summary/student') ? stats : activity) };
     });
     window.eval(src); // defines window.GEData
 }
@@ -31,9 +31,10 @@ test('fills greeting, stat cards and activity from the API with the token', asyn
     setup([{ type: 'course', title: 'JS', timestamp: new Date().toISOString(), icon: 'fa-graduation-cap' }]);
     await run();
     expect(document.querySelector('.home-user h3').textContent).toBe('Xush kelibsiz, Ali!');
-    expect([...document.querySelectorAll('.stat-number')].map((n) => n.textContent)).toEqual(['3', '2', '5', '14']);
+    expect([...document.querySelectorAll('.stat-number')].map((n) => n.textContent)).toEqual(['3', '3', '5', '82.5']);
+    expect(document.querySelectorAll('.stat-label')[3].textContent).toBe('O\'rtacha ball');
     expect(document.querySelector('.activity-title').textContent).toBe('"JS" kursiga yozildingiz');
-    expect(window.fetch.mock.calls[0][0]).toMatch(/^https:\/\/api\.test\/api\/dashboard\/(stats|activity)\/7/);
+    expect(window.fetch.mock.calls[0][0]).toMatch(/^https:\/\/api\.test\/api\/(summary\/student|dashboard\/activity\/7)/);
     expect(window.fetch.mock.calls[0][1].headers.Authorization).toBe('Bearer tok');
 });
 
