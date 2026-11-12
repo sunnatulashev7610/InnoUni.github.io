@@ -536,6 +536,34 @@
             });
         },
         register: function (name, fn) { pages[name] = fn; },
+        has: function (name) { return Boolean(pages[name]); },
+        // Grey placeholder page shown while a page loads (no text from outside, markup built with the DOM)
+        skeleton: function () {
+            const bar = function (w, h) { const b = el('div', 'sk'); b.style.width = w; b.style.height = h + 'px'; return b; };
+            const circle = function (d) { const c = bar(d + 'px', d); c.classList.add('sk-circle'); return c; };
+            const root = el('div', 'sk-page');
+            root.setAttribute('role', 'status'); root.setAttribute('aria-busy', 'true');
+            root.appendChild(el('span', 'sk-sr', 'Yuklanmoqda...'));
+            const head = el('div'); head.style.cssText = 'display:grid;gap:10px';
+            head.appendChild(bar('min(280px,60%)', 28)); head.appendChild(bar('min(440px,85%)', 14)); root.appendChild(head);
+            const cards = el('div', 'sk-cards');
+            for (let i = 0; i < 4; i++) {
+                const c = el('div', 'sk-card'); c.appendChild(circle(46));
+                const t = el('div', 'sk-stack'); t.appendChild(bar('55%', 20)); t.appendChild(bar('80%', 12)); c.appendChild(t); cards.appendChild(c);
+            }
+            root.appendChild(cards);
+            const cols = el('div', 'sk-cols');
+            for (let k = 0; k < 2; k++) {
+                const panel = el('div', 'sk-panel'); panel.appendChild(bar('40%', 18));
+                for (let i = 0; i < 4; i++) {
+                    const r = el('div', 'sk-row'); r.appendChild(circle(36));
+                    const t = el('div', 'sk-stack'); t.appendChild(bar('70%', 14)); t.appendChild(bar('45%', 11)); r.appendChild(t); panel.appendChild(r);
+                }
+                cols.appendChild(panel);
+            }
+            root.appendChild(cols);
+            return root;
+        },
         // Menu badges and the header bell show real counts, or nothing
         badges: async function (session) {
             document.querySelectorAll('.nav-badge, .notification-badge').forEach(function (b) { b.hidden = true; });

@@ -249,3 +249,23 @@ body[data-role="student"] .only-teacher, body[data-role="teacher"] .only-student
 @media (max-width: 768px) { .pg-chart { overflow-x: auto; } }
 .pg-detail > div[style*="display:grid"] { grid-template-columns: minmax(0, 1fr); }
 .pg-card { min-width: 0; }
+
+/* ---------- Skeleton loading: grey placeholders with a light sweep while a page loads ---------- */
+.sk-page { display: grid; gap: 18px; padding: 4px 0; }
+.sk { position: relative; overflow: hidden; border-radius: 10px; background: var(--surface-2); }
+.sk::after {
+	content: ''; position: absolute; inset: 0; transform: translateX(-100%);
+	background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .5), transparent);
+	background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ink) 8%, transparent), transparent);
+	animation: sk-sweep 1.4s ease-in-out infinite;
+}
+.sk-circle { border-radius: 50%; flex: none; }
+.sk-card { display: flex; align-items: center; gap: 14px; padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.sk-stack { display: grid; gap: 8px; flex: 1; min-width: 0; }
+.sk-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+.sk-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+.sk-panel { display: grid; gap: 14px; padding: 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); align-content: start; }
+.sk-row { display: flex; align-items: center; gap: 12px; }
+.sk-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@keyframes sk-sweep { to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .sk::after { animation: none; display: none; } }

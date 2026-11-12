@@ -264,11 +264,7 @@
 		</div>
 
 		<!-- CONTENT AREA -->
-		<div class="content-area" id="content">
-			<div class="loading">
-				<div class="spinner"></div>
-			</div>
-		</div>
+		<div class="content-area" id="content"></div>
 	</main>
 
 	<script src="../../frontend/js/theme.js"></script>
@@ -290,6 +286,19 @@
 			var t = document.createElement('div'); t.className = 'pg-toast demo';
 			t.textContent = text || "Demo rejimida bu bo'lim yopiq. Ro'yxatdan o'ting yoki hisobingizga kiring.";
 			document.body.appendChild(t); setTimeout(function () { t.remove(); }, 4000);
+		}
+		var loadSeq = 0;
+		function showSkeleton(contentArea) {
+			hideSkeleton(contentArea);
+			var sk = window.GEData.skeleton();
+			sk.id = 'pageSkeleton'; sk.classList.add('content-area');
+			contentArea.hidden = true;
+			contentArea.parentNode.insertBefore(sk, contentArea);
+		}
+		function hideSkeleton(contentArea) {
+			var old = document.getElementById('pageSkeleton');
+			if (old) old.remove();
+			contentArea.hidden = false;
 		}
 		function loadPage(page, element) {
 			if (DEMO_LOCKED[page] && !session) {
@@ -314,13 +323,12 @@
 			// The welcome header and stat cards belong to the overview page only
 			document.getElementById('mainOverview').hidden = page !== 't-home';
 
-			// Show loading state
+			// Loading state: skeleton placeholders. The content stays hidden until the page (and, for a
+			// signed-in user, its real data) is ready, so sample content never flashes before real data.
 			const contentArea = document.getElementById("content");
-			contentArea.innerHTML = `
-				<div class="loading">
-					<div class="spinner"></div>
-				</div>
-			`;
+			const loadId = ++loadSeq;
+			showSkeleton(contentArea);
+			const done = () => { if (loadId === loadSeq) hideSkeleton(contentArea); };
 
 			// Load page content
 			fetch("pages/" + page + ".html")
@@ -331,24 +339,26 @@
 					return res.text();
 				})
 				.then(data => {
+					if (loadId !== loadSeq) return; // another page was opened meanwhile
 					contentArea.innerHTML = data;
-					if (session) {
-						window.GEData.badges(session);
-						window.GEData.hydrate(page, contentArea, session, function () {
-							['token', 'user', 'userRole'].forEach(function (k) { try { localStorage.removeItem(k); } catch (x) { /* ignore */ } });
-							location.href = '../login/login.html';
-						}, function (err) {
-							console.error('Data load error:', err);
-							var bar = document.createElement('p');
-							bar.setAttribute('role', 'alert');
-							bar.className = 'fg-muted';
-							bar.style.cssText = 'padding:12px 16px;margin:0 16px;border:1px solid var(--line);border-radius:10px';
-							bar.textContent = "Ma'lumotlarni yuklab bo'lmadi. Server uyg'onayotgan bo'lishi mumkin, bir daqiqadan keyin sahifani yangilang.";
-							contentArea.prepend(bar);
-						});
-					}
+					if (!session) { done(); return; }
+					window.GEData.badges(session);
+					window.GEData.hydrate(page, contentArea, session, function () {
+						['token', 'user', 'userRole'].forEach(function (k) { try { localStorage.removeItem(k); } catch (x) { /* ignore */ } });
+						location.href = '../login/login.html';
+					}, function (err) {
+						console.error('Data load error:', err);
+						var bar = document.createElement('p');
+						bar.setAttribute('role', 'alert');
+						bar.className = 'fg-muted';
+						bar.style.cssText = 'padding:12px 16px;margin:0 16px;border:1px solid var(--line);border-radius:10px';
+						bar.textContent = "Ma'lumotlarni yuklab bo'lmadi. Server uyg'onayotgan bo'lishi mumkin, bir daqiqadan keyin sahifani yangilang.";
+						contentArea.prepend(bar);
+					}).then(done);
 				})
 				.catch(error => {
+					if (loadId !== loadSeq) return;
+					done();
 					console.error('Error loading page:', error);
 					contentArea.innerHTML = `
 						<div class="text-center py-5">
