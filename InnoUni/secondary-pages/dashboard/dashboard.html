@@ -273,10 +273,11 @@
 	<script src="../../frontend/js/dashboard-teacher.js"></script>
 	<script src="../../frontend/js/dashboard-orders.js"></script>
 	<script src="../../frontend/js/dashboard-stats.js"></script>
+	<script src="../../frontend/js/dashboard-teams.js"></script>
 	<script>
 		// Enhanced loadPage function with loading states
 		// Built but switched off for now. To bring a feature back, set it to true (and show its menu item).
-		var FEATURES = { teams: false, library: false };
+		var FEATURES = { teams: true, library: false };
 		var PAGE_FEATURE = { jamoalar: 'teams', 'team-detail': 'teams', library: 'library' };
 		document.querySelectorAll('[data-feature]').forEach(function (n) { n.hidden = !FEATURES[n.dataset.feature]; });
 		// Demo visitors (no sign-in) only look from the outside: no course or group interior, no real orders.

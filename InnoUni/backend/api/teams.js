@@ -8,27 +8,86 @@ router.use(authenticateToken);
 // Rating: topics x2 + achievements x10
 const rating = (t) => t.topics_done * 2 + t.achievements * 10;
 
-// List teams with rating and member count
+// Directions a team can be opened in (also sent to the page, so the form and the API never disagree)
+const DIRECTIONS = ['Dasturlash', 'Dizayn', 'Til', 'Fan', 'Biznes', 'Boshqa'];
+const MAX_OWN_TEAMS = 5;
+
+// One team row with the automatic facts: who opened it (captain), when, how many active members,
+// the viewer's own status, and (for the captain only) how many requests are waiting.
+const TEAM_SELECT =
+    'SELECT t.id, t.name, t.description, t.direction, t.sphere, t.goals, t.captain_id, t.topics_done, t.achievements, t.created_at, ' +
+    'c.full_name AS captain_name, ' +
+    '(SELECT COUNT(*) FROM team_members m WHERE m.team_id = t.id AND m.status = \'active\') AS members, ' +
+    '(SELECT m.status FROM team_members m WHERE m.team_id = t.id AND m.user_id = ?) AS my_status, ' +
+    '(SELECT COUNT(*) FROM team_members m WHERE m.team_id = t.id AND m.status = \'pending\' AND t.captain_id = ?) AS pending_requests ' +
+    'FROM teams t JOIN users c ON c.id = t.captain_id';
+
+const shape = (t, userId) => ({
+    id: t.id,
+    name: t.name,
+    description: t.description,
+    direction: t.direction,
+    sphere: t.sphere,
+    goals: t.goals,
+    captain_id: t.captain_id,
+    captain_name: t.captain_name,
+    created_at: t.created_at,
+    members: Number(t.members),
+    my_status: t.my_status || null,
+    is_captain: t.captain_id === userId,
+    pending_requests: Number(t.pending_requests) || 0,
+    topics_done: t.topics_done,
+    achievements: t.achievements,
+    rating: rating(t)
+});
+
+// List teams (newest first, then by rating) with the directions the form offers
 router.get('/', async (req, res) => {
     try {
-        const [rows] = await req.db.execute(
-            'SELECT t.id, t.name, t.description, t.captain_id, t.topics_done, t.achievements, (SELECT COUNT(*) FROM team_members m WHERE m.team_id = t.id AND m.status = \'active\') AS members FROM teams t ORDER BY t.id');
-        const teams = rows.map((t) => ({ ...t, rating: rating(t) })).sort((a, b) => b.rating - a.rating);
-        res.json({ teams });
+        const uid = req.user.userId;
+        const [rows] = await req.db.execute(TEAM_SELECT + ' ORDER BY t.id DESC', [uid, uid]);
+        const teams = rows.map((t) => shape(t, uid)).sort((a, b) => b.rating - a.rating);
+        res.json({ teams, directions: DIRECTIONS });
     } catch (e) {
         console.error(e);
         res.status(500).json({ error: 'Server error' });
     }
 });
 
-// Create a team: the creator becomes captain and first member
+// One team
+router.get('/:id', async (req, res) => {
+    const teamId = parseId(req.params.id);
+    if (!teamId) return res.status(400).json({ error: 'Invalid team id' });
+    try {
+        const uid = req.user.userId;
+        const [rows] = await req.db.execute(TEAM_SELECT + ' WHERE t.id = ?', [uid, uid, teamId]);
+        if (!rows.length) return res.status(404).json({ error: 'Team not found' });
+        res.json({ team: shape(rows[0], uid) });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Create a team: direction, sphere and goals are required. The creator becomes captain and first member;
+// who opened it, when and the member count are filled in by the server.
 router.post('/', async (req, res) => {
     const name = validateText(req.body.name, { field: 'Name', maxLength: 100 });
     if (name.error) return res.status(400).json({ error: name.error });
+    const direction = typeof req.body.direction === 'string' ? req.body.direction.trim() : '';
+    if (!DIRECTIONS.includes(direction)) return res.status(400).json({ error: 'Direction must be one of: ' + DIRECTIONS.join(', ') });
+    const sphere = validateText(req.body.sphere, { field: 'Sphere', maxLength: 100 });
+    if (sphere.error) return res.status(400).json({ error: sphere.error });
+    const goals = validateText(req.body.goals, { field: 'Goals', maxLength: 500 });
+    if (goals.error) return res.status(400).json({ error: goals.error });
     const description = validateText(req.body.description, { field: 'Description', required: false, maxLength: 1000 });
     if (description.error) return res.status(400).json({ error: description.error });
     try {
-        const [result] = await req.db.execute('INSERT INTO teams (name, description, captain_id) VALUES (?, ?, ?)', [name.value, description.value, req.user.userId]);
+        const [own] = await req.db.execute('SELECT COUNT(*) AS n FROM teams WHERE captain_id = ?', [req.user.userId]);
+        if (Number(own[0].n) >= MAX_OWN_TEAMS) return res.status(400).json({ error: `You can open at most ${MAX_OWN_TEAMS} teams` });
+        const [result] = await req.db.execute(
+            'INSERT INTO teams (name, description, direction, sphere, goals, captain_id) VALUES (?, ?, ?, ?, ?, ?)',
+            [name.value, description.value, direction, sphere.value, goals.value, req.user.userId]);
         await req.db.execute('INSERT INTO team_members (team_id, user_id, status) VALUES (?, ?, \'active\')', [result.insertId, req.user.userId]);
         res.status(201).json({ id: result.insertId });
     } catch (e) {
@@ -120,3 +179,4 @@ router.delete('/:id/members/:userId', async (req, res) => {
 
 module.exports = router;
 module.exports.rating = rating;
+module.exports.DIRECTIONS = DIRECTIONS;
