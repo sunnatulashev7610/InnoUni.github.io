@@ -26,3 +26,13 @@ test('real migration files have only whole statements', () => {
     const sql = fs.readFileSync(path.join(__dirname, '../migrations/001_teams_orders.sql'), 'utf8');
     expect((sql.match(/CREATE TABLE/g) || []).length).toBe(3);
 });
+
+test('team details migration is one change per statement (TiDB allows only one per ALTER)', () => {
+    const sql = fs.readFileSync(path.join(__dirname, '../migrations/007_team_details.sql'), 'utf8');
+    const statements = sql.split(/;\s*(?:\r?\n|$)/).map((x) => x.trim()).filter(Boolean);
+    expect(statements).toHaveLength(3);
+    statements.forEach((x) => {
+        expect(x).toMatch(/^ALTER TABLE teams ADD COLUMN \w+ /);
+        expect(x).not.toMatch(/,/);
+    });
+});

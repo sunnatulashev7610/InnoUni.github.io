@@ -3,10 +3,13 @@
 All routes need `Authorization: Bearer <token>`.
 
 ## Teams (`/api/teams`)
+Teams are on by default. `FEATURE_TEAMS=false` closes them (every route answers 404).
+
 | Method | Path | Who | What |
 |---|---|---|---|
-| GET | `/` | any | Teams sorted by rating (topics x2 + achievements x10) |
-| POST | `/` | any | Create team `{name, description?}`; creator = captain |
+| GET | `/` | any | `{teams, directions}`. Each team: `name, direction, sphere, goals, description, captain_name, created_at, members` (active), `my_status` (`active`/`pending`/null), `is_captain`, `pending_requests` (captain only) |
+| GET | `/:id` | any | `{team}` with the same fields |
+| POST | `/` | any | Create team `{name, direction, sphere, goals, description?}`; direction is one of `directions`; creator = captain; at most 5 teams per captain. Opener, date and member count are filled in by the server |
 | POST | `/:id/join` | any | Ask to join `{anonymous?}` |
 | GET | `/:id/members` | any | Active members; captain also sees pending and real names of anonymous ones |
 | POST | `/:id/members/:userId/accept` | captain | Accept request |
