@@ -4,6 +4,7 @@ const path = require('path');
 
 const root = path.join(__dirname, '../..');
 const dataSrc = fs.readFileSync(path.join(root, 'frontend/js/dashboard-data.js'), 'utf8');
+const chatSrc = fs.readFileSync(path.join(root, 'frontend/js/dashboard-team-chat.js'), 'utf8');
 const teamsSrc = fs.readFileSync(path.join(root, 'frontend/js/dashboard-teams.js'), 'utf8');
 
 const DIRS = ['Dasturlash', 'Dizayn', 'Til', 'Fan', 'Biznes', 'Boshqa'];
@@ -35,12 +36,14 @@ function boot(state) {
         else if (method === 'GET' && /^\/teams\/\d+$/.test(p)) {
             const t = state.teams.find((x) => '/teams/' + x.id === p);
             r = t ? { body: { team: t } } : { ok: false, status: 404, body: { error: 'Team not found' } };
-        } else if (method === 'GET' && /\/members$/.test(p)) r = { body: { members: state.members, isCaptain: state.isCaptain } };
+        } else if (method === 'GET' && /\/members$/.test(p)) r = { body: { members: state.members, isCaptain: state.isCaptain, invite_mode: state.inviteMode || 'admin', limits: { maxMembers: 100, maxMessageLength: 5000 } } };
+        else if (method === 'GET' && /\/messages/.test(p)) r = { body: { messages: state.messages || [], deleted: [], more: false, me: { is_admin: state.isCaptain, muted: false, muted_seconds: 0 } } };
+        else if (method === 'POST' && /\/messages$/.test(p)) r = { status: 201, body: { message: { id: 99, body: body.body, created_at: '2026-11-10T09:00:00.000Z', mine: true, user_id: 7, is_admin: state.isCaptain } } };
         else if (method === 'POST' && p === '/teams') r = state.createResult || { status: 201, body: { id: 9 } };
         else if (method === 'POST' && /\/join$/.test(p)) state.teams.find((x) => '/teams/' + x.id + '/join' === p).my_status = 'pending';
         return { ok: r.ok !== false, status: r.status || 200, json: async () => r.body };
     });
-    w.eval(dataSrc); w.eval(teamsSrc);
+    w.eval(dataSrc); w.eval(chatSrc); w.eval(teamsSrc);
     const c = w.document.getElementById('c');
     const session = { id: 7, token: 't', name: 'Sam Test', role: 'student' };
     const tick = () => new Promise((r) => setTimeout(r, 5));
@@ -75,9 +78,9 @@ describe('teams list', () => {
         expect(btn(a, "So'rov yuborish")).toBeTruthy();
         expect(btn(a, 'Batafsil')).toBeTruthy();
         expect(b.textContent).toContain("A'zosiz");
-        expect(btn(b, 'Jamoaga kirish')).toBeTruthy();
+        expect(btn(b, 'Chatga kirish')).toBeTruthy();
         expect(btn(b, "So'rov yuborish")).toBeUndefined();
-        expect(cap.textContent).toContain('Sardor');
+        expect(cap.textContent).toContain('Admin');
         expect(cap.textContent).toContain("2 ta yangi so'rov");
     });
 
@@ -134,7 +137,7 @@ describe('open a team', () => {
         const text = pane(c, 'create').textContent;
         expect(text).toContain('Sam Test');
         expect(text).toContain("A'zolar soni");
-        expect(text).toContain('1 (siz, sardor)');
+        expect(text).toContain('1 (siz, admin)');
         expect(text).toContain('Ochilgan sana');
     });
 
@@ -189,7 +192,7 @@ describe('open a team', () => {
 
 describe('team page', () => {
     const members = [
-        { user_id: 5, name: 'Sardor Aliyev', status: 'active' },
+        { user_id: 5, name: 'Sardor Aliyev', status: 'active', is_admin: true },
         { user_id: 8, name: 'Vali Karimov', status: 'active' },
         { user_id: null, name: 'Anonim', status: 'active' },
     ];
@@ -221,7 +224,7 @@ describe('team page', () => {
         const state = makeState(); state.isCaptain = true;
         state.teams[0].is_captain = true; state.teams[0].my_status = 'active';
         state.members = [
-            { user_id: 5, name: 'Sardor Aliyev', status: 'active' },
+            { user_id: 5, name: 'Sardor Aliyev', status: 'active', is_admin: true },
             { user_id: 8, name: 'Vali Karimov', status: 'active' },
             { user_id: 11, name: 'Ali <i>Valiyev</i>', status: 'pending' },
         ];
@@ -242,6 +245,39 @@ describe('team page', () => {
         expect(calls.find((x) => x.method === 'POST' && /accept/.test(x.path)).path).toBe('/teams/1/members/11/accept');
     });
 
+    test('a member sees the chat first, can send a message, and has no admin tabs', async () => {
+        const state = makeState(); state.members = members; state.messages = [{ id: 1, body: 'Salom <b>hamma</b>', created_at: '2026-11-10T09:00:00.000Z', mine: false, user_id: 8, name: 'Vali Karimov', is_admin: false }];
+        const { w, c, calls, flush, run } = boot(state); w.GEData.ctx.teamId = 2;
+        await run('team-detail'); await flush();
+        expect(pane(c, 'chat').hidden).toBe(false);
+        expect(c.textContent).toContain('Salom <b>hamma</b>');
+        expect(c.querySelector('[data-pane=chat] b')).toBeNull();
+        expect(pane(c, 'settings')).toBeNull();
+        const ta = pane(c, 'chat').querySelector('textarea'); ta.value = 'Yangi xabar';
+        submit(ta.form); await flush();
+        expect(calls.find((x) => x.method === 'POST' && /messages$/.test(x.path)).body).toEqual({ body: 'Yangi xabar' });
+        expect(c.textContent).toContain('Yangi xabar');
+        expect(btn(c, 'Jamoadan chiqish')).toBeTruthy();
+    });
+
+    test('the admin gets settings, can invite, and deleting the team needs the typed name', async () => {
+        const state = makeState(); state.isCaptain = true; state.members = members;
+        Object.assign(state.teams[0], { is_captain: true, my_status: 'active' });
+        const { w, c, calls, flush, run } = boot(state); w.GEData.ctx.teamId = 1;
+        await run('team-detail'); await flush();
+        expect(pane(c, 'settings')).toBeTruthy();
+        expect(btn(c, 'Jamoadan chiqish')).toBeUndefined();
+        setVal(c, 'tmInviteEmail', 'x@y.uz'); submit(c.querySelector('#tmInviteEmail').form); await flush();
+        expect(calls.find((x) => /\/invite$/.test(x.path)).body).toEqual({ email: 'x@y.uz' });
+        const del = btn(pane(c, 'settings'), "Jamoani o'chirish");
+        expect(del.disabled).toBe(true);
+        setVal(c, 'tsDeleteName', '<b>Python</b> Sprint');
+        c.querySelector('#tsDeleteName').dispatchEvent(new w.Event('input'));
+        expect(del.disabled).toBe(false);
+        click(del); await flush();
+        expect(calls.find((x) => x.method === 'DELETE' && x.path === '/teams/1')).toBeTruthy();
+    });
+
     test('an unknown team shows a message and a way back', async () => {
         const { w, c, run } = boot(makeState()); w.GEData.ctx.teamId = 99;
         await run('team-detail');
@@ -255,6 +291,8 @@ describe('wiring', () => {
     test('the dashboard loads the script and has Teams switched on', () => {
         const html = fs.readFileSync(path.join(root, 'secondary-pages/dashboard/dashboard.html'), 'utf8');
         expect(html).toContain('frontend/js/dashboard-teams.js');
+        expect(html.indexOf('dashboard-team-chat.js')).toBeGreaterThan(-1);
+        expect(html.indexOf('dashboard-team-chat.js')).toBeLessThan(html.indexOf('dashboard-teams.js'));
         expect(html).toMatch(/var FEATURES = \{ teams: true, library: false \}/);
     });
 

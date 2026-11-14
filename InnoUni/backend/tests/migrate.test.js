@@ -36,3 +36,15 @@ test('team details migration is one change per statement (TiDB allows only one p
         expect(x).not.toMatch(/,/);
     });
 });
+
+test('chat migration: the messages table and one change per ALTER', () => {
+    const sql = fs.readFileSync(path.join(__dirname, '../migrations/008_team_chat.sql'), 'utf8');
+    const statements = sql.split(/;\s*(?:\r?\n|$)/).map((x) => x.trim()).filter(Boolean);
+    expect(statements).toHaveLength(4);
+    expect(statements[0]).toMatch(/^CREATE TABLE IF NOT EXISTS team_messages/);
+    expect(statements[0]).toMatch(/ON DELETE CASCADE/);
+    statements.slice(1).forEach((x) => {
+        expect(x).toMatch(/^ALTER TABLE \w+ ADD COLUMN \w+ /);
+        expect(x).not.toMatch(/,/);
+    });
+});
