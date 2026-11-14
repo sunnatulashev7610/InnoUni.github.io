@@ -4,6 +4,7 @@ const { requireFeature } = require('../utils/features');
 const router = express.Router();
 const { teacherOnly, authenticateToken, requireSelf } = require('../middleware/roleBased');
 const { parseId, validateGrade, validateText, validateUrl } = require('../utils/validation');
+const { requireVerifiedEmail } = require('../utils/verified');
 
 // Get teacher dashboard data
 router.get('/dashboard/:userId', authenticateToken, teacherOnly, requireSelf(), async (req, res) => {
@@ -168,7 +169,7 @@ router.get('/courses', authenticateToken, teacherOnly, async (req, res) => {
 });
 
 // Create a course. It starts as a draft ('inactive'); students see it only after it is published.
-router.post('/courses', authenticateToken, teacherOnly, async (req, res) => {
+router.post('/courses', authenticateToken, teacherOnly, requireVerifiedEmail, async (req, res) => {
     const title = validateText(req.body.title, { field: 'Title', maxLength: 255 });
     if (title.error) return res.status(400).json({ error: title.error });
     const category = validateText(req.body.category, { field: 'Category', maxLength: 100 });
