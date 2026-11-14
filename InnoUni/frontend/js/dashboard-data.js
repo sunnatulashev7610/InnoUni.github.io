@@ -22,8 +22,18 @@
         const res = await fetch(apiBase() + path, init);
         if (res.status === 401) { const err = new Error('auth'); err.auth = true; throw err; }
         const out = await res.json().catch(function () { return {}; });
-        if (!res.ok) throw new Error(out.error || 'HTTP ' + res.status);
+        if (!res.ok) { const err = new Error(out.error || 'HTTP ' + res.status); err.status = res.status; err.data = out; throw err; }
         return out;
+    }
+
+    // Destructive buttons ask twice: the first click changes the label, the second one (within 4 s) does it
+    function twice(btn, label, action) {
+        let armed = null; const base = btn.textContent;
+        btn.addEventListener('click', function () {
+            if (armed) { clearTimeout(armed); armed = null; btn.textContent = base; action(); return; }
+            btn.textContent = label;
+            armed = setTimeout(function () { armed = null; btn.textContent = base; }, 4000);
+        });
     }
 
     function ago(ts) {
@@ -577,6 +587,7 @@
             if (c.role === 'teacher') { set('t-grading', c.toGrade); set('t-orders', c.ordersPending); set('groups', c.groups); }
         },
         api: { get: get, send: send },
+        twice: twice,
         el: el,
         ctx: {}, // values handed from one page to the next, e.g. the course being edited
         toast: function (text) {

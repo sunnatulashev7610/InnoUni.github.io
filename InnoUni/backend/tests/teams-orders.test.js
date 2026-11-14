@@ -1,91 +1,21 @@
-// Teams + orders routes. In-memory fake database, no MySQL needed.
+// Teams routes (create, list, join, members). In-memory fake database, no MySQL needed.
 process.env.JWT_SECRET = 'test-secret-test-secret-123';
 
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const app = require('../server');
 const teamsRouter = require('../api/teams');
+const { createTeamsFake } = require('./helpers/teamsFake');
 
 const CAPTAIN = 1, STUDENT = 2, OTHER = 3, TEACHER = 9;
 
-let s;
-const reset = () => {
-    s = {
-        users: { 1: 'Captain', 2: 'Ali', 3: 'Vali' },
-        teams: [], members: [], orders: [], id: 1
-    };
-};
-const norm = (q) => q.replace(/\s+/g, ' ').trim();
-
-const fakeDb = {
-    async execute(raw, p = []) {
-        const q = norm(raw);
-        if (q.startsWith('INSERT INTO teams')) {
-            if (s.teams.some((t) => t.name === p[0])) throw Object.assign(new Error('dup'), { code: 'ER_DUP_ENTRY' });
-            const t = { id: s.id++, name: p[0], description: p[1], direction: p[2], sphere: p[3], goals: p[4], captain_id: p[5], topics_done: 0, achievements: 0, created_at: '2026-11-13T09:00:00.000Z' };
-            s.teams.push(t);
-            return [{ insertId: t.id }];
-        }
-        if (q.startsWith('INSERT INTO team_members') && q.includes("'active'")) {
-            s.members.push({ team_id: p[0], user_id: p[1], status: 'active', anonymous: 0 });
-            return [{}];
-        }
-        if (q.startsWith('INSERT INTO team_members')) {
-            s.members.push({ team_id: p[0], user_id: p[1], status: 'pending', anonymous: p[2] });
-            return [{}];
-        }
-        if (q.startsWith('SELECT id, captain_id FROM teams')) return [s.teams.filter((t) => t.id === p[0])];
-        if (q.startsWith('SELECT id FROM team_members')) return [s.members.filter((m) => m.team_id === p[0] && m.user_id === p[1])];
-        if (q.startsWith('SELECT COUNT(*) AS n FROM teams WHERE captain_id')) return [[{ n: s.teams.filter((t) => t.captain_id === p[0]).length }]];
-        if (q.startsWith('SELECT t.id, t.name')) {
-            // p = [viewer, viewer] for the list, [viewer, viewer, teamId] for one team; newest first like the real ORDER BY
-            const rows = s.teams.filter((t) => p.length < 3 || t.id === p[2]).sort((a, b) => b.id - a.id);
-            return [rows.map((t) => {
-                const mine = s.members.find((m) => m.team_id === t.id && m.user_id === p[0]);
-                return {
-                    ...t,
-                    captain_name: s.users[t.captain_id],
-                    members: s.members.filter((m) => m.team_id === t.id && m.status === 'active').length,
-                    my_status: mine ? mine.status : null,
-                    pending_requests: t.captain_id === p[0] ? s.members.filter((m) => m.team_id === t.id && m.status === 'pending').length : 0
-                };
-            })];
-        }
-        if (q.startsWith('SELECT m.user_id, m.status')) {
-            return [s.members.filter((m) => m.team_id === p[0]).map((m) => ({ ...m, full_name: s.users[m.user_id] }))];
-        }
-        if (q.startsWith("UPDATE team_members SET status = 'active'")) {
-            const m = s.members.find((x) => x.team_id === p[0] && x.user_id === p[1] && x.status === 'pending');
-            if (m) m.status = 'active';
-            return [{ affectedRows: m ? 1 : 0 }];
-        }
-        if (q.startsWith('DELETE FROM team_members')) {
-            const n = s.members.length;
-            s.members = s.members.filter((x) => !(x.team_id === p[0] && x.user_id === p[1]));
-            return [{ affectedRows: n - s.members.length }];
-        }
-        if (q.startsWith('INSERT INTO orders')) {
-            const o = { id: s.id++, user_id: p[0], kind: p[1], item_title: p[2], amount: p[3], note: p[4], status: 'pending', full_name: s.users[p[0]] };
-            s.orders.push(o);
-            return [{ insertId: o.id }];
-        }
-        if (q.includes('FROM orders WHERE user_id = ?')) return [s.orders.filter((o) => o.user_id === p[0])];
-        if (q.includes("FROM orders o JOIN users u ON o.user_id = u.id WHERE o.status = 'pending'")) return [s.orders.filter((o) => o.status === 'pending')];
-        if (q.startsWith('UPDATE orders SET status = ?')) {
-            const o = s.orders.find((x) => x.id === p[1] && x.status === 'pending');
-            if (o) o.status = p[0];
-            return [{ affectedRows: o ? 1 : 0 }];
-        }
-        throw new Error('Unexpected query in test: ' + q);
-    },
-    query: async () => [[]]
-};
+let fake, s;
+const reset = () => { fake = createTeamsFake(); s = fake.s; app.setDb(fake.db); };
 
 const as = (userId, role = 'student') => ({
     Authorization: `Bearer ${jwt.sign({ userId, email: `u${userId}@example.com`, role }, process.env.JWT_SECRET, { expiresIn: '1h' })}`
 });
 
-beforeAll(() => app.setDb(fakeDb));
 beforeEach(reset);
 
 const details = { direction: 'Dasturlash', sphere: 'Veb dasturlash', goals: 'Loyiha qilish\nOlimpiadaga tayyorlanish' };
@@ -224,10 +154,11 @@ describe('teams', () => {
         await request(app).post(`/api/teams/${body.id}/join`).set(as(OTHER)).send({});
 
         const asOther = await request(app).get(`/api/teams/${body.id}/members`).set(as(OTHER));
-        expect(asOther.body.members).toEqual([
+        expect(asOther.body.members.map(({ user_id, name, status }) => ({ user_id, name, status }))).toEqual([
             { user_id: CAPTAIN, name: 'Captain', status: 'active' },
             { user_id: null, name: 'Anonim', status: 'active' }
         ]);
+        expect(asOther.body.members[0].is_admin).toBe(true);
         const asCaptain = await request(app).get(`/api/teams/${body.id}/members`).set(as(CAPTAIN));
         expect(asCaptain.body.members).toHaveLength(3);
         expect(asCaptain.body.members[1].name).toBe('Ali');
