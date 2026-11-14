@@ -5,6 +5,7 @@ process.env.JWT_SECRET = 'test-secret-test-secret-123';
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const app = require('../server');
+const { register, withAccounts } = require('./helpers/accounts');
 
 const TEACHER = 2;        // owns course 10
 const OTHER_TEACHER = 3;  // owns course 11
@@ -38,7 +39,7 @@ const fakeDb = {
             const c = t && state.courses.find((x) => x.id === t.course_id);
             return [t && c.teacher_id === teacherId ? [{ id: t.id, title: t.title, assigned_to: t.assigned_to }] : []];
         }
-        if (sql.startsWith('SELECT t.id, t.assigned_to FROM tasks t LEFT JOIN course_enrollments ce')) {
+        if (sql.startsWith('SELECT t.id, t.assigned_to, t.course_id FROM tasks t LEFT JOIN course_enrollments ce')) {
             const [userId, taskId] = p;
             const enrolled = (state.enrolled || []).some((e) => e.u === userId);
             return [state.tasks.filter((t) => t.id === taskId && (t.assigned_to === userId || (t.assigned_to === null && enrolled)))
@@ -82,7 +83,7 @@ const fakeDb = {
     query: async () => [[]]
 };
 
-const as = (userId, role) => ({
+const as = (userId, role) => (register(userId, role), {
     Authorization: `Bearer ${jwt.sign({ userId, email: `u${userId}@example.com`, role }, process.env.JWT_SECRET, { expiresIn: '1h' })}`
 });
 
@@ -91,7 +92,7 @@ const submit = (taskId, content, user = [STUDENT, 'student']) =>
 const grade = (taskId, body, user = [TEACHER, 'teacher']) =>
     request(app).post(`/api/teacher/tasks/${taskId}/grade`).set(as(...user)).send(body);
 
-beforeAll(() => app.setDb(fakeDb));
+beforeAll(() => app.setDb(withAccounts(fakeDb)));
 beforeEach(reset);
 
 describe('student submission', () => {

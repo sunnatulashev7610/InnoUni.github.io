@@ -3,6 +3,7 @@ const router = express.Router();
 const { studentOnly, authenticateToken, requireSelf } = require('../middleware/roleBased');
 const { parseId, validateText } = require('../utils/validation');
 const { addToCourseGroup } = require('../utils/courseGroups');
+const { recomputeProgress } = require('../utils/progress');
 
 // Get student dashboard data
 router.get('/dashboard/:userId', authenticateToken, studentOnly, requireSelf(), async (req, res) => {
@@ -402,42 +403,10 @@ router.post('/groups/:groupId/leave', authenticateToken, studentOnly, async (req
 });
 
 // Update course progress
-router.put('/courses/:courseId/progress', authenticateToken, studentOnly, async (req, res) => {
-    try {
-        const db = req.db;
-        const courseId = req.params.courseId;
-        const userId = req.user.userId;
-        const { progress } = req.body;
-
-        // Validate progress
-        if (progress < 0 || progress > 100) {
-            return res.status(400).json({ error: 'Progress must be between 0 and 100' });
-        }
-
-        // Check if enrolled
-        const [enrollment] = await db.execute(
-            'SELECT id FROM course_enrollments WHERE course_id = ? AND user_id = ?',
-            [courseId, userId]
-        );
-
-        if (enrollment.length === 0) {
-            return res.status(400).json({ error: 'Not enrolled in this course' });
-        }
-
-        // Update progress
-        await db.execute(
-            'UPDATE course_enrollments SET progress = ?, status = ? WHERE course_id = ? AND user_id = ?',
-            [progress, progress >= 100 ? 'completed' : 'active', courseId, userId]
-        );
-
-        // Check for achievements
-        await this.checkAchievements(userId, db);
-
-        res.json({ message: 'Progress updated successfully' });
-    } catch (error) {
-        console.error('Progress update error:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
+// Progress is calculated by the server from submitted tasks (see utils/progress.js).
+// A student cannot set it: otherwise anyone could mark a course as completed and print a certificate.
+router.put('/courses/:courseId/progress', authenticateToken, studentOnly, (req, res) => {
+    res.status(403).json({ error: 'Progress is calculated automatically from your submitted tasks' });
 });
 
 // Complete a task
@@ -457,6 +426,12 @@ router.put('/tasks/:taskId/complete', authenticateToken, studentOnly, async (req
             return res.status(404).json({ error: 'Task not found' });
         }
 
+        // A task counts as done only after the student has really submitted an answer
+        const [sub] = await db.execute('SELECT id FROM task_submissions WHERE task_id = ? AND student_id = ?', [taskId, userId]);
+        if (sub.length === 0) {
+            return res.status(409).json({ error: 'Submit an answer first' });
+        }
+
         // Mark as completed
         await db.execute(
             'UPDATE tasks SET status = "completed" WHERE id = ?',
@@ -473,7 +448,7 @@ router.put('/tasks/:taskId/complete', authenticateToken, studentOnly, async (req
 // A task the student may work on: assigned to them, or a course task of a course they are enrolled in
 async function findVisibleTask(db, taskId, userId) {
     const [rows] = await db.execute(`
-        SELECT t.id, t.assigned_to
+        SELECT t.id, t.assigned_to, t.course_id
         FROM tasks t
         LEFT JOIN course_enrollments ce ON ce.course_id = t.course_id AND ce.user_id = ? AND ce.status = 'active'
         WHERE t.id = ? AND (t.assigned_to = ? OR (t.assigned_to IS NULL AND ce.id IS NOT NULL))
@@ -556,6 +531,11 @@ router.post('/tasks/:taskId/submit', authenticateToken, studentOnly, async (req,
             await db.execute('UPDATE tasks SET status = "completed" WHERE id = ?', [taskId]);
         }
 
+        if (task.course_id) {
+            await recomputeProgress(db, task.course_id, userId);
+            await checkAchievements(userId, db);
+        }
+
         res.status(existing.length === 0 ? 201 : 200).json({ message: 'Task submitted successfully' });
     } catch (error) {
         console.error('Task submission error:', error);
@@ -597,7 +577,7 @@ async function checkAchievements(userId, db) {
     );
 
     if (completedCourses[0].count >= 10) {
-        await this.awardAchievement(userId, 4, db); // "Sertifikatli" achievement
+        await awardAchievement(userId, 4, db); // "Sertifikatli" achievement
     }
 
     // Check for task completion achievements
@@ -607,7 +587,7 @@ async function checkAchievements(userId, db) {
     );
 
     if (completedTasks[0].count >= 100) {
-        await this.awardAchievement(userId, 2, db); // "Kod ustasi" achievement
+        await awardAchievement(userId, 2, db); // "Kod ustasi" achievement
     }
 }
 

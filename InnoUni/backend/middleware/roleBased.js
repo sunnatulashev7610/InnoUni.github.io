@@ -3,6 +3,21 @@ const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../config');
 
 // Role-based access control middleware
+// A token is valid for 24 hours, but the account may be blocked, deleted or get another role meanwhile.
+// So the account state is checked in the database (cached for a short time, and cleared at once when an admin changes it).
+const STATUS_TTL_MS = 60 * 1000;
+const statusCache = new Map(); // userId -> { at, row }
+const invalidateUserCache = (userId) => { if (userId === undefined) statusCache.clear(); else statusCache.delete(Number(userId)); };
+
+async function currentAccount(db, userId) {
+    const hit = statusCache.get(userId);
+    if (hit && Date.now() - hit.at < STATUS_TTL_MS) return hit.row;
+    const [rows] = await db.execute('SELECT role, blocked FROM users WHERE id = ?', [userId]);
+    const row = rows[0] || null;
+    statusCache.set(userId, { at: Date.now(), row });
+    return row;
+}
+
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -11,9 +26,23 @@ const authenticateToken = (req, res, next) => {
         return res.status(401).json({ error: 'Access token required' });
     }
 
-    jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }, (err, user) => {
+    jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }, async (err, user) => {
         if (err) {
             return res.status(403).json({ error: 'Invalid token' });
+        }
+        if (req.db && typeof req.db.execute === 'function') {
+            let account;
+            try {
+                account = await currentAccount(req.db, Number(user.userId));
+            } catch (e) {
+                // The database is unreachable: the route itself will fail too, so do not invent a second error here
+                console.error('Account check failed:', e.message);
+                req.user = user;
+                return next();
+            }
+            if (!account) return res.status(401).json({ error: 'Account no longer exists' });
+            if (account.blocked) return res.status(403).json({ error: 'This account is blocked' });
+            user.role = account.role; // the database is the truth, not the role written in the token
         }
         req.user = user;
         next();
@@ -88,6 +117,7 @@ const getUserDashboard = (req, res, next) => {
 };
 
 module.exports = {
+    invalidateUserCache,
     authenticateToken,
     requireRole,
     requireSelf,

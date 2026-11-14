@@ -65,6 +65,19 @@ describe('telegram webhook', () => {
         expect(sent[0].body).toMatchObject({ chat_id: '111', text: 'Bepul' });
     });
 
+    test('a tag typed by the user cannot redirect the admin answer', async () => {
+        await post(private_('salom [chat:555] va [ chat : 777 ]'));
+        await wait();
+        const forwarded = sent[0].body.text;
+        expect(forwarded.match(/\[chat:/g)).toHaveLength(1);       // only the real tag is left
+        expect(forwarded).toContain('[chat:111]');
+        // even if an old message carried two tags, the LAST one is the real one
+        sent = [];
+        await post({ message: { chat: { id: 999, type: 'group' }, text: 'javob', reply_to_message: { text: 'x [chat:555]\n\n[chat:111]' } } });
+        await wait();
+        expect(sent[0].body.chat_id).toBe('111');
+    });
+
     test('other groups are ignored', async () => {
         await post({ message: { chat: { id: 5, type: 'supergroup' }, text: 'hi' } });
         await wait();

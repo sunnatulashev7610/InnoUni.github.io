@@ -4,9 +4,10 @@ delete process.env.FEATURE_LIBRARY;
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const app = require('../server');
+const { register, withAccounts } = require('./helpers/accounts');
 
-const as = (userId, role) => ({ Authorization: `Bearer ${jwt.sign({ userId, email: 'x@x.uz', role }, process.env.JWT_SECRET, { expiresIn: '1h' })}` });
-beforeAll(() => app.setDb({ execute: async () => [[]], query: async () => [[]] }));
+const as = (userId, role) => (register(userId, role), { Authorization: `Bearer ${jwt.sign({ userId, email: 'x@x.uz', role }, process.env.JWT_SECRET, { expiresIn: '1h' })}` });
+beforeAll(() => app.setDb(withAccounts({ execute: async () => [[]], query: async () => [[]] })));
 afterEach(() => { delete process.env.FEATURE_TEAMS; delete process.env.FEATURE_LIBRARY; });
 
 test('teams are open by default, for every role', async () => {

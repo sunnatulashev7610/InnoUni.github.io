@@ -13,7 +13,9 @@ const { authenticateToken } = require('../middleware/roleBased');
 router.post('/register', async (req, res) => {
     try {
         const db = req.db;
-        const { full_name, email, phone, password, role = 'student' } = req.body;
+        const { full_name, phone, password, role = 'student' } = req.body;
+        // Emails are case-insensitive: one address is one account (TiDB compares them case-sensitively)
+        const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : req.body.email;
 
         // Validation
         if (!full_name || !email || !password) {
@@ -22,6 +24,14 @@ router.post('/register', async (req, res) => {
 
         if (typeof full_name !== 'string' || !isValidEmail(email)) {
             return res.status(400).json({ error: 'Valid name and email are required' });
+        }
+        const cleanName = full_name.trim().replace(/\s+/g, ' ');
+        if (cleanName.length < 2 || cleanName.length > 100) {
+            return res.status(400).json({ error: 'Name must be 2-100 characters' });
+        }
+        const cleanPhone = phone === undefined || phone === null || phone === '' ? null : (typeof phone === 'string' ? phone.trim() : false);
+        if (cleanPhone === false || (cleanPhone && !/^\+?[0-9 ()-]{7,20}$/.test(cleanPhone))) {
+            return res.status(400).json({ error: 'Invalid phone number' });
         }
 
         // Validate role. Admin accounts are never self-registered: they are created manually in the database.
@@ -38,7 +48,7 @@ router.post('/register', async (req, res) => {
 
         // Check if user already exists
         const [existingUsers] = await db.execute(
-            'SELECT id FROM users WHERE email = ?',
+            'SELECT id FROM users WHERE LOWER(email) = ?',
             [email]
         );
 
@@ -52,7 +62,7 @@ router.post('/register', async (req, res) => {
         // Create user
         const [result] = await db.execute(
             'INSERT INTO users (full_name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)',
-            [full_name, email, phone, hashedPassword, role]
+            [cleanName, email, cleanPhone, hashedPassword, role]
         );
 
         // Get the created user for response
@@ -75,7 +85,8 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
     try {
         const db = req.db;
-        const { email, password, role } = req.body;
+        const { password, role } = req.body;
+        const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : req.body.email;
 
         // Validation
         if (!email || !password) {
@@ -84,7 +95,7 @@ router.post('/login', async (req, res) => {
 
         // Find user
         const [users] = await db.execute(
-            'SELECT * FROM users WHERE email = ?',
+            'SELECT * FROM users WHERE LOWER(email) = ?',
             [email]
         );
 
@@ -207,7 +218,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
 
         if (updates.email) {
             const [existingUsers] = await db.execute(
-                'SELECT id FROM users WHERE email = ? AND id != ?',
+                'SELECT id FROM users WHERE LOWER(email) = ? AND id != ?',
                 [updates.email, userId]
             );
             if (existingUsers.length > 0) {

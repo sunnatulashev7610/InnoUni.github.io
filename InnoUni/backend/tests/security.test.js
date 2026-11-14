@@ -6,18 +6,18 @@ delete process.env.EMAIL_PASS;
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const app = require('../server');
+const { register, withAccounts } = require('./helpers/accounts');
 
 const fakeDb = {
     execute: async () => [[]],
     query: async () => [[]]
 };
 
-const tokenFor = (userId, role) =>
-    jwt.sign({ userId, email: `u${userId}@example.com`, role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+const tokenFor = (userId, role) => (register(userId, role), jwt.sign({ userId, email: `u${userId}@example.com`, role }, process.env.JWT_SECRET, { expiresIn: '1h' }));
 
 const auth = (userId, role) => ({ Authorization: `Bearer ${tokenFor(userId, role)}` });
 
-beforeAll(() => app.setDb(fakeDb));
+beforeAll(() => app.setDb(withAccounts(fakeDb)));
 
 describe('configuration', () => {
     test('refuses to start without a JWT_SECRET', () => {

@@ -1,5 +1,5 @@
 const express = require('express');
-const { authenticateToken, adminOnly } = require('../middleware/roleBased');
+const { authenticateToken, adminOnly, invalidateUserCache } = require('../middleware/roleBased');
 const { parseId, validateText } = require('../utils/validation');
 
 const router = express.Router();
@@ -56,12 +56,13 @@ router.post('/users/:id/role', async (req, res) => {
     try {
         const [r] = await req.db.execute('UPDATE users SET role = ? WHERE id = ?', [req.body.role, id]);
         if (!r.affectedRows) return res.status(404).json({ error: 'User not found' });
+        invalidateUserCache(id); // the change applies to this user's open sessions at once
         await log(req.db, req.user.userId, 'set_role', id, req.body.role);
         res.json({ id, role: req.body.role });
     } catch (e) { fail(res, e); }
 });
 
-// Block or unblock. Takes effect at the next login (tokens expire within 24h).
+// Block or unblock. Takes effect at once: every request re-checks the account.
 router.post('/users/:id/block', async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: 'Invalid user id' });
@@ -70,6 +71,7 @@ router.post('/users/:id/block', async (req, res) => {
     try {
         const [r] = await req.db.execute('UPDATE users SET blocked = ? WHERE id = ?', [req.body.blocked ? 1 : 0, id]);
         if (!r.affectedRows) return res.status(404).json({ error: 'User not found' });
+        invalidateUserCache(id);
         await log(req.db, req.user.userId, req.body.blocked ? 'block' : 'unblock', id, null);
         res.json({ id, blocked: req.body.blocked });
     } catch (e) { fail(res, e); }

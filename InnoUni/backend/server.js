@@ -339,7 +339,7 @@ app.post('/api/contact', contactLimiter, async (req, res) => {
             });
         };
         const sendTelegram = () =>
-            telegram.notifyAdmin(`Sayt formasi: ${cleanName}\n${email}\n\n${message.slice(0, 3000)}`);
+            telegram.notifyAdmin(`Sayt formasi: ${cleanName.replace(/\[\s*chat\s*:/gi, '(chat:')}\n${email}\n\n${message.replace(/\[\s*chat\s*:/gi, '(chat:').slice(0, 3000)}`);
 
         // Deliver through every configured channel; the visitor sees success if at least one worked
         const channels = [];
