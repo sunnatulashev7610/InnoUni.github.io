@@ -139,6 +139,7 @@
         cover.style.background = 'var(--c' + ((c.id % 6) + 1) + ')';
         card.appendChild(cover);
         if (c.category) card.appendChild(el('span', 'pg-pill ' + PILLS[c.id % PILLS.length], c.category));
+        if (c.ai) { const ai = el('span', 'pg-pill sky', 'AI kurs'); ai.style.marginLeft = '6px'; card.appendChild(ai); }
         const h = el('h3', '', c.title); h.style.marginTop = '10px'; card.appendChild(h);
         card.appendChild(el('div', 'pg-muted', c.teacher || 'O\'qituvchi belgilanmagan'));
         if (c.description) { const d = el('p', 'pg-muted', c.description); d.style.cssText = 'margin:8px 0 0;font-size:.88rem'; card.appendChild(d); }
@@ -290,8 +291,22 @@
             });
             return box;
         }
-        pg.appendChild(list('video', 'Video darslar', 'fas fa-circle-play', 'Ko\'rish'));
-        pg.appendChild(list('guide', 'Qo\'llanmalar', 'fas fa-file-lines', 'Ochish'));
+        const written = items.filter(function (x) { return x.kind === 'lesson'; });
+        if (written.length) {
+            const box = el('div', 'pg-card'); box.style.marginTop = '14px';
+            box.appendChild(el('h3', 'pg-h3', 'Darslar'));
+            written.forEach(function (it, i) {
+                const d = el('details'); d.style.marginTop = '8px';
+                d.appendChild(el('summary', '', (i + 1) + '. ' + it.title));
+                const t = el('div', 'pg-muted', it.body || ''); t.style.cssText = 'white-space:pre-wrap;margin-top:6px'; d.appendChild(t);
+                box.appendChild(d);
+            });
+            pg.appendChild(box);
+        }
+        const hasKind = function (k) { return items.some(function (x) { return x.kind === k; }); };
+        // a written (AI) course has no videos or guides: do not show empty boxes for them
+        if (!written.length || hasKind('video')) pg.appendChild(list('video', 'Video darslar', 'fas fa-circle-play', 'Ko\'rish'));
+        if (!written.length || hasKind('guide')) pg.appendChild(list('guide', 'Qo\'llanmalar', 'fas fa-file-lines', 'Ochish'));
     };
 
     // ---- Groups: every course has one group (teacher leads, students join by enrolling) ----

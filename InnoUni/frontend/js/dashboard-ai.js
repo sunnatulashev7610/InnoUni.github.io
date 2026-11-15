@@ -113,4 +113,131 @@
             await loadHistory();
         });
     });
+    // ---- AI course creator: brief -> private course -> optionally public ----
+    G.register('ai-courses', async function (root, session) {
+        root.textContent = '';
+        const pg = el('div', 'pg'); root.appendChild(pg);
+        const data = await G.api.get('/ai-courses', session);
+        const status = await G.api.get('/ai/status', session);
+
+        const head = el('div', 'pg-head'); const hd = el('div');
+        hd.appendChild(el('h1', '', 'AI kurs yaratuvchi')); hd.appendChild(el('p', '', 'Mavzu ayting: AI kurs tuzib beradi. Kurs sizda shaxsiy turadi, xohlasangiz public qilasiz'));
+        head.appendChild(hd); head.appendChild(el('span', 'pg-pill ' + (status.live ? '' : 'sky'), status.live ? 'AI faol' : 'Demo rejim'));
+        pg.appendChild(head);
+
+        // form
+        const form = el('form', 'pg-card');
+        const meter = el('b'); meter.style.display = 'block'; meter.style.marginBottom = '10px';
+        form.appendChild(meter);
+        function field(label, node) { const l = el('label', 'pg-lbl', label); form.appendChild(l); form.appendChild(node); return node; }
+        const topic = field('Kurs mavzusi', el('input', 'pg-input')); topic.maxLength = 200; topic.placeholder = 'Masalan: JavaScript asoslari'; topic.required = true;
+        const level = field('Daraja', el('select', 'pg-input'));
+        ['boshlang\'ich', 'o\'rta', 'yuqori'].forEach(function (v) { const o = el('option', '', v); o.value = v; level.appendChild(o); });
+        const lessons = field('Darslar soni', el('select', 'pg-input'));
+        [3, 4, 5, 6, 7, 8].forEach(function (n) { const o = el('option', '', String(n)); o.value = String(n); lessons.appendChild(o); });
+        lessons.value = '5';
+        const style = field('Uslub (ixtiyoriy)', el('input', 'pg-input')); style.maxLength = 200; style.placeholder = 'Masalan: oddiy tilda, ko\'p misol bilan';
+        const goal = field('Maqsad (ixtiyoriy)', el('input', 'pg-input')); goal.maxLength = 300; goal.placeholder = 'Masalan: 2 haftada sayt yasashni o\'rganish';
+        const msg = el('p', 'pg-muted'); msg.style.minHeight = '1.2em';
+        const go = el('button', 'pg-btn', 'Kursni yaratish'); go.type = 'submit'; go.style.marginTop = '14px';
+        form.appendChild(go); form.appendChild(msg); pg.appendChild(form);
+
+        const listBox = el('div'); listBox.style.marginTop = '18px'; pg.appendChild(listBox);
+
+        let courses = data.courses;
+        function drawMeter(u) {
+            meter.textContent = 'Bugun ' + u.remaining + ' ta kurs yaratish qoldi (' + u.limit + ' dan)';
+            go.disabled = u.remaining <= 0;
+        }
+        drawMeter(data);
+
+        function drawList() {
+            listBox.textContent = '';
+            listBox.appendChild(el('h3', 'pg-h3', 'Mening AI kurslarim'));
+            if (!courses.length) { listBox.appendChild(el('p', 'pg-muted', 'Hozircha yo\'q. Yuqoridagi shakl orqali birinchi kursni yarating.')); return; }
+            courses.forEach(function (c) {
+                const card = el('section', 'pg-card'); card.style.marginTop = '12px';
+                const top = el('div'); top.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center';
+                top.appendChild(el('span', 'pg-pill ' + (c.public ? '' : 'sun'), c.public ? 'Public' : 'Shaxsiy'));
+                if (c.demo) top.appendChild(el('span', 'pg-pill sky', 'Demo'));
+                card.appendChild(top);
+                const h = el('h3', '', c.title); h.style.marginTop = '8px'; card.appendChild(h);
+                card.appendChild(el('div', 'pg-muted', 'Gather Edu × ' + (session.name || 'siz') + ' · ' + c.lessons + ' ta dars' + (c.public ? ' · ' + c.students + ' o\'quvchi' : '')));
+                if (c.description) { const d = el('p', 'pg-muted', c.description); d.style.margin = '8px 0 0'; card.appendChild(d); }
+                const row = el('div'); row.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:12px';
+                const open = el('button', 'pg-btn ghost', 'Darslarni ko\'rish'); open.type = 'button';
+                const body = el('div'); body.hidden = true; body.style.marginTop = '12px';
+                let loaded = false;
+                open.addEventListener('click', async function () {
+                    body.hidden = !body.hidden;
+                    open.textContent = body.hidden ? 'Darslarni ko\'rish' : 'Yopish';
+                    if (body.hidden || loaded) return;
+                    try {
+                        const r = await G.api.get('/ai-courses/' + c.id, session);
+                        r.lessons.forEach(function (l, i) {
+                            const d = el('details'); d.style.marginTop = '6px';
+                            d.appendChild(el('summary', '', (i + 1) + '. ' + l.title));
+                            const t = el('div', 'pg-muted', l.body); t.style.cssText = 'white-space:pre-wrap;margin-top:6px'; d.appendChild(t);
+                            body.appendChild(d);
+                        });
+                        loaded = true;
+                    } catch (e) { if (e.auth) throw e; body.appendChild(el('p', 'pg-muted', 'Darslarni yuklab bo\'lmadi.')); }
+                });
+                row.appendChild(open);
+                const pub = el('button', 'pg-btn' + (c.public ? ' ghost' : ''), c.public ? 'Shaxsiy qilish' : 'Public qilish'); pub.type = 'button';
+                if (c.demo && !c.public) { pub.disabled = true; pub.title = 'Demo kursni public qilib bo\'lmaydi. AI ulangach mumkin.'; }
+                pub.addEventListener('click', async function () {
+                    pub.disabled = true;
+                    try {
+                        await G.api.send('PATCH', '/ai-courses/' + c.id, session, { public: !c.public });
+                        c.public = !c.public; drawList();
+                        G.toast(c.public ? 'Kurs "Kurslar" sahifasida ko\'rinadi' : 'Kurs endi faqat sizda');
+                    } catch (e) {
+                        if (e.auth) throw e;
+                        pub.disabled = false;
+                        G.toast(e.data && e.data.code === 'EMAIL_NOT_VERIFIED' ? 'Avval emailingizni tasdiqlang' : 'Bajarilmadi, qayta urinib ko\'ring');
+                    }
+                });
+                row.appendChild(pub);
+                const del = el('button', 'pg-btn ghost', 'O\'chirish'); del.type = 'button';
+                G.twice(del, 'Aniq o\'chiraymi?', async function () {
+                    try {
+                        await G.api.send('DELETE', '/ai-courses/' + c.id, session);
+                        courses = courses.filter(function (x) { return x.id !== c.id; }); drawList();
+                    } catch (e) {
+                        if (e.auth) throw e;
+                        G.toast(e.status === 409 ? 'Kursda o\'quvchilar bor. Avval shaxsiy qiling' : 'O\'chirib bo\'lmadi');
+                    }
+                });
+                row.appendChild(del);
+                card.appendChild(row); card.appendChild(body); listBox.appendChild(card);
+            });
+        }
+        drawList();
+
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault(); e.stopPropagation();
+            if (go.disabled) return;
+            go.disabled = true; msg.textContent = 'AI kurs yozmoqda... bu 1 daqiqagacha davom etishi mumkin.';
+            try {
+                const r = await G.api.send('POST', '/ai-courses', session, {
+                    topic: topic.value, level: level.value, lessons: Number(lessons.value),
+                    style: style.value, goal: goal.value
+                });
+                msg.textContent = 'Kurs tayyor. U hozircha faqat sizda.';
+                topic.value = ''; style.value = ''; goal.value = '';
+                const fresh = await G.api.get('/ai-courses', session);
+                courses = fresh.courses; drawMeter(fresh); drawList();
+                if (r.provider === 'demo') G.toast('Demo kurs yaratildi (AI hali ulanmagan)');
+            } catch (err) {
+                if (err.auth) throw err;
+                go.disabled = false;
+                if (err.status === 429 && err.data && typeof err.data.remaining === 'number') { drawMeter(err.data); msg.textContent = 'Bugungi kurslar tugadi. Ertaga davom etamiz.'; }
+                else if (err.status === 429) msg.textContent = 'Oldingi kurs tayyorlanmoqda, kuting.';
+                else if (err.data && err.data.code === 'EMAIL_NOT_VERIFIED') msg.textContent = 'Avval emailingizni tasdiqlang.';
+                else if (err.status === 400) msg.textContent = 'Ma\'lumotni tekshiring: ' + err.message;
+                else msg.textContent = 'AI hozir kurs yoza olmadi. Birozdan keyin qayta urinib ko\'ring.';
+            }
+        });
+    });
 })();

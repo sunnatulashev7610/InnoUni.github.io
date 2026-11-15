@@ -154,10 +154,13 @@ router.get('/dashboard/:userId', authenticateToken, studentOnly, requireSelf(), 
 
 // Enroll in a course
 // Course catalogue: every active course, with my enrollment (if any)
+// AI-made courses are credited to the platform and the person who made them
+const creditName = (c) => (Number(c.is_ai) === 1 ? 'Gather Edu × ' + (c.teacher || 'muallif') : c.teacher);
+
 router.get('/courses', authenticateToken, studentOnly, async (req, res) => {
     try {
         const [rows] = await req.db.execute(`
-            SELECT c.id, c.title, c.description, c.category, c.avatar, u.full_name AS teacher,
+            SELECT c.id, c.title, c.description, c.category, c.avatar, c.is_ai, u.full_name AS teacher,
                 (SELECT COUNT(*) FROM course_enrollments e WHERE e.course_id = c.id AND e.status = 'active') AS students,
                 ce.progress AS my_progress, ce.status AS my_status
             FROM courses c
@@ -170,7 +173,7 @@ router.get('/courses', authenticateToken, studentOnly, async (req, res) => {
         res.json({
             courses: rows.map((c) => ({
                 id: c.id, title: c.title, description: c.description, category: c.category, avatar: c.avatar,
-                teacher: c.teacher, students: Number(c.students) || 0,
+                teacher: creditName(c), ai: Number(c.is_ai) === 1, students: Number(c.students) || 0,
                 enrolled: c.my_status !== null && c.my_status !== undefined,
                 progress: c.my_progress === null || c.my_progress === undefined ? 0 : Number(c.my_progress)
             }))
@@ -187,7 +190,7 @@ router.get('/courses/:courseId/content', authenticateToken, studentOnly, async (
         const courseId = Number(req.params.courseId);
         if (!Number.isInteger(courseId) || courseId < 1) return res.status(400).json({ error: 'Invalid course id' });
         const [rows] = await req.db.execute(`
-            SELECT c.id, c.title, c.description, c.category, u.full_name AS teacher, ce.progress AS my_progress
+            SELECT c.id, c.title, c.description, c.category, c.is_ai, u.full_name AS teacher, ce.progress AS my_progress
             FROM courses c
             JOIN course_enrollments ce ON ce.course_id = c.id AND ce.user_id = ? AND ce.status = 'active'
             LEFT JOIN users u ON c.teacher_id = u.id
@@ -196,11 +199,11 @@ router.get('/courses/:courseId/content', authenticateToken, studentOnly, async (
         if (rows.length === 0) return res.status(404).json({ error: 'Course not found or you are not enrolled' });
         const c = rows[0];
         const [items] = await req.db.execute(
-            'SELECT id, kind, title, url, position FROM course_content WHERE course_id = ? ORDER BY position, id',
+            'SELECT id, kind, title, url, body, position FROM course_content WHERE course_id = ? ORDER BY position, id',
             [courseId]
         );
         res.json({
-            course: { id: c.id, title: c.title, description: c.description, category: c.category, teacher: c.teacher, progress: Number(c.my_progress) || 0 },
+            course: { id: c.id, title: c.title, description: c.description, category: c.category, teacher: creditName(c), ai: Number(c.is_ai) === 1, progress: Number(c.my_progress) || 0 },
             items
         });
     } catch (error) {
