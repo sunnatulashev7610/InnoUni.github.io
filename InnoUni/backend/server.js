@@ -19,6 +19,7 @@ const teamsRouter = require('./api/teams');
 const { requireFeature } = require('./utils/features');
 const ordersRouter = require('./api/orders');
 const adminRouter = require('./api/admin');
+const aiRouter = require('./api/ai');
 const telegramRouter = require('./api/telegram');
 const telegram = require('./utils/telegram');
 const { runMigrations } = require('./migrate');
@@ -50,6 +51,15 @@ const authLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'Too many attempts, please try again later' }
+});
+
+// The AI answers cost money: besides the daily question limit, one IP cannot hammer the endpoint
+const aiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 150,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, try again later' }
 });
 
 const contactLimiter = rateLimit({
@@ -273,6 +283,7 @@ app.use('/api/dashboard', authenticateToken, dashboardRouter);
 app.use('/api/teams', requireFeature('teams'), teamsRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/ai', requireFeature('ai'), aiLimiter, aiRouter);
 app.use('/api/telegram', telegramRouter);
 
 // Old bookmarked /dashboard/:userId links go to the dashboard page (the role comes from the login token)

@@ -3,7 +3,8 @@
 // Read on every request, so no restart logic is needed in tests.
 const FLAGS = {
     teams: { env: 'FEATURE_TEAMS', fallback: true },
-    library: { env: 'FEATURE_LIBRARY', fallback: false }
+    library: { env: 'FEATURE_LIBRARY', fallback: false },
+    ai: { env: 'FEATURE_AI', fallback: true }
 };
 
 function isEnabled(name) {
