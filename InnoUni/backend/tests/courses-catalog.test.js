@@ -25,8 +25,8 @@ test('students get the catalogue with their own enrollment and numbers as number
     const res = await request(app).get('/api/student/courses').set(as(5, 'student'));
     expect(res.status).toBe(200);
     expect(res.body.courses).toEqual([
-        { id: 2, title: 'Python', description: 'd', category: 'Backend', avatar: null, teacher: 'Bekzod', students: 3, enrolled: true, progress: 45.5 },
-        { id: 1, title: 'React', description: 'd', category: 'Frontend', avatar: null, teacher: null, students: 0, enrolled: false, progress: 0 }
+        { id: 2, title: 'Python', description: 'd', category: 'Backend', avatar: null, ai: false, teacher: 'Bekzod', students: 3, enrolled: true, progress: 45.5 },
+        { id: 1, title: 'React', description: 'd', category: 'Frontend', avatar: null, ai: false, teacher: null, students: 0, enrolled: false, progress: 0 }
     ]);
     expect(calls[0].p).toEqual([5]); // only the caller's own enrollment is joined
 });
@@ -46,7 +46,7 @@ describe('course content for an enrolled student', () => {
                 if (q.includes('JOIN course_enrollments ce ON ce.course_id = c.id AND ce.user_id = ?')) {
                     return [enrolled && p[0] === 5 && p[1] === 2 ? [{ id: 2, title: 'Python', description: 'd', category: 'Backend', teacher: 'Bekzod', my_progress: '10.00' }] : []];
                 }
-                if (q.startsWith('SELECT id, kind, title, url, position FROM course_content')) return [[{ id: 1, kind: 'video', title: 'V', url: 'https://y.be/1', position: 1 }]];
+                if (q.startsWith('SELECT id, kind, title, url, body, position FROM course_content')) return [[{ id: 1, kind: 'video', title: 'V', url: 'https://y.be/1', position: 1 }]];
                 throw new Error('Unexpected query: ' + q);
             },
             query: async () => [[]]

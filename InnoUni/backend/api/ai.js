@@ -84,6 +84,7 @@ router.delete('/history', async (req, res) => {
 router.post('/chat', async (req, res) => {
     const userId = req.user.userId;
     let reserved = false;
+    let locked = false;
     try {
         const db = req.db;
         const message = typeof req.body.message === 'string' ? req.body.message.trim() : '';
@@ -94,7 +95,7 @@ router.post('/chat', async (req, res) => {
         if (c.id !== null && !course) return res.status(403).json({ error: 'You can only ask about your own courses' });
 
         if (busy.has(userId)) return res.status(429).json({ error: 'Wait for the previous answer' });
-        busy.add(userId);
+        busy.add(userId); locked = true;
 
         // Take one of today's questions first (atomic); give it back if the AI fails
         await db.execute('INSERT IGNORE INTO ai_usage (user_id, day, used) VALUES (?, CURDATE(), 0)', [userId]);
@@ -120,7 +121,7 @@ router.post('/chat', async (req, res) => {
         if (reserved) await req.db.execute('UPDATE ai_usage SET used = used - 1 WHERE user_id = ? AND day = CURDATE() AND used > 0', [userId]).catch(() => {});
         res.status(502).json({ error: 'The AI is not available right now, try again in a minute' });
     } finally {
-        busy.delete(userId);
+        if (locked) busy.delete(userId);
     }
 });
 
