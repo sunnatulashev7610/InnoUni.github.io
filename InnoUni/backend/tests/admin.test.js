@@ -3,6 +3,7 @@ const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const app = require('../server');
+const { register, withAccounts } = require('./helpers/accounts');
 
 const ADMIN = 1;
 let s;
@@ -39,17 +40,17 @@ const fakeDb = {
         if (q.startsWith('UPDATE users SET role = ?')) { const u = s.users.find((x) => x.id === p[1]); if (u) u.role = p[0]; return [{ affectedRows: u ? 1 : 0 }]; }
         if (q.startsWith('UPDATE users SET blocked = ?')) { const u = s.users.find((x) => x.id === p[1]); if (u) u.blocked = p[0]; return [{ affectedRows: u ? 1 : 0 }]; }
         if (q.startsWith('INSERT INTO admin_log')) { s.log.push(p); return [{}]; }
-        if (q.startsWith('SELECT * FROM users WHERE email')) return [s.users.filter((u) => u.email === p[0])];
+        if (q.startsWith('SELECT * FROM users WHERE LOWER(email)')) return [s.users.filter((u) => u.email.toLowerCase() === p[0])];
         if (q.startsWith('SELECT t.id, t.name')) return [[]];
         if (q.includes('FROM orders o JOIN users u')) return [s.orders.filter((o) => !q.includes('WHERE o.status = ?') || o.status === p[0])];
         throw new Error('Unexpected query in test: ' + q);
     },
     query: async () => [[]]
 };
-const as = (userId, role) => ({ Authorization: `Bearer ${jwt.sign({ userId, email: 'x@x.uz', role }, process.env.JWT_SECRET, { expiresIn: '1h' })}` });
+const as = (userId, role) => (register(userId, role), { Authorization: `Bearer ${jwt.sign({ userId, email: 'x@x.uz', role }, process.env.JWT_SECRET, { expiresIn: '1h' })}` });
 const admin = as(ADMIN, 'admin');
 
-beforeAll(() => app.setDb(fakeDb));
+beforeAll(() => app.setDb(withAccounts(fakeDb)));
 beforeEach(reset);
 
 test('only admins may use /api/admin', async () => {

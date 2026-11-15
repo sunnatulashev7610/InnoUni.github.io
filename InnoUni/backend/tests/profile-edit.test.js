@@ -2,20 +2,22 @@ process.env.JWT_SECRET = 'test-secret-test-secret-123';
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const app = require('../server');
+const { register, withAccounts } = require('./helpers/accounts');
 
 let calls, taken;
 const row = { id: 7, full_name: 'Ali Valiyev', email: 'ali@x.uz', phone: '+998901234567', bio: 'Salom', avatar: null, role: 'student' };
 beforeEach(() => {
     calls = []; taken = false;
-    app.setDb({
+    register(7, 'student');
+    app.setDb(withAccounts({
         execute: async (sql, params) => {
             calls.push({ sql, params });
-            if (/SELECT id FROM users WHERE email/.test(sql)) return [taken ? [{ id: 99 }] : []];
+            if (/SELECT id FROM users WHERE (LOWER\()?email/.test(sql)) return [taken ? [{ id: 99 }] : []];
             if (/SELECT id, full_name/.test(sql)) return [[row]];
             return [{ affectedRows: 1 }];
         },
         query: async () => [[]],
-    });
+    }));
 });
 const auth = () => ({ Authorization: `Bearer ${jwt.sign({ userId: 7, role: 'student' }, process.env.JWT_SECRET, { expiresIn: '1h' })}` });
 const put = (body) => request(app).put('/api/auth/profile').set(auth()).send(body);

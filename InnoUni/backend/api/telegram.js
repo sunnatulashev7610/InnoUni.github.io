@@ -32,7 +32,11 @@ function safeEqual(a, b) {
 }
 
 // "[chat:123]" tag lets an admin reply to a forwarded message without any database
-const TAG = /\[chat:(-?\d+)\]/;
+const TAG = /\[chat:(-?\d+)\]/g;
+// The user's own text must never carry a tag: otherwise it could redirect the admin's answer to another chat
+const stripTag = (t) => t.replace(/\[\s*chat\s*:/gi, '(chat:');
+// The real tag is the LAST one in the forwarded message
+const lastTag = (t) => { const all = [...String(t).matchAll(TAG)]; return all.length ? all[all.length - 1][1] : null; };
 
 async function handleMessage(msg) {
     const chatId = msg.chat && msg.chat.id;
@@ -48,9 +52,9 @@ async function handleMessage(msg) {
 
     if (isAdminChat) {
         // Admin answers a forwarded message -> relay the answer to the original user
-        const tagged = msg.reply_to_message && msg.reply_to_message.text && msg.reply_to_message.text.match(TAG);
+        const tagged = msg.reply_to_message && msg.reply_to_message.text && lastTag(msg.reply_to_message.text);
         if (tagged && text) {
-            await telegram.sendMessage(tagged[1], text);
+            await telegram.sendMessage(tagged, text);
             return telegram.sendMessage(chatId, 'Javob yuborildi.');
         }
         return;
@@ -66,7 +70,7 @@ async function handleMessage(msg) {
     const from = msg.from || {};
     const who = [from.first_name, from.last_name].filter(Boolean).join(' ') || 'Noma\'lum';
     const handle = from.username ? ` (@${from.username})` : '';
-    const forwarded = await telegram.notifyAdmin(`Telegram bot: ${who}${handle}\n\n${text.slice(0, 3000)}\n\n[chat:${chatId}]`);
+    const forwarded = await telegram.notifyAdmin(`Telegram bot: ${who}${handle}\n\n${stripTag(text).slice(0, 3000)}\n\n[chat:${chatId}]`);
     return telegram.sendMessage(
         chatId,
         forwarded ? 'Xabaringiz qabul qilindi. Tez orada javob beramiz.' : `Hozir javob bera olmaymiz. Iltimos, emailga yozing: ${CONTACT().email}`
