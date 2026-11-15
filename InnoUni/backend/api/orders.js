@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticateToken, teacherOnly, studentOnly } = require('../middleware/roleBased');
 const { parseId, validateText } = require('../utils/validation');
+const { requireVerifiedEmail } = require('../utils/verified');
 const { findSuggestions } = require('../utils/orderSuggestions');
 
 const router = express.Router();
@@ -111,7 +112,7 @@ const ANSWERABLE = `id = ? AND status = 'pending' AND kind IN ('course', 'materi
     AND (course_id IS NULL OR course_id IN (SELECT id FROM courses WHERE teacher_id = ?))`;
 
 // Set a price, or make it free
-router.post('/:id/offer', teacherOnly, async (req, res) => {
+router.post('/:id/offer', teacherOnly, requireVerifiedEmail, async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: 'Invalid order id' });
     let price;

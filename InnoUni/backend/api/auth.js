@@ -8,12 +8,35 @@ const { validatePassword, isValidEmail } = require('../utils/validation');
 
 // Single shared JWT verification middleware
 const { authenticateToken } = require('../middleware/roleBased');
+const mailer = require('../utils/mailer');
+const { createToken, consumeToken, sentRecently } = require('../utils/authTokens');
+
+const frontendUrl = () => (process.env.FRONTEND_URL || 'https://sunnatulashev7610.github.io/InnoUni.github.io/InnoUni').replace(/\/+$/, '');
+
+// Mail problems must never break the request that triggered them
+async function sendVerification(db, userId, email) {
+    if (!mailer.isConfigured()) return false;
+    try {
+        const token = await createToken(db, userId, 'verify', 24 * 60);
+        await mailer.sendMail({
+            to: email,
+            subject: 'Gather Edu: emailingizni tasdiqlang',
+            text: `Salom!\n\nEmailingizni tasdiqlash uchun havolani oching (24 soat amal qiladi):\n${frontendUrl()}/secondary-pages/login/verify-email.html?token=${token}\n\nAgar siz ro'yxatdan o'tmagan bo'lsangiz, bu xatga e'tibor bermang.`
+        });
+        return true;
+    } catch (e) {
+        console.error('Verification mail failed:', e.message);
+        return false;
+    }
+}
 
 // Register new user
 router.post('/register', async (req, res) => {
     try {
         const db = req.db;
-        const { full_name, email, phone, password, role = 'student' } = req.body;
+        const { full_name, phone, password, role = 'student' } = req.body;
+        // Emails are case-insensitive: one address is one account (TiDB compares them case-sensitively)
+        const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : req.body.email;
 
         // Validation
         if (!full_name || !email || !password) {
@@ -22,6 +45,14 @@ router.post('/register', async (req, res) => {
 
         if (typeof full_name !== 'string' || !isValidEmail(email)) {
             return res.status(400).json({ error: 'Valid name and email are required' });
+        }
+        const cleanName = full_name.trim().replace(/\s+/g, ' ');
+        if (cleanName.length < 2 || cleanName.length > 100) {
+            return res.status(400).json({ error: 'Name must be 2-100 characters' });
+        }
+        const cleanPhone = phone === undefined || phone === null || phone === '' ? null : (typeof phone === 'string' ? phone.trim() : false);
+        if (cleanPhone === false || (cleanPhone && !/^\+?[0-9 ()-]{7,20}$/.test(cleanPhone))) {
+            return res.status(400).json({ error: 'Invalid phone number' });
         }
 
         // Validate role. Admin accounts are never self-registered: they are created manually in the database.
@@ -38,7 +69,7 @@ router.post('/register', async (req, res) => {
 
         // Check if user already exists
         const [existingUsers] = await db.execute(
-            'SELECT id FROM users WHERE email = ?',
+            'SELECT id FROM users WHERE LOWER(email) = ?',
             [email]
         );
 
@@ -52,10 +83,12 @@ router.post('/register', async (req, res) => {
         // Create user
         const [result] = await db.execute(
             'INSERT INTO users (full_name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)',
-            [full_name, email, phone, hashedPassword, role]
+            [cleanName, email, cleanPhone, hashedPassword, role]
         );
 
         // Get the created user for response
+        sendVerification(db, result.insertId, email); // in the background: the user does not wait for the mail
+
         const [newUser] = await db.execute(
             'SELECT id, full_name, email, phone, role, avatar, bio, created_at FROM users WHERE id = ?',
             [result.insertId]
@@ -75,7 +108,8 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
     try {
         const db = req.db;
-        const { email, password, role } = req.body;
+        const { password, role } = req.body;
+        const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : req.body.email;
 
         // Validation
         if (!email || !password) {
@@ -84,7 +118,7 @@ router.post('/login', async (req, res) => {
 
         // Find user
         const [users] = await db.execute(
-            'SELECT * FROM users WHERE email = ?',
+            'SELECT * FROM users WHERE LOWER(email) = ?',
             [email]
         );
 
@@ -132,7 +166,8 @@ router.post('/login', async (req, res) => {
                 phone: user.phone,
                 role: user.role,
                 avatar: user.avatar,
-                bio: user.bio
+                bio: user.bio,
+                email_verified: Number(user.email_verified) === 1
             }
         });
     } catch (error) {
@@ -148,7 +183,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
         const userId = req.user.userId;
 
         const [users] = await db.execute(
-            'SELECT id, full_name, email, phone, bio, avatar, role, created_at FROM users WHERE id = ?',
+            'SELECT id, full_name, email, phone, bio, avatar, role, email_verified, created_at FROM users WHERE id = ?',
             [userId]
         );
 
@@ -156,7 +191,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
 
-        res.json({ user: users[0] });
+        res.json({ user: users[0], mail_enabled: mailer.isConfigured() });
     } catch (error) {
         console.error('Profile error:', error);
         res.status(500).json({ error: 'Internal server error' });
@@ -207,7 +242,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
 
         if (updates.email) {
             const [existingUsers] = await db.execute(
-                'SELECT id FROM users WHERE email = ? AND id != ?',
+                'SELECT id FROM users WHERE LOWER(email) = ? AND id != ?',
                 [updates.email, userId]
             );
             if (existingUsers.length > 0) {
@@ -283,6 +318,84 @@ router.put('/password', authenticateToken, async (req, res) => {
 });
 
 // Verify token (for frontend token validation)
+// ---- E-mail verification and password reset (one-time links sent by e-mail) ----
+
+// The link from the e-mail lands here
+router.post('/verify-email', async (req, res) => {
+    try {
+        const userId = await consumeToken(req.db, req.body && req.body.token, 'verify');
+        if (!userId) return res.status(400).json({ error: 'This link is invalid or has expired' });
+        await req.db.execute('UPDATE users SET email_verified = 1 WHERE id = ?', [userId]);
+        res.json({ message: 'Email confirmed' });
+    } catch (error) {
+        console.error('Verify email error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Ask for a new verification mail (at most one per minute)
+router.post('/resend-verification', authenticateToken, async (req, res) => {
+    try {
+        const db = req.db;
+        if (!mailer.isConfigured()) return res.status(503).json({ error: 'Email sending is not set up yet' });
+        const [rows] = await db.execute('SELECT email, email_verified FROM users WHERE id = ?', [req.user.userId]);
+        if (!rows.length) return res.status(404).json({ error: 'User not found' });
+        if (Number(rows[0].email_verified) === 1) return res.json({ message: 'Email is already confirmed' });
+        if (await sentRecently(db, req.user.userId, 'verify', 60)) return res.status(429).json({ error: 'Please wait a minute before asking again' });
+        const sent = await sendVerification(db, req.user.userId, rows[0].email);
+        if (!sent) return res.status(502).json({ error: 'Could not send the email, try again later' });
+        res.json({ message: 'Verification email sent' });
+    } catch (error) {
+        console.error('Resend verification error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// "Forgot password": the answer is always the same, so nobody can find out which emails are registered
+router.post('/forgot-password', async (req, res) => {
+    const reply = { message: 'If this email is registered, a reset link has been sent' };
+    try {
+        const db = req.db;
+        const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+        if (!isValidEmail(email)) return res.status(400).json({ error: 'Valid email is required' });
+        if (!mailer.isConfigured()) return res.status(503).json({ error: 'Email sending is not set up yet' });
+        const [rows] = await db.execute('SELECT id, email, blocked FROM users WHERE LOWER(email) = ?', [email]);
+        if (rows.length && !rows[0].blocked && !(await sentRecently(db, rows[0].id, 'reset', 60))) {
+            try {
+                const token = await createToken(db, rows[0].id, 'reset', 60);
+                await mailer.sendMail({
+                    to: rows[0].email,
+                    subject: 'Gather Edu: parolni tiklash',
+                    text: `Salom!\n\nParolni tiklash uchun havolani oching (1 soat amal qiladi):\n${frontendUrl()}/secondary-pages/login/reset-password.html?token=${token}\n\nAgar siz so'ramagan bo'lsangiz, bu xatga e'tibor bermang: parolingiz o'zgarmaydi.`
+                });
+            } catch (e) {
+                console.error('Reset mail failed:', e.message);
+            }
+        }
+        res.json(reply);
+    } catch (error) {
+        console.error('Forgot password error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+router.post('/reset-password', async (req, res) => {
+    try {
+        const db = req.db;
+        const { token, password } = req.body || {};
+        const passwordError = validatePassword(password);
+        if (passwordError) return res.status(400).json({ error: passwordError });
+        const userId = await consumeToken(db, token, 'reset');
+        if (!userId) return res.status(400).json({ error: 'This link is invalid or has expired' });
+        await db.execute('UPDATE users SET password = ?, email_verified = 1 WHERE id = ?', [await bcrypt.hash(password, 10), userId]); // opening the mailed link also proves the address is theirs
+        await db.execute("UPDATE auth_tokens SET used_at = NOW() WHERE user_id = ? AND kind = 'reset' AND used_at IS NULL", [userId]);
+        res.json({ message: 'Password changed. You can sign in now' });
+    } catch (error) {
+        console.error('Reset password error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 router.get('/verify', authenticateToken, (req, res) => {
     res.json({ 
         valid: true, 

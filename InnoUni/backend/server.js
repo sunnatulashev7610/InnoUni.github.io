@@ -269,7 +269,11 @@ app.use((req, res, next) => {
 // API Routes
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
-app.use('/api/auth/password', authLimiter); // guards the current-password check against guessing
+app.use('/api/auth/password', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
+app.use('/api/auth/reset-password', authLimiter);
+app.use('/api/auth/verify-email', authLimiter);
+app.use('/api/auth/resend-verification', authLimiter); // guards the current-password check against guessing
 app.use('/api/auth', authRouter);
 app.use('/api/student', studentRouter);
 app.use('/api/teacher', teacherRouter);
@@ -350,7 +354,7 @@ app.post('/api/contact', contactLimiter, async (req, res) => {
             });
         };
         const sendTelegram = () =>
-            telegram.notifyAdmin(`Sayt formasi: ${cleanName}\n${email}\n\n${message.slice(0, 3000)}`);
+            telegram.notifyAdmin(`Sayt formasi: ${cleanName.replace(/\[\s*chat\s*:/gi, '(chat:')}\n${email}\n\n${message.replace(/\[\s*chat\s*:/gi, '(chat:').slice(0, 3000)}`);
 
         // Deliver through every configured channel; the visitor sees success if at least one worked
         const channels = [];

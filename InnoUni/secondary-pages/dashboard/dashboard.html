@@ -423,6 +423,24 @@
 			document.querySelectorAll('.notification-badge').forEach(function (b) { b.hidden = true; b.style.display = 'none'; });
 			document.querySelectorAll('.nav-item[onclick*="\'live\'"], .nav-item[onclick*="\'t-schedule\'"]').forEach(function (b) { b.hidden = true; });
 			if (session.name) document.getElementById('userName').textContent = session.name;
+			// Ask the server whether the address is confirmed; if not (and mail works), offer to resend the link
+			if (window.GEData) {
+				window.GEData.api.get('/auth/profile', session).then(function (r) {
+					if (!r || !r.user || Number(r.user.email_verified) !== 0 || !r.mail_enabled) return;
+					var bar = document.createElement('div');
+					bar.setAttribute('role', 'note');
+					bar.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;padding:10px 16px;margin-bottom:14px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line);font-size:.92rem';
+					var tx = document.createElement('span'); tx.textContent = 'Emailingiz hali tasdiqlanmagan. Pochtangizdagi havolani oching.';
+					var b = document.createElement('button'); b.type = 'button'; b.textContent = 'Qayta yuborish'; b.style.cssText = 'font-weight:600;background:none;border:0;color:var(--brand-ink);cursor:pointer';
+					b.addEventListener('click', function () {
+						b.disabled = true;
+						window.GEData.api.send('POST', '/auth/resend-verification', session).then(function () { tx.textContent = 'Xat yuborildi. Pochtangizni tekshiring.'; b.hidden = true; })
+							.catch(function () { tx.textContent = "Hozir yuborib bo'lmadi. Bir daqiqadan keyin qayta urinib ko'ring."; b.disabled = false; });
+					});
+					bar.appendChild(tx); bar.appendChild(b);
+					var main = document.querySelector('.main'); main.insertBefore(bar, main.firstChild);
+				}).catch(function () { /* the bar is only a hint */ });
+			}
 			var lo = document.getElementById('logoutBtn'); lo.hidden = false;
 			lo.addEventListener('click', function () {
 				['token', 'user', 'userRole'].forEach(function (k) { try { localStorage.removeItem(k); } catch (x) { /* ignore */ } });
