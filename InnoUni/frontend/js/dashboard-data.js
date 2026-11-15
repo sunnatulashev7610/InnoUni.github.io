@@ -253,6 +253,9 @@
         const h = el('h1', '', c.title); h.style.marginTop = '8px'; hero.appendChild(h);
         if (c.description) hero.appendChild(el('p', 'pg-muted', c.description));
         hero.appendChild(el('div', 'pg-muted', c.teacher || 'O\'qituvchi belgilanmagan'));
+        const askAi = el('button', 'pg-btn', 'AI ustozdan so\'rash'); askAi.type = 'button'; askAi.style.marginTop = '12px';
+        askAi.addEventListener('click', function () { window.GEData.ctx.aiCourseId = c.id; window.GEData.open('ai', 'ai'); });
+        hero.appendChild(askAi);
         pg.appendChild(hero);
 
         const player = el('div', 'pg-card'); player.style.marginTop = '14px'; player.hidden = true;
