@@ -240,4 +240,92 @@
             }
         });
     });
+    // ---- AI material creator: topic -> the AI asks general questions -> material to those conditions (private, "Mening materiallarim") ----
+    G.register('ai-materials', async function (root, session) {
+        root.textContent = '';
+        const pg = el('div', 'pg'); root.appendChild(pg);
+        const opts = await G.api.get('/ai-materials/options', session);
+        const list = await G.api.get('/ai-materials', session);
+        const status = await G.api.get('/ai/status', session);
+
+        const head = el('div', 'pg-head'); const hd = el('div');
+        hd.appendChild(el('h1', '', 'AI material yaratuvchi')); hd.appendChild(el('p', '', 'Mavzuni ayting, AI bir nechta savol beradi va materialni shartlaringizga moslab tayyorlaydi'));
+        head.appendChild(hd); head.appendChild(el('span', 'pg-pill ' + (status.live ? '' : 'sky'), status.live ? 'AI faol' : 'Demo rejim'));
+        pg.appendChild(head);
+
+        const form = el('form', 'pg-card');
+        const meter = el('b'); meter.style.display = 'block'; meter.style.marginBottom = '10px'; form.appendChild(meter);
+        function field(label, node) { form.appendChild(el('label', 'pg-lbl', label)); form.appendChild(node); return node; }
+        const topic = field('Mavzu', el('input', 'pg-input')); topic.maxLength = 200; topic.required = true; topic.placeholder = 'Masalan: React hooklari';
+        const answers = {};
+        opts.questions.forEach(function (q) {
+            const sel = field(q.label, el('select', 'pg-input'));
+            q.options.forEach(function (o) { const op = el('option', '', o); op.value = o; sel.appendChild(op); });
+            answers[q.key] = sel;
+        });
+        const extra = field(opts.extraLabel, el('input', 'pg-input')); extra.maxLength = 300;
+        const msg = el('p', 'pg-muted'); msg.style.minHeight = '1.2em';
+        const go = el('button', 'pg-btn', 'Material yaratish'); go.type = 'submit'; go.style.marginTop = '14px';
+        form.appendChild(go); form.appendChild(msg); pg.appendChild(form);
+
+        const box = el('div'); box.style.marginTop = '18px'; pg.appendChild(box);
+        let items = list.materials;
+        function drawMeter(u) { meter.textContent = 'Bugun ' + u.remaining + ' ta material yaratish qoldi (' + u.limit + ' dan)'; go.disabled = u.remaining <= 0; }
+        drawMeter(opts);
+
+        function draw() {
+            box.textContent = '';
+            box.appendChild(el('h3', 'pg-h3', 'Mening materiallarim'));
+            if (!items.length) { box.appendChild(el('p', 'pg-muted', 'Hozircha yo\'q. Yuqoridagi shakl orqali birinchi materialni yarating.')); return; }
+            items.forEach(function (m) {
+                const card = el('section', 'pg-card'); card.style.marginTop = '12px';
+                const top = el('div'); top.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap';
+                top.appendChild(el('span', 'pg-pill sun', 'Shaxsiy')); top.appendChild(el('span', 'pg-pill', m.kind));
+                if (m.demo) top.appendChild(el('span', 'pg-pill sky', 'Demo'));
+                card.appendChild(top);
+                const h = el('h3', '', m.title); h.style.marginTop = '8px'; card.appendChild(h);
+                card.appendChild(el('div', 'pg-muted', 'Gather Edu × ' + (session.name || 'siz')));
+                const body = el('div', 'pg-muted'); body.hidden = true; body.style.cssText = 'white-space:pre-wrap;margin-top:12px';
+                const row = el('div'); row.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:12px';
+                const open = el('button', 'pg-btn ghost', 'Ochish'); open.type = 'button';
+                let loaded = false;
+                open.addEventListener('click', async function () {
+                    body.hidden = !body.hidden; open.textContent = body.hidden ? 'Ochish' : 'Yopish';
+                    if (body.hidden || loaded) return;
+                    try { const r = await G.api.get('/ai-materials/' + m.id, session); body.textContent = r.material.body; loaded = true; }
+                    catch (e) { if (e.auth) throw e; body.textContent = 'Materialni yuklab bo\'lmadi.'; }
+                });
+                row.appendChild(open);
+                const del = el('button', 'pg-btn ghost', 'O\'chirish'); del.type = 'button';
+                G.twice(del, 'Aniq o\'chiraymi?', async function () {
+                    try { await G.api.send('DELETE', '/ai-materials/' + m.id, session); items = items.filter(function (x) { return x.id !== m.id; }); draw(); }
+                    catch (e) { if (e.auth) throw e; G.toast('O\'chirib bo\'lmadi'); }
+                });
+                row.appendChild(del);
+                card.appendChild(row); card.appendChild(body); box.appendChild(card);
+            });
+        }
+        draw();
+
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault(); e.stopPropagation();
+            if (go.disabled) return;
+            go.disabled = true; msg.textContent = 'AI material tayyorlamoqda... bu 1 daqiqagacha davom etishi mumkin.';
+            const body = { topic: topic.value, extra: extra.value };
+            Object.keys(answers).forEach(function (k) { body[k] = answers[k].value; });
+            try {
+                const r = await G.api.send('POST', '/ai-materials', session, body);
+                msg.textContent = 'Material tayyor. U hozircha faqat sizda.'; topic.value = ''; extra.value = '';
+                const fresh = await G.api.get('/ai-materials', session); items = fresh.materials; drawMeter(r); draw();
+                if (r.provider === 'demo') G.toast('Demo material yaratildi (AI hali ulanmagan)');
+            } catch (err) {
+                if (err.auth) throw err;
+                go.disabled = false;
+                if (err.status === 429 && err.data && typeof err.data.remaining === 'number') { drawMeter(err.data); msg.textContent = 'Bugungi materiallar tugadi. Ertaga davom etamiz.'; }
+                else if (err.status === 429) msg.textContent = 'Oldingi material tayyorlanmoqda, kuting.';
+                else if (err.status === 400) msg.textContent = 'Ma\'lumotni tekshiring: ' + err.message;
+                else msg.textContent = 'AI hozir material yoza olmadi. Birozdan keyin qayta urinib ko\'ring.';
+            }
+        });
+    });
 })();
