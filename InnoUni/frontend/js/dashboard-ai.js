@@ -191,6 +191,25 @@
                             const d = el('details'); d.style.marginTop = '6px';
                             d.appendChild(el('summary', '', (i + 1) + '. ' + l.title));
                             const t = el('div', 'pg-muted', l.body); t.style.cssText = 'white-space:pre-wrap;margin-top:6px'; d.appendChild(t);
+                            const ed = el('button', 'pg-btn ghost', 'Tahrirlash'); ed.type = 'button'; ed.style.marginTop = '8px'; d.appendChild(ed);
+                            const form = el('form'); form.hidden = true; form.style.cssText = 'display:grid;gap:8px;margin-top:8px';
+                            const ti = el('input'); ti.maxLength = 200; ti.setAttribute('aria-label', 'Dars sarlavhasi');
+                            const ta = el('textarea'); ta.maxLength = 4000; ta.rows = 10; ta.setAttribute('aria-label', 'Dars matni');
+                            const save = el('button', 'pg-btn', 'Saqlash'); save.type = 'submit';
+                            form.appendChild(ti); form.appendChild(ta); form.appendChild(save); d.appendChild(form);
+                            ed.addEventListener('click', function () { form.hidden = !form.hidden; ti.value = l.title; ta.value = l.body; });
+                            form.addEventListener('submit', async function (ev) {
+                                ev.preventDefault(); save.disabled = true;
+                                try {
+                                    await G.api.send('PUT', '/ai-courses/' + c.id + '/lessons/' + l.id, session, { title: ti.value, body: ta.value });
+                                    l.title = ti.value.trim(); l.body = ta.value.trim();
+                                    t.textContent = l.body; d.querySelector('summary').textContent = (i + 1) + '. ' + l.title;
+                                    form.hidden = true; G.toast('Dars saqlandi');
+                                } catch (e) {
+                                    if (e.auth) throw e;
+                                    G.toast(e.status === 400 ? 'Sarlavha va matn bo\'sh bo\'lmasin' : 'Saqlab bo\'lmadi');
+                                } finally { save.disabled = false; }
+                            });
                             body.appendChild(d);
                         });
                         loaded = true;

@@ -33,6 +33,8 @@ const fakeDb = {
         if (q.startsWith('SELECT id FROM course_content WHERE id = ? AND course_id = ?')) { const l = s.lessons[p[0] - 1]; return [l && l.course === p[1] ? [{ id: p[0] }] : []]; }
         if (q.startsWith('SELECT COUNT(*) AS n FROM ai_course_reports WHERE reporter_id')) return [[{ n: s.reports.filter((r) => r.reporter_id === p[0]).length }]];
         if (q.startsWith('SELECT 1 AS ok FROM ai_course_reports')) return [s.reports.filter((r) => r.course_id === p[0] && r.reporter_id === p[1] && r.status === 'open' && (r.lesson_id === p[3])).length ? [{ ok: 1 }] : []];
+        if (q.startsWith("SELECT id FROM course_content WHERE id = ? AND course_id = ? AND kind = 'lesson'")) { const l = s.lessons[p[0] - 1]; return [l && l.course === p[1] ? [{ id: p[0] }] : []]; }
+        if (q.startsWith('UPDATE course_content SET title')) { const l = s.lessons[p[2] - 1]; l.title = p[0]; l.body = p[1]; return [{ affectedRows: 1 }]; }
         if (q.startsWith('INSERT INTO ai_course_reports')) { s.reports.push({ id: s.reports.length + 1, course_id: p[0], lesson_id: p[1], reporter_id: p[2], message: p[3], status: 'open' }); return [{ insertId: s.reports.length }]; }
         if (q.startsWith('SELECT r.id, r.lesson_id')) return [s.reports.filter((r) => r.course_id === p[0] && r.status === 'open').map((r) => ({ id: r.id, lesson_id: r.lesson_id, lesson_title: r.lesson_id ? s.lessons[r.lesson_id - 1].title : null, message: r.message }))];
         if (q.startsWith("UPDATE ai_course_reports SET status = 'resolved'")) { const r = s.reports.find((x) => x.id === p[0] && x.course_id === p[1] && x.status === 'open'); if (r) r.status = 'resolved'; return [{ affectedRows: r ? 1 : 0 }]; }
@@ -232,5 +234,18 @@ describe('mistake reports', () => {
         await request(app).patch('/api/ai-courses/1').set(as(1)).send({ public: false });
         expect((await request(app).delete('/api/ai-courses/1').set(as(1))).status).toBe(200);
         expect(s.reports).toHaveLength(0);
+    });
+});
+
+describe('lesson editing', () => {
+    const put = (id, body, who = as(1)) => request(app).put('/api/ai-courses/1/lessons/' + id).set(who).send(body);
+    test('the creator edits a lesson; others and bad input are refused', async () => {
+        await make();
+        expect((await put(2, { title: ' Yangi ', body: ' Tuzatilgan matn ' })).body).toEqual({ id: 2, title: 'Yangi', body: 'Tuzatilgan matn' });
+        expect(s.lessons[1]).toMatchObject({ title: 'Yangi', body: 'Tuzatilgan matn' });
+        expect((await put(2, { title: 'X', body: 'Y' }, as(9))).status).toBe(404);
+        for (const bad of [{}, { title: 'A' }, { body: 'B' }, { title: '', body: 'B' }, { title: 'A', body: 'x'.repeat(4001) }, { title: 5, body: 'B' }]) expect((await put(2, bad)).status).toBe(400);
+        expect((await put(99, { title: 'A', body: 'B' })).status).toBe(404);
+        expect((await put('x', { title: 'A', body: 'B' })).status).toBe(400);
     });
 });
