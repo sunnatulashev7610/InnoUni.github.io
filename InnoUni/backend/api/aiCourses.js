@@ -134,6 +134,28 @@ router.patch('/:id', requireVerifiedEmail, async (req, res) => {
     }
 });
 
+// The creator fixes a lesson (for example after a student reported a mistake)
+router.put('/:id/lessons/:lessonId', async (req, res) => {
+    try {
+        const id = parseId(req.params.id);
+        const lessonId = parseId(req.params.lessonId);
+        if (!id || !lessonId) return res.status(400).json({ error: 'Invalid id' });
+        const title = validateText(req.body && req.body.title, { field: 'Title', maxLength: 200 });
+        if (title.error) return res.status(400).json({ error: title.error });
+        const text = validateText(req.body && req.body.body, { field: 'Body', maxLength: 4000 });
+        if (text.error) return res.status(400).json({ error: text.error });
+        const course = await mine(req.db, id, req.user.userId);
+        if (!course) return res.status(404).json({ error: 'Course not found' });
+        const [found] = await req.db.execute("SELECT id FROM course_content WHERE id = ? AND course_id = ? AND kind = 'lesson'", [lessonId, id]);
+        if (!found.length) return res.status(404).json({ error: 'Lesson not found' });
+        await req.db.execute('UPDATE course_content SET title = ?, body = ? WHERE id = ? AND course_id = ?', [title.value, text.value, lessonId, id]);
+        res.json({ id: lessonId, title: title.value, body: text.value });
+    } catch (e) {
+        console.error('AI lesson edit error:', e);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 const REPORTS_PER_DAY = 10;
 
 // A student who finds a mistake in a public AI course tells the creator

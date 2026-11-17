@@ -25,6 +25,7 @@ function boot(opts = {}) {
             remaining -= 1; courses = [{ id: 9, title: 'Yangi', public: false, demo: true, lessons: 5, students: 0 }, ...courses];
             return reply(201, { courseId: 9, provider: 'demo' });
         }
+        if (/ai-courses\/\d+\/lessons\/\d+$/.test(url) && method === 'PUT') return reply(200, {});
         if (/ai-courses\/\d+\/reports$/.test(url) && method === 'GET') return reply(200, { reports: [{ id: 5, lesson_id: 1, lesson_title: 'Kirish', message: '<i>Misol</i> xato' }] });
         if (/ai-courses\/\d+\/reports\/\d+$/.test(url) && method === 'PATCH') return reply(200, { resolved: true });
         if (/\/ai-courses\/\d+$/.test(url) && method === 'GET') return reply(200, { course: {}, lessons: [{ id: 1, title: 'Kirish', body: '<b>Matn</b>' }] });
@@ -184,4 +185,24 @@ test('a normal (not AI) course has no report buttons', async () => {
     const c = w.document.getElementById('c');
     await w.GEData.hydrate('course-detail', c, { id: 2, token: 't', role: 'student' }, () => {}, (e) => { throw e; });
     expect(c.textContent).not.toContain('Xato haqida xabar berish');
+});
+
+test('creator edits a lesson: sends PUT and shows the new text', async () => {
+    const { c, calls, run } = boot();
+    await run();
+    btn(c, 'Darslarni ko\'rish').click(); await tick();
+    btn(c, 'Tahrirlash').click();
+    const form = c.querySelector('details form');
+    expect(form.hidden).toBe(false);
+    form.querySelector('input').value = 'Yangi sarlavha';
+    form.querySelector('textarea').value = '<b>Tuzatilgan</b> matn';
+    form.dispatchEvent(new c.ownerDocument.defaultView.Event('submit', { cancelable: true, bubbles: true }));
+    await tick();
+    const put = calls.find((x) => x.method === 'PUT');
+    expect(put.url).toMatch(/ai-courses\/3\/lessons\/1$/);
+    expect(JSON.parse(put.body)).toEqual({ title: 'Yangi sarlavha', body: '<b>Tuzatilgan</b> matn' });
+    expect(c.querySelector('details summary').textContent).toBe('1. Yangi sarlavha');
+    expect(c.querySelector('details div').textContent).toBe('<b>Tuzatilgan</b> matn');
+    expect(c.querySelector('details b')).toBeNull();
+    expect(form.hidden).toBe(true);
 });
