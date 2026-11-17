@@ -32,10 +32,11 @@ router.get('/', async (req, res) => {
         const [rows] = await req.db.execute(`
             SELECT c.id, c.title, c.description, c.category, c.status, c.ai_provider, c.created_at,
                 (SELECT COUNT(*) FROM course_content x WHERE x.course_id = c.id) AS lessons,
-                (SELECT COUNT(*) FROM course_enrollments e WHERE e.course_id = c.id AND e.user_id != ? AND e.status = 'active') AS students
+                (SELECT COUNT(*) FROM course_enrollments e WHERE e.course_id = c.id AND e.user_id != ? AND e.status = 'active') AS students,
+                (SELECT COUNT(*) FROM ai_course_reports r WHERE r.course_id = c.id AND r.status = 'open') AS reports
             FROM courses c WHERE c.is_ai = 1 AND c.creator_id = ? ORDER BY c.id DESC LIMIT 100
         `, [req.user.userId, req.user.userId]);
-        res.json({ courses: rows.map((c) => ({ ...shape(c), lessons: Number(c.lessons), students: Number(c.students) })), ...(await usage(req.db, req.user.userId)) });
+        res.json({ courses: rows.map((c) => ({ ...shape(c), lessons: Number(c.lessons), students: Number(c.students), reports: Number(c.reports) })), ...(await usage(req.db, req.user.userId)) });
     } catch (e) {
         console.error('AI courses list error:', e);
         res.status(500).json({ error: 'Internal server error' });
@@ -133,6 +134,78 @@ router.patch('/:id', requireVerifiedEmail, async (req, res) => {
     }
 });
 
+const REPORTS_PER_DAY = 10;
+
+// A student who finds a mistake in a public AI course tells the creator
+router.post('/:id/reports', async (req, res) => {
+    try {
+        const db = req.db;
+        const userId = req.user.userId;
+        const id = parseId(req.params.id);
+        if (!id) return res.status(400).json({ error: 'Invalid course id' });
+        const msg = validateText(req.body && req.body.message, { field: 'Message', maxLength: 500 });
+        if (msg.error) return res.status(400).json({ error: msg.error });
+        if (msg.value.length < 5) return res.status(400).json({ error: 'Message is too short' });
+        let lessonId = null;
+        if (req.body.lesson_id !== undefined && req.body.lesson_id !== null) {
+            lessonId = parseId(req.body.lesson_id);
+            if (!lessonId) return res.status(400).json({ error: 'Invalid lesson id' });
+        }
+        const [rows] = await db.execute("SELECT id, creator_id FROM courses WHERE id = ? AND is_ai = 1 AND status = 'active'", [id]);
+        if (!rows.length) return res.status(404).json({ error: 'Course not found' });
+        if (rows[0].creator_id === userId) return res.status(400).json({ error: 'You made this course: edit it instead' });
+        const [member] = await db.execute("SELECT 1 AS ok FROM course_enrollments WHERE course_id = ? AND user_id = ? AND status = 'active'", [id, userId]);
+        if (!member.length) return res.status(403).json({ error: 'Only students of the course can report a mistake' });
+        if (lessonId) {
+            const [lesson] = await db.execute('SELECT id FROM course_content WHERE id = ? AND course_id = ?', [lessonId, id]);
+            if (!lesson.length) return res.status(404).json({ error: 'Lesson not found' });
+        }
+        const [today] = await db.execute('SELECT COUNT(*) AS n FROM ai_course_reports WHERE reporter_id = ? AND created_at >= CURDATE()', [userId]);
+        if (Number(today[0].n) >= REPORTS_PER_DAY) return res.status(429).json({ error: 'Too many reports today' });
+        const [dup] = await db.execute("SELECT 1 AS ok FROM ai_course_reports WHERE course_id = ? AND reporter_id = ? AND status = 'open' AND ((lesson_id IS NULL AND ? IS NULL) OR lesson_id = ?)", [id, userId, lessonId, lessonId]);
+        if (dup.length) return res.status(409).json({ error: 'You already reported this, the creator has not answered yet' });
+        await db.execute('INSERT INTO ai_course_reports (course_id, lesson_id, reporter_id, message) VALUES (?, ?, ?, ?)', [id, lessonId, userId, msg.value]);
+        res.status(201).json({ message: 'Report sent' });
+    } catch (e) {
+        console.error('AI course report error:', e);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// The creator sees the open reports of their course (no names: the reporter stays private)
+router.get('/:id/reports', async (req, res) => {
+    try {
+        const id = parseId(req.params.id);
+        if (!id) return res.status(400).json({ error: 'Invalid course id' });
+        const course = await mine(req.db, id, req.user.userId);
+        if (!course) return res.status(404).json({ error: 'Course not found' });
+        const [rows] = await req.db.execute(
+            "SELECT r.id, r.lesson_id, cc.title AS lesson_title, r.message, r.created_at FROM ai_course_reports r LEFT JOIN course_content cc ON cc.id = r.lesson_id WHERE r.course_id = ? AND r.status = 'open' ORDER BY r.id DESC LIMIT 100",
+            [id]
+        );
+        res.json({ reports: rows });
+    } catch (e) {
+        console.error('AI course reports list error:', e);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+router.patch('/:id/reports/:reportId', async (req, res) => {
+    try {
+        const id = parseId(req.params.id);
+        const reportId = parseId(req.params.reportId);
+        if (!id || !reportId) return res.status(400).json({ error: 'Invalid id' });
+        const course = await mine(req.db, id, req.user.userId);
+        if (!course) return res.status(404).json({ error: 'Course not found' });
+        const [r] = await req.db.execute("UPDATE ai_course_reports SET status = 'resolved' WHERE id = ? AND course_id = ? AND status = 'open'", [reportId, id]);
+        if (!r.affectedRows) return res.status(404).json({ error: 'Report not found' });
+        res.json({ resolved: true });
+    } catch (e) {
+        console.error('AI course report resolve error:', e);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 router.delete('/:id', async (req, res) => {
     try {
         const id = parseId(req.params.id);
@@ -142,6 +215,7 @@ router.delete('/:id', async (req, res) => {
         const [others] = await req.db.execute("SELECT COUNT(*) AS n FROM course_enrollments WHERE course_id = ? AND user_id != ? AND status = 'active'", [id, req.user.userId]);
         if (Number(others[0].n) > 0) return res.status(409).json({ error: 'Students are enrolled. Make the course private first' });
         await req.db.execute('DELETE FROM courses WHERE id = ? AND creator_id = ? AND is_ai = 1', [id, req.user.userId]);
+        await req.db.execute('DELETE FROM ai_course_reports WHERE course_id = ?', [id]);
         res.json({ message: 'Course deleted' });
     } catch (e) {
         console.error('AI course delete error:', e);

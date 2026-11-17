@@ -19,7 +19,7 @@ const fakeDb = {
         if (q.startsWith('INSERT INTO courses')) { if (s.failInsert) throw new Error('db down'); s.courses.push({ id: s.courses.length + 1, title: p[0], description: p[1], category: p[2], teacher_id: p[3], creator_id: p[4], is_ai: 1, ai_provider: p[5], status: 'inactive', sql: q }); return [{ insertId: s.courses.length }]; }
         if (q.startsWith('INSERT INTO course_content')) { s.lessons.push({ course: p[0], title: p[1], body: p[2], position: p[3], sql: q }); return [{ insertId: 1 }]; }
         if (q.startsWith('SELECT id, title, description, category, status, ai_provider, created_at FROM courses')) return [s.courses.filter((c) => c.id === p[0] && c.creator_id === p[1])];
-        if (q.includes('FROM courses c WHERE c.is_ai = 1 AND c.creator_id = ?')) return [s.courses.filter((c) => c.creator_id === p[1]).map((c) => ({ ...c, lessons: s.lessons.filter((l) => l.course === c.id).length, students: s.others }))];
+        if (q.includes('FROM courses c WHERE c.is_ai = 1 AND c.creator_id = ?')) return [s.courses.filter((c) => c.creator_id === p[1]).map((c) => ({ ...c, lessons: s.lessons.filter((l) => l.course === c.id).length, students: s.others, reports: s.reports.filter((r) => r.course_id === c.id && r.status === 'open').length }))];
         if (q.startsWith('SELECT id, title, body, position FROM course_content')) return [s.lessons.filter((l) => l.course === p[0]).map((l, i) => ({ id: i + 1, ...l }))];
         if (q.startsWith("UPDATE courses SET status = 'active'")) { s.courses.find((c) => c.id === p[0]).status = 'active'; return [{}]; }
         if (q.startsWith("UPDATE courses SET status = 'inactive'")) { s.courses.find((c) => c.id === p[0]).status = 'inactive'; return [{}]; }
@@ -28,13 +28,22 @@ const fakeDb = {
         if (q.startsWith('INSERT IGNORE INTO group_members')) return [{}];
         if (q.startsWith("SELECT COUNT(*) AS n FROM course_enrollments")) return [[{ n: s.others }]];
         if (q.startsWith('DELETE FROM courses')) { s.courses = s.courses.filter((c) => c.id !== p[0]); return [{}]; }
+        if (q.startsWith("SELECT id, creator_id FROM courses WHERE id = ? AND is_ai = 1 AND status = 'active'")) return [s.courses.filter((c) => c.id === p[0] && c.status === 'active')];
+        if (q.startsWith('SELECT 1 AS ok FROM course_enrollments')) return [s.enrolled.includes(p[0] + ':' + p[1]) ? [{ ok: 1 }] : []];
+        if (q.startsWith('SELECT id FROM course_content WHERE id = ? AND course_id = ?')) { const l = s.lessons[p[0] - 1]; return [l && l.course === p[1] ? [{ id: p[0] }] : []]; }
+        if (q.startsWith('SELECT COUNT(*) AS n FROM ai_course_reports WHERE reporter_id')) return [[{ n: s.reports.filter((r) => r.reporter_id === p[0]).length }]];
+        if (q.startsWith('SELECT 1 AS ok FROM ai_course_reports')) return [s.reports.filter((r) => r.course_id === p[0] && r.reporter_id === p[1] && r.status === 'open' && (r.lesson_id === p[3])).length ? [{ ok: 1 }] : []];
+        if (q.startsWith('INSERT INTO ai_course_reports')) { s.reports.push({ id: s.reports.length + 1, course_id: p[0], lesson_id: p[1], reporter_id: p[2], message: p[3], status: 'open' }); return [{ insertId: s.reports.length }]; }
+        if (q.startsWith('SELECT r.id, r.lesson_id')) return [s.reports.filter((r) => r.course_id === p[0] && r.status === 'open').map((r) => ({ id: r.id, lesson_id: r.lesson_id, lesson_title: r.lesson_id ? s.lessons[r.lesson_id - 1].title : null, message: r.message }))];
+        if (q.startsWith("UPDATE ai_course_reports SET status = 'resolved'")) { const r = s.reports.find((x) => x.id === p[0] && x.course_id === p[1] && x.status === 'open'); if (r) r.status = 'resolved'; return [{ affectedRows: r ? 1 : 0 }]; }
+        if (q.startsWith('DELETE FROM ai_course_reports')) { s.reports = s.reports.filter((r) => r.course_id !== p[0]); return [{}]; }
         throw new Error('Unexpected query: ' + q);
     },
     query: async () => [[]]
 };
 beforeAll(() => app.setDb(fakeDb));
 beforeEach(() => {
-    s = { courses: [], lessons: [], usage: {}, groups: 0, others: 0, failInsert: false };
+    s = { courses: [], lessons: [], usage: {}, groups: 0, others: 0, failInsert: false, enrolled: [], reports: [] };
     ['ANTHROPIC_API_KEY', 'AI_COURSE_DAILY_LIMIT', 'FEATURE_AI', 'REQUIRE_EMAIL_VERIFICATION'].forEach((k) => delete process.env[k]);
 });
 const make = (body = { topic: 'JavaScript asoslari' }, who = as(1)) => request(app).post('/api/ai-courses').set(who).send(body);
@@ -161,4 +170,67 @@ test('with REQUIRE_EMAIL_VERIFICATION an unconfirmed email cannot create', async
 test('feature flag off hides everything', async () => {
     process.env.FEATURE_AI = 'false';
     expect((await request(app).get('/api/ai-courses').set(as(1))).status).toBe(404);
+});
+
+describe('mistake reports', () => {
+    // a public real AI course made by user 1, with lessons 1..1; user 5 is enrolled
+    async function publicCourse() {
+        process.env.ANTHROPIC_API_KEY = 'k';
+        global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ content: [{ type: 'text', text: JSON.stringify({ title: 'JS', lessons: [{ title: 'Kirish', body: 'Matn' }, { title: 'Funksiya', body: 'Matn 2' }] }) }] }) }));
+        await make();
+        await request(app).patch('/api/ai-courses/1').set(as(1)).send({ public: true, confirmed: true });
+        s.enrolled.push('1:5');
+    }
+    const report = (body, who = as(5)) => request(app).post('/api/ai-courses/1/reports').set(who).send(body);
+
+    test('an enrolled student reports a mistake, the creator sees it and resolves it', async () => {
+        await publicCourse();
+        expect((await report({ message: 'Misol noto\'g\'ri ishlaydi', lesson_id: 2 })).status).toBe(201);
+        expect((await report({ message: 'Umumiy tavsifda xato bor' })).status).toBe(201);
+        const list = await request(app).get('/api/ai-courses/1/reports').set(as(1));
+        expect(list.body.reports).toHaveLength(2);
+        expect(list.body.reports.find((r) => r.lesson_id === 2)).toMatchObject({ lesson_title: 'Funksiya', message: 'Misol noto\'g\'ri ishlaydi' });
+        expect(JSON.stringify(list.body)).not.toMatch(/reporter/);
+        expect((await request(app).get('/api/ai-courses').set(as(1))).body.courses[0].reports).toBe(2);
+        expect((await request(app).patch('/api/ai-courses/1/reports/1').set(as(9)).send({})).status).toBe(404);
+        expect((await request(app).patch('/api/ai-courses/1/reports/1').set(as(1)).send({})).body).toEqual({ resolved: true });
+        expect((await request(app).get('/api/ai-courses/1/reports').set(as(1))).body.reports).toHaveLength(1);
+        expect((await request(app).patch('/api/ai-courses/1/reports/1').set(as(1)).send({})).status).toBe(404);
+    });
+
+    test('only people who may report can: students of the course, not the creator, not strangers', async () => {
+        await publicCourse();
+        expect((await report({ message: 'Xato bor shu yerda' }, as(8))).status).toBe(403);
+        expect((await report({ message: 'Xato bor shu yerda' }, as(1))).status).toBe(400);
+        expect((await request(app).get('/api/ai-courses/1/reports').set(as(5))).status).toBe(404);
+        expect((await request(app).post('/api/ai-courses/99/reports').set(as(5)).send({ message: 'Xato bor shu yerda' })).status).toBe(404);
+        expect((await request(app).post('/api/ai-courses/1/reports').send({ message: 'Xato bor shu yerda' })).status).toBe(401);
+    });
+
+    test('a private course cannot be reported; bad input is rejected', async () => {
+        await publicCourse();
+        await request(app).patch('/api/ai-courses/1').set(as(1)).send({ public: false });
+        expect((await report({ message: 'Xato bor shu yerda' })).status).toBe(404);
+        await request(app).patch('/api/ai-courses/1').set(as(1)).send({ public: true, confirmed: true });
+        for (const bad of [{}, { message: 'xato' }, { message: 'x'.repeat(501) }, { message: 'Xato bor shu yerda', lesson_id: 'a' }]) expect((await report(bad)).status).toBe(400);
+        expect((await report({ message: 'Xato bor shu yerda', lesson_id: 77 })).status).toBe(404);
+        expect(s.reports).toHaveLength(0);
+    });
+
+    test('the same open report is not repeated, and there is a daily limit', async () => {
+        await publicCourse();
+        expect((await report({ message: 'Xato bor shu yerda', lesson_id: 1 })).status).toBe(201);
+        expect((await report({ message: 'Yana shu xato', lesson_id: 1 })).status).toBe(409);
+        for (let i = 0; i < 9; i++) s.reports.push({ id: 100 + i, course_id: 1, lesson_id: null, reporter_id: 5, message: 'x', status: 'resolved' });
+        expect((await report({ message: 'Yana bir xato topdim', lesson_id: 2 })).status).toBe(429);
+    });
+
+    test('deleting the course removes its reports', async () => {
+        await publicCourse();
+        await report({ message: 'Xato bor shu yerda' });
+        s.enrolled = [];
+        await request(app).patch('/api/ai-courses/1').set(as(1)).send({ public: false });
+        expect((await request(app).delete('/api/ai-courses/1').set(as(1))).status).toBe(200);
+        expect(s.reports).toHaveLength(0);
+    });
 });

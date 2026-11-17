@@ -25,6 +25,8 @@ function boot(opts = {}) {
             remaining -= 1; courses = [{ id: 9, title: 'Yangi', public: false, demo: true, lessons: 5, students: 0 }, ...courses];
             return reply(201, { courseId: 9, provider: 'demo' });
         }
+        if (/ai-courses\/\d+\/reports$/.test(url) && method === 'GET') return reply(200, { reports: [{ id: 5, lesson_id: 1, lesson_title: 'Kirish', message: '<i>Misol</i> xato' }] });
+        if (/ai-courses\/\d+\/reports\/\d+$/.test(url) && method === 'PATCH') return reply(200, { resolved: true });
         if (/\/ai-courses\/\d+$/.test(url) && method === 'GET') return reply(200, { course: {}, lessons: [{ id: 1, title: 'Kirish', body: '<b>Matn</b>' }] });
         if (method === 'PATCH') return reply(200, { public: true });
         if (method === 'DELETE') return reply(opts.deleteStatus || 200, { error: 'x' });
@@ -125,4 +127,61 @@ test('student course page shows written lessons as text and hides empty video/gu
     expect(c.textContent).not.toContain('Video darslar');
     expect(c.textContent).not.toContain('Qo\'llanmalar');
     expect(c.querySelector('[role=note]').textContent).toMatch(/AI yordamida yaratilgan/);
+});
+
+test('creator sees open mistake reports as text and marks them resolved', async () => {
+    const { c, calls, run } = boot({ courses: [{ id: 3, title: 'Public kurs', description: '', public: true, demo: false, lessons: 2, students: 4, reports: 1 }] });
+    await run();
+    btn(c, 'Xato xabarlari (1)').click(); await tick();
+    expect(c.textContent).toContain('Dars: Kirish');
+    expect(c.textContent).toContain('<i>Misol</i> xato');
+    expect(c.querySelector('p i')).toBeNull();
+    btn(c, 'Hal qilindi').click(); await tick();
+    expect(calls.some((x) => x.method === 'PATCH' && /reports\/5$/.test(x.url))).toBe(true);
+    expect(btn(c, 'Xato xabarlari')).toBeTruthy();
+});
+
+test('a private course has no reports button', async () => {
+    const { c, run } = boot();
+    await run();
+    expect([...c.querySelectorAll('button')].some((b) => b.textContent.startsWith('Xato xabarlari'))).toBe(false);
+});
+
+test('student reports a mistake in an AI course lesson', async () => {
+    const dom = new JSDOM('<!doctype html><body><div id="c"></div></body>', { runScripts: 'outside-only', url: 'https://site.test/' });
+    const w = dom.window;
+    w.config = { apiBaseUrl: 'https://api.test/api' };
+    w.localStorage.setItem('user', JSON.stringify({ email: 'a@b.uz' }));
+    const posts = [];
+    w.fetch = jest.fn(async (url, init = {}) => {
+        if ((init.method || 'GET') === 'POST') { posts.push({ url, body: JSON.parse(init.body) }); return { ok: true, status: 201, json: async () => ({}) }; }
+        return { ok: true, status: 200, json: async () => ({ course: { id: 5, title: 'AI kurs', teacher: 'Gather Edu × Sam', ai: true }, items: [{ id: 11, kind: 'lesson', title: 'Kirish', body: 'Matn', url: null }] }) };
+    });
+    w.eval(dataSrc);
+    w.GEData.ctx.courseId = 5;
+    const c = w.document.getElementById('c');
+    await w.GEData.hydrate('course-detail', c, { id: 2, token: 't', role: 'student' }, () => {}, (e) => { throw e; });
+    const reportBtns = [...c.querySelectorAll('button')].filter((b) => b.textContent === 'Xato haqida xabar berish');
+    expect(reportBtns).toHaveLength(2); // one for the course, one for the lesson
+    reportBtns[1].click();
+    const ta = c.querySelector('details textarea');
+    expect(ta.closest('form').hidden).toBe(false);
+    ta.value = 'Misol ishlamaydi';
+    ta.closest('form').dispatchEvent(new w.Event('submit', { cancelable: true, bubbles: true }));
+    await tick();
+    expect(posts).toEqual([{ url: 'https://api.test/api/ai-courses/5/reports', body: { message: 'Misol ishlamaydi', lesson_id: 11 } }]);
+    expect(reportBtns[1].textContent).toBe('Xabar yuborildi, rahmat');
+});
+
+test('a normal (not AI) course has no report buttons', async () => {
+    const dom = new JSDOM('<!doctype html><body><div id="c"></div></body>', { runScripts: 'outside-only', url: 'https://site.test/' });
+    const w = dom.window;
+    w.config = { apiBaseUrl: 'https://api.test/api' };
+    w.localStorage.setItem('user', JSON.stringify({ email: 'a@b.uz' }));
+    w.fetch = jest.fn(async () => ({ ok: true, status: 200, json: async () => ({ course: { id: 6, title: 'Oddiy', teacher: 'Malika' }, items: [] }) }));
+    w.eval(dataSrc);
+    w.GEData.ctx.courseId = 6;
+    const c = w.document.getElementById('c');
+    await w.GEData.hydrate('course-detail', c, { id: 2, token: 't', role: 'student' }, () => {}, (e) => { throw e; });
+    expect(c.textContent).not.toContain('Xato haqida xabar berish');
 });

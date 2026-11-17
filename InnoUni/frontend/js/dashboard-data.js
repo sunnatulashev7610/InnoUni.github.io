@@ -231,6 +231,33 @@
         } catch (e) { return null; }
     }
 
+    // "Report a mistake" for an AI course: a small form that opens under the button and goes to the creator
+    function reportBox(courseId, lessonId, session) {
+        const wrap = el('div'); wrap.style.marginTop = '8px';
+        const open = el('button', 'pg-btn ghost', 'Xato haqida xabar berish'); open.type = 'button'; open.style.cssText = 'font-size:14px;padding:6px 12px';
+        const form = el('form'); form.hidden = true; form.style.cssText = 'display:grid;gap:8px;margin-top:8px';
+        const ta = el('textarea', 'pg-input'); ta.maxLength = 500; ta.rows = 3; ta.required = true; ta.placeholder = 'Qaysi joyda xato bor? (kamida 5 belgi)'; ta.setAttribute('aria-label', 'Xato tavsifi');
+        const send = el('button', 'pg-btn', 'Yuborish'); send.type = 'submit'; send.style.justifySelf = 'start';
+        form.appendChild(ta); form.appendChild(send);
+        open.addEventListener('click', function () { form.hidden = !form.hidden; if (!form.hidden) ta.focus(); });
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault(); e.stopPropagation();
+            send.disabled = true;
+            const body = { message: ta.value }; if (lessonId) body.lesson_id = lessonId;
+            try {
+                await window.GEData.api.send('POST', '/ai-courses/' + courseId + '/reports', session, body);
+                ta.value = ''; form.hidden = true; open.textContent = 'Xabar yuborildi, rahmat'; open.disabled = true;
+                window.GEData.toast('Xabaringiz kurs yaratuvchisiga yuborildi');
+            } catch (err) {
+                if (err.auth) throw err;
+                send.disabled = false;
+                window.GEData.toast(err.status === 409 ? 'Bu haqda xabaringiz allaqachon yuborilgan' : err.status === 429 ? 'Bugun juda ko\'p xabar yuborildi' : err.status === 400 ? 'Xabar kamida 5 belgi bo\'lsin yoki bu sizning kursingiz' : 'Yuborib bo\'lmadi, qayta urinib ko\'ring');
+            }
+        });
+        wrap.appendChild(open); wrap.appendChild(form);
+        return wrap;
+    }
+
     pages['course-detail'] = async function (root, session) {
         const pg = root.querySelector('.pg') || root;
         const id = window.GEData.ctx.courseId;
@@ -258,6 +285,7 @@
             const warn = el('p', 'pg-muted', 'Bu kurs AI yordamida yaratilgan. Xatolar bo\'lishi mumkin: muhim joylarni tekshirib oling.');
             warn.style.cssText = 'margin-top:10px;padding:10px 14px;border-radius:12px;border:1px solid rgba(245,166,35,.45);background:rgba(245,166,35,.12)';
             warn.setAttribute('role', 'note'); hero.appendChild(warn);
+            hero.appendChild(reportBox(c.id, null, session));
         }
         const askAi = el('button', 'pg-btn', 'AI ustozdan so\'rash'); askAi.type = 'button'; askAi.style.marginTop = '12px';
         askAi.addEventListener('click', function () { window.GEData.ctx.aiCourseId = c.id; window.GEData.open('ai', 'ai'); });
@@ -304,6 +332,7 @@
                 const d = el('details'); d.style.marginTop = '8px';
                 d.appendChild(el('summary', '', (i + 1) + '. ' + it.title));
                 const t = el('div', 'pg-muted', it.body || ''); t.style.cssText = 'white-space:pre-wrap;margin-top:6px'; d.appendChild(t);
+                if (c.ai) d.appendChild(reportBox(c.id, it.id, session));
                 box.appendChild(d);
             });
             pg.appendChild(box);
