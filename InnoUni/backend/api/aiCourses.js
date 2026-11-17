@@ -118,6 +118,8 @@ router.patch('/:id', requireVerifiedEmail, async (req, res) => {
         const course = await mine(req.db, id, req.user.userId);
         if (!course) return res.status(404).json({ error: 'Course not found' });
         if (req.body.public) {
+            // The creator vouches for a public course: they must say they checked it
+            if (req.body.confirmed !== true) return res.status(400).json({ error: 'Confirm that you checked the course', code: 'CONFIRM_REQUIRED' });
             if (course.ai_provider === 'demo') return res.status(400).json({ error: 'Demo courses cannot be made public. Connect the AI first', code: 'DEMO_COURSE' });
             await req.db.execute("UPDATE courses SET status = 'active' WHERE id = ?", [id]);
             await ensureCourseGroup(req.db, { id, title: course.title, description: course.description, teacher_id: req.user.userId });

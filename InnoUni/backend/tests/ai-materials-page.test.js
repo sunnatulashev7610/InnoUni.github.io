@@ -40,6 +40,7 @@ test('asks the questions the server offers and lists my materials as text with t
     const { c, run } = boot();
     await run();
     expect([...c.querySelectorAll('label')].map((l) => l.textContent)).toEqual(['Mavzu', 'Qanday material kerak?', 'Qaysi daraja?', 'Yana nimani hisobga olay?']);
+    expect(c.querySelector('[role=note]').textContent).toMatch(/AI xato qilishi mumkin.*Gather Edu javobgar emas/);
     expect(c.textContent).toContain('Bugun 5 ta material yaratish qoldi');
     expect(c.querySelector('section h3').textContent).toBe('<b>Hooks</b>');
     expect(c.querySelector('section b')).toBeNull();
@@ -62,7 +63,7 @@ test('creating sends topic, answers and extra, then shows the new material', asy
 test('opens the body as text, deletes with two clicks, explains errors, limit disables the button', async () => {
     const a = boot(); await a.run();
     btn(a.c, 'Ochish').click(); await tick();
-    expect(a.c.querySelector('section div.pg-muted[style*="pre-wrap"]').textContent).toBe('<u>Matn</u>');
+    expect(a.c.querySelector('section div.pg-muted[style*="pre-wrap"]').textContent).toBe('<u>Matn</u>\n\n— AI yaratgan material. Tekshirib foydalaning.');
     btn(a.c, 'O\'chirish').click(); await tick();
     expect(a.calls.some((x) => x.method === 'DELETE')).toBe(false);
     btn(a.c, 'Aniq o\'chiraymi?').click(); await tick();

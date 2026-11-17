@@ -5,6 +5,17 @@
     if (!G) return;
     const el = G.el;
 
+    // One warning text for every AI page, so users read the same thing everywhere
+    const AI_WARN = 'AI xato qilishi mumkin. Muhim ma\'lumotlarni (sana, raqam, ta\'rif, formula) o\'zingiz tekshirib oling. AI yaratgan matnlardagi xatolar uchun Gather Edu javobgar emas.';
+    function notice(text) {
+        const n = el('div'); n.setAttribute('role', 'note');
+        n.style.cssText = 'display:flex;gap:12px;align-items:flex-start;padding:12px 16px;border-radius:12px;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.45);margin-bottom:14px';
+        const i = el('i', 'fas fa-triangle-exclamation'); i.style.cssText = 'color:#b36b00;margin-top:3px'; i.setAttribute('aria-hidden', 'true');
+        const t = el('span', '', text || AI_WARN); t.style.lineHeight = '1.45';
+        n.appendChild(i); n.appendChild(t); return n;
+    }
+    G.aiNotice = notice;
+
     const SUGGESTIONS = ['Buni oddiy tilda tushuntir', 'Menga 5 ta savoldan test tuz', 'Bitta misol keltir', 'Qaysi mavzuni takrorlashim kerak?'];
 
     G.register('ai', async function (root, session) {
@@ -27,6 +38,7 @@
         head.appendChild(hd);
         const pill = el('span', 'pg-pill ' + (status.live ? '' : 'sky'), status.live ? 'AI faol' : 'Demo javoblar');
         head.appendChild(pill); pg.appendChild(head);
+        pg.appendChild(notice('AI xato qilishi mumkin. Muhim narsalarni o\'qituvchi yoki kurs materiallari bilan tekshiring. AI javoblari uchun Gather Edu javobgar emas.'));
 
         const grid = el('div', 'pg-ai'); pg.appendChild(grid);
 
@@ -57,7 +69,7 @@
         const sugBox = el('div', 'pg-sug');
         SUGGESTIONS.forEach(function (t) { const b = el('button', '', t); b.type = 'button'; b.addEventListener('click', function () { ask(t); }); sugBox.appendChild(b); });
         sug.appendChild(sugBox); side.appendChild(sug);
-        const note = el('p', 'pg-muted', 'AI xato qilishi mumkin. Muhim narsalarni o\'qituvchi yoki kurs materiallari bilan tekshiring.'); note.style.marginTop = '14px'; side.appendChild(note);
+        side.appendChild(notice('AI xato qilishi mumkin. Muhim narsalarni o\'qituvchi yoki kurs materiallari bilan tekshiring.')); side.lastChild.style.marginTop = '14px';
         const clear = el('button', 'pg-btn ghost', 'Suhbatni tozalash'); clear.type = 'button'; clear.style.marginTop = '8px'; side.appendChild(clear);
 
         function renderMeter(s) {
@@ -124,6 +136,7 @@
         hd.appendChild(el('h1', '', 'AI kurs yaratuvchi')); hd.appendChild(el('p', '', 'Mavzu ayting: AI kurs tuzib beradi. Kurs sizda shaxsiy turadi, xohlasangiz public qilasiz'));
         head.appendChild(hd); head.appendChild(el('span', 'pg-pill ' + (status.live ? '' : 'sky'), status.live ? 'AI faol' : 'Demo rejim'));
         pg.appendChild(head);
+        pg.appendChild(notice(AI_WARN + ' Kursni public qilishdan oldin o\'zingiz to\'liq o\'qib chiqing.'));
 
         // form
         const form = el('form', 'pg-card');
@@ -186,18 +199,27 @@
                 row.appendChild(open);
                 const pub = el('button', 'pg-btn' + (c.public ? ' ghost' : ''), c.public ? 'Shaxsiy qilish' : 'Public qilish'); pub.type = 'button';
                 if (c.demo && !c.public) { pub.disabled = true; pub.title = 'Demo kursni public qilib bo\'lmaydi. AI ulangach mumkin.'; }
-                pub.addEventListener('click', async function () {
-                    pub.disabled = true;
+                const confirm = el('div'); confirm.hidden = true; confirm.style.cssText = 'margin-top:12px;padding:14px 16px;border-radius:12px;border:1px solid rgba(245,166,35,.45);background:rgba(245,166,35,.1)';
+                const lbl = el('label'); lbl.style.cssText = 'display:flex;gap:10px;align-items:flex-start;line-height:1.45;cursor:pointer';
+                const chk = el('input'); chk.type = 'checkbox'; chk.style.marginTop = '4px';
+                lbl.appendChild(chk); lbl.appendChild(el('span', '', 'Kursni o\'qib chiqdim va tekshirdim. Public kursdagi xatolar uchun yaratuvchi sifatida men javob beraman. Gather Edu AI xatolari uchun javobgar emas.'));
+                const yes = el('button', 'pg-btn', 'Public qilish'); yes.type = 'button'; yes.disabled = true; yes.style.marginTop = '10px';
+                chk.addEventListener('change', function () { yes.disabled = !chk.checked; });
+                confirm.appendChild(lbl); confirm.appendChild(yes);
+                async function setPublic(on) {
+                    pub.disabled = yes.disabled = true;
                     try {
-                        await G.api.send('PATCH', '/ai-courses/' + c.id, session, { public: !c.public });
-                        c.public = !c.public; drawList();
-                        G.toast(c.public ? 'Kurs "Kurslar" sahifasida ko\'rinadi' : 'Kurs endi faqat sizda');
+                        await G.api.send('PATCH', '/ai-courses/' + c.id, session, on ? { public: true, confirmed: true } : { public: false });
+                        c.public = on; drawList();
+                        G.toast(on ? 'Kurs "Kurslar" sahifasida ko\'rinadi' : 'Kurs endi faqat sizda');
                     } catch (e) {
                         if (e.auth) throw e;
-                        pub.disabled = false;
+                        pub.disabled = false; yes.disabled = !chk.checked;
                         G.toast(e.data && e.data.code === 'EMAIL_NOT_VERIFIED' ? 'Avval emailingizni tasdiqlang' : 'Bajarilmadi, qayta urinib ko\'ring');
                     }
-                });
+                }
+                pub.addEventListener('click', function () { if (c.public) setPublic(false); else confirm.hidden = !confirm.hidden; });
+                yes.addEventListener('click', function () { if (chk.checked) setPublic(true); });
                 row.appendChild(pub);
                 const del = el('button', 'pg-btn ghost', 'O\'chirish'); del.type = 'button';
                 G.twice(del, 'Aniq o\'chiraymi?', async function () {
@@ -210,7 +232,7 @@
                     }
                 });
                 row.appendChild(del);
-                card.appendChild(row); card.appendChild(body); listBox.appendChild(card);
+                card.appendChild(row); card.appendChild(confirm); card.appendChild(body); listBox.appendChild(card);
             });
         }
         drawList();
@@ -252,6 +274,7 @@
         hd.appendChild(el('h1', '', 'AI material yaratuvchi')); hd.appendChild(el('p', '', 'Mavzuni ayting, AI bir nechta savol beradi va materialni shartlaringizga moslab tayyorlaydi'));
         head.appendChild(hd); head.appendChild(el('span', 'pg-pill ' + (status.live ? '' : 'sky'), status.live ? 'AI faol' : 'Demo rejim'));
         pg.appendChild(head);
+        pg.appendChild(notice(AI_WARN));
 
         const form = el('form', 'pg-card');
         const meter = el('b'); meter.style.display = 'block'; meter.style.marginBottom = '10px'; form.appendChild(meter);
@@ -292,7 +315,7 @@
                 open.addEventListener('click', async function () {
                     body.hidden = !body.hidden; open.textContent = body.hidden ? 'Ochish' : 'Yopish';
                     if (body.hidden || loaded) return;
-                    try { const r = await G.api.get('/ai-materials/' + m.id, session); body.textContent = r.material.body; loaded = true; }
+                    try { const r = await G.api.get('/ai-materials/' + m.id, session); body.textContent = r.material.body + '\n\n— AI yaratgan material. Tekshirib foydalaning.'; loaded = true; }
                     catch (e) { if (e.auth) throw e; body.textContent = 'Materialni yuklab bo\'lmadi.'; }
                 });
                 row.appendChild(open);

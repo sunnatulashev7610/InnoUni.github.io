@@ -254,6 +254,11 @@
         const h = el('h1', '', c.title); h.style.marginTop = '8px'; hero.appendChild(h);
         if (c.description) hero.appendChild(el('p', 'pg-muted', c.description));
         hero.appendChild(el('div', 'pg-muted', c.teacher || 'O\'qituvchi belgilanmagan'));
+        if (c.ai) {
+            const warn = el('p', 'pg-muted', 'Bu kurs AI yordamida yaratilgan. Xatolar bo\'lishi mumkin: muhim joylarni tekshirib oling.');
+            warn.style.cssText = 'margin-top:10px;padding:10px 14px;border-radius:12px;border:1px solid rgba(245,166,35,.45);background:rgba(245,166,35,.12)';
+            warn.setAttribute('role', 'note'); hero.appendChild(warn);
+        }
         const askAi = el('button', 'pg-btn', 'AI ustozdan so\'rash'); askAi.type = 'button'; askAi.style.marginTop = '12px';
         askAi.addEventListener('click', function () { window.GEData.ctx.aiCourseId = c.id; window.GEData.open('ai', 'ai'); });
         hero.appendChild(askAi);

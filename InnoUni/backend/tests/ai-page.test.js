@@ -38,6 +38,7 @@ const tick = () => new Promise((r) => setTimeout(r, 20));
 test('renders status, courses and greeting; shows demo pill', async () => {
     const { c, run } = boot();
     await run();
+    expect(c.querySelectorAll('[role=note]').length).toBeGreaterThanOrEqual(1);
     expect(c.textContent).toContain('Demo javoblar');
     expect(c.textContent).toContain('Bugun 10 ta savol qoldi');
     expect([...c.querySelectorAll('option')].map((o) => o.textContent)).toEqual(['Umumiy savol', 'JS asoslari']);
