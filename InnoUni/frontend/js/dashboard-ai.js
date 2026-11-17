@@ -232,7 +232,33 @@
                     }
                 });
                 row.appendChild(del);
-                card.appendChild(row); card.appendChild(confirm); card.appendChild(body); listBox.appendChild(card);
+                if (c.public) {
+                    const rep = el('button', 'pg-btn ghost', 'Xato xabarlari' + (c.reports ? ' (' + c.reports + ')' : '')); rep.type = 'button';
+                    const repBox = el('div'); repBox.hidden = true; repBox.style.marginTop = '12px';
+                    rep.addEventListener('click', async function () {
+                        repBox.hidden = !repBox.hidden;
+                        if (repBox.hidden) return;
+                        repBox.textContent = '';
+                        try {
+                            const r = await G.api.get('/ai-courses/' + c.id + '/reports', session);
+                            if (!r.reports.length) repBox.appendChild(el('p', 'pg-muted', 'Ochiq xato xabarlari yo\'q.'));
+                            r.reports.forEach(function (x) {
+                                const it = el('div', 'pg-card'); it.style.marginTop = '8px';
+                                it.appendChild(el('b', '', x.lesson_title ? 'Dars: ' + x.lesson_title : 'Kurs haqida'));
+                                const m = el('p', 'pg-muted', x.message); m.style.cssText = 'white-space:pre-wrap;margin:6px 0 8px'; it.appendChild(m);
+                                const done = el('button', 'pg-btn ghost', 'Hal qilindi'); done.type = 'button';
+                                done.addEventListener('click', async function () {
+                                    done.disabled = true;
+                                    try { await G.api.send('PATCH', '/ai-courses/' + c.id + '/reports/' + x.id, session, {}); it.remove(); c.reports = Math.max(0, (c.reports || 1) - 1); rep.textContent = 'Xato xabarlari' + (c.reports ? ' (' + c.reports + ')' : ''); }
+                                    catch (e) { if (e.auth) throw e; done.disabled = false; G.toast('Bajarilmadi'); }
+                                });
+                                it.appendChild(done); repBox.appendChild(it);
+                            });
+                        } catch (e) { if (e.auth) throw e; repBox.appendChild(el('p', 'pg-muted', 'Yuklab bo\'lmadi.')); }
+                    });
+                    row.appendChild(rep); card.appendChild(row); card.appendChild(repBox);
+                } else card.appendChild(row);
+                card.appendChild(confirm); card.appendChild(body); listBox.appendChild(card);
             });
         }
         drawList();
