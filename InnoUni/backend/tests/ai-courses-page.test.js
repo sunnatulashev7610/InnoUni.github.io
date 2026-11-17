@@ -38,9 +38,10 @@ function boot(opts = {}) {
 const tick = () => new Promise((r) => setTimeout(r, 20));
 const btn = (c, text) => [...c.querySelectorAll('button')].find((b) => b.textContent === text);
 
-test('shows the form, the counter and my courses as text with the shared credit', async () => {
+test('shows the AI warning, the form, the counter and my courses as text with the shared credit', async () => {
     const { c, run } = boot();
     await run();
+    expect(c.querySelector('[role=note]').textContent).toMatch(/AI xato qilishi mumkin.*Gather Edu javobgar emas/);
     expect(c.textContent).toContain('Bugun 3 ta kurs yaratish qoldi');
     expect(c.textContent).toContain('Gather Edu × Sam Test');
     expect(c.querySelector('section h3').textContent).toBe('<i>JS</i> kursi');
@@ -83,8 +84,16 @@ test('lessons show as text; publish sends public:true; demo courses cannot be pu
     btn(c, 'Darslarni ko\'rish').click(); await tick();
     expect(c.querySelector('details summary').textContent).toBe('1. Kirish');
     expect(c.querySelector('details div').textContent).toBe('<b>Matn</b>');
+    // making it public asks for a confirmation first: nothing is sent until the box is ticked
     btn(c, 'Public qilish').click(); await tick();
-    expect(JSON.parse(calls.find((x) => x.method === 'PATCH').body)).toEqual({ public: true });
+    expect(calls.some((x) => x.method === 'PATCH')).toBe(false);
+    const yes = [...c.querySelectorAll('button')].filter((b) => b.textContent === 'Public qilish')[1];
+    expect(yes.disabled).toBe(true);
+    c.querySelector('input[type=checkbox]').checked = true;
+    c.querySelector('input[type=checkbox]').dispatchEvent(new c.ownerDocument.defaultView.Event('change'));
+    expect(yes.disabled).toBe(false);
+    yes.click(); await tick();
+    expect(JSON.parse(calls.find((x) => x.method === 'PATCH').body)).toEqual({ public: true, confirmed: true });
     expect(c.textContent).toContain('Public');
     const d = boot({ courses: [{ id: 4, title: 'Demo', public: false, demo: true, lessons: 3, students: 0 }] }); await d.run();
     expect(btn(d.c, 'Public qilish').disabled).toBe(true);
@@ -115,4 +124,5 @@ test('student course page shows written lessons as text and hides empty video/gu
     expect(c.querySelector('details div').textContent).toBe('<u>Matn</u>');
     expect(c.textContent).not.toContain('Video darslar');
     expect(c.textContent).not.toContain('Qo\'llanmalar');
+    expect(c.querySelector('[role=note]').textContent).toMatch(/AI yordamida yaratilgan/);
 });

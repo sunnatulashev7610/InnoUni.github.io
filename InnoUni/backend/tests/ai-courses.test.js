@@ -114,7 +114,7 @@ test('only the creator sees the course and its lessons', async () => {
 
 test('demo courses cannot be made public; real ones can, and can go private again', async () => {
     await make();
-    const demo = await request(app).patch('/api/ai-courses/1').set(as(1)).send({ public: true });
+    const demo = await request(app).patch('/api/ai-courses/1').set(as(1)).send({ public: true, confirmed: true });
     expect(demo.status).toBe(400);
     expect(demo.body.code).toBe('DEMO_COURSE');
     expect(s.courses[0].status).toBe('inactive');
@@ -122,9 +122,15 @@ test('demo courses cannot be made public; real ones can, and can go private agai
     process.env.ANTHROPIC_API_KEY = 'k';
     global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ content: [{ type: 'text', text: JSON.stringify({ title: 'JS', lessons: [{ title: 'Kirish', body: 'Matn' }] }) }] }) }));
     await make();
-    expect((await request(app).patch('/api/ai-courses/2').set(as(9)).send({ public: true })).status).toBe(404);
+    expect((await request(app).patch('/api/ai-courses/2').set(as(9)).send({ public: true, confirmed: true })).status).toBe(404);
     expect((await request(app).patch('/api/ai-courses/2').set(as(1)).send({ public: 'ha' })).status).toBe(400);
-    expect((await request(app).patch('/api/ai-courses/2').set(as(1)).send({ public: true })).body).toEqual({ public: true });
+    // making it public needs the creator's explicit confirmation
+    const noConfirm = await request(app).patch('/api/ai-courses/2').set(as(1)).send({ public: true });
+    expect(noConfirm.status).toBe(400);
+    expect(noConfirm.body.code).toBe('CONFIRM_REQUIRED');
+    expect((await request(app).patch('/api/ai-courses/2').set(as(1)).send({ public: true, confirmed: 'ha' })).status).toBe(400);
+    expect(s.courses[1].status).toBe('inactive');
+    expect((await request(app).patch('/api/ai-courses/2').set(as(1)).send({ public: true, confirmed: true })).body).toEqual({ public: true });
     expect(s.courses[1].status).toBe('active');
     expect(s.groups).toBe(1);
     expect((await request(app).patch('/api/ai-courses/2').set(as(1)).send({ public: false })).body).toEqual({ public: false });
