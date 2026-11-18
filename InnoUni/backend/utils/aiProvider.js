@@ -1,6 +1,16 @@
-// The AI behind the tutor. With ANTHROPIC_API_KEY set the replies come from Claude;
-// without a key a clearly labelled demo reply is returned, so the whole feature can be built and tried before a key exists.
-const live = () => Boolean(process.env.ANTHROPIC_API_KEY);
+// The AI behind the tutor, course and material creators.
+// Which model answers: AI_PROVIDER=claude|gemini picks it; without it Claude is used when ANTHROPIC_API_KEY is set,
+// else Gemini when GEMINI_API_KEY is set. With no key at all a clearly labelled demo reply is returned,
+// so the whole feature can be built and tried before a key exists. Switching later = change the key / AI_PROVIDER on the host.
+function provider() {
+    const want = String(process.env.AI_PROVIDER || '').toLowerCase();
+    if (want === 'gemini') return process.env.GEMINI_API_KEY ? 'gemini' : null;
+    if (want === 'claude') return process.env.ANTHROPIC_API_KEY ? 'claude' : null;
+    if (process.env.ANTHROPIC_API_KEY) return 'claude';
+    if (process.env.GEMINI_API_KEY) return 'gemini';
+    return null;
+}
+const live = () => provider() !== null;
 
 // The API wants messages that start with "user" and alternate: repair a history that does not
 function normalise(history, message) {
@@ -34,6 +44,41 @@ async function claudeReply({ system, history, message, maxTokens = 800, timeoutM
     }
 }
 
+// Gemini (free tier): same inputs, its own message format. The key travels in a header, never in the URL.
+async function geminiReply({ system, history, message, maxTokens = 800, timeoutMs = 25000 }) {
+    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const generationConfig = { maxOutputTokens: maxTokens };
+        if (/2\.5-flash/.test(model)) generationConfig.thinkingConfig = { thinkingBudget: 0 }; // answers, not hidden reasoning, use the token budget
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+            method: 'POST',
+            signal: controller.signal,
+            headers: { 'x-goog-api-key': process.env.GEMINI_API_KEY, 'content-type': 'application/json' },
+            body: JSON.stringify({
+                systemInstruction: { parts: [{ text: system }] },
+                contents: normalise(history, message).map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
+                generationConfig
+            })
+        });
+        if (!res.ok) throw new Error(`AI service answered ${res.status}`);
+        const data = await res.json();
+        const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
+        const text = parts.map((p) => p.text || '').join('\n').trim();
+        if (!text) throw new Error('AI service returned no text');
+        return text;
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+// One entry point: the chosen model answers, the label says which one
+async function modelReply(args) {
+    const which = provider();
+    return { text: which === 'gemini' ? await geminiReply(args) : await claudeReply(args), provider: which };
+}
+
 // Demo answer: shows how the tutor talks (explain, example, check question), uses the course when there is one
 function demoReply({ message, course }) {
     const topic = message.length > 80 ? message.slice(0, 77) + '...' : message;
@@ -48,7 +93,7 @@ function demoReply({ message, course }) {
 }
 
 async function tutorReply(args) {
-    if (live()) return { text: await claudeReply(args), provider: 'claude' };
+    if (live()) return modelReply(args);
     return { text: demoReply(args), provider: 'demo' };
 }
 
@@ -89,8 +134,8 @@ function demoCourse(brief) {
 
 async function courseDraft(brief) {
     if (!live()) return { course: demoCourse(brief), provider: 'demo' };
-    const text = await claudeReply({ system: COURSE_SYSTEM, history: [], message: JSON.stringify(brief), maxTokens: 6000, timeoutMs: 90000 });
-    return { course: parseCourse(text, brief.lessons), provider: 'claude' };
+    const r = await modelReply({ system: COURSE_SYSTEM, history: [], message: JSON.stringify(brief), maxTokens: 6000, timeoutMs: 90000 });
+    return { course: parseCourse(r.text, brief.lessons), provider: r.provider };
 }
 
 // ---- AI material creator ----
@@ -119,8 +164,8 @@ function demoMaterial(brief) {
 
 async function materialDraft(brief) {
     if (!live()) return { material: demoMaterial(brief), provider: 'demo' };
-    const text = await claudeReply({ system: MATERIAL_SYSTEM, history: [], message: JSON.stringify(brief), maxTokens: 4500, timeoutMs: 90000 });
-    return { material: parseMaterial(text), provider: 'claude' };
+    const r = await modelReply({ system: MATERIAL_SYSTEM, history: [], message: JSON.stringify(brief), maxTokens: 4500, timeoutMs: 90000 });
+    return { material: parseMaterial(r.text), provider: r.provider };
 }
 
-module.exports = { tutorReply, courseDraft, parseCourse, materialDraft, parseMaterial, isLive: live, normalise };
+module.exports = { tutorReply, courseDraft, parseCourse, materialDraft, parseMaterial, isLive: live, provider, normalise };

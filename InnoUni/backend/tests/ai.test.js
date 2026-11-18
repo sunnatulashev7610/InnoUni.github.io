@@ -29,7 +29,7 @@ const fakeDb = {
 beforeAll(() => app.setDb(fakeDb));
 beforeEach(() => {
     s = { courses: [{ id: 5, title: 'React', description: 'UI', teacher_id: 2 }], enrolled: [[5, 1]], usage: {}, msgs: [], failInsert: false };
-    delete process.env.ANTHROPIC_API_KEY; delete process.env.AI_DAILY_LIMIT; delete process.env.FEATURE_AI;
+    delete process.env.ANTHROPIC_API_KEY; delete process.env.GEMINI_API_KEY; delete process.env.AI_PROVIDER; delete process.env.AI_DAILY_LIMIT; delete process.env.FEATURE_AI;
 });
 
 const chat = (body, who = as(1)) => request(app).post('/api/ai/chat').set(who).send(body);
@@ -137,4 +137,49 @@ test('the feature can be switched off', async () => {
 test('history repair keeps the API format valid', () => {
     expect(normalise([{ role: 'assistant', content: 'x' }, { role: 'user', content: 'a' }, { role: 'user', content: 'b' }], 'c').map((m) => m.role)).toEqual(['user']);
     expect(normalise([{ role: 'user', content: 'a' }, { role: 'assistant', content: 'b' }], 'c').map((m) => m.role)).toEqual(['user', 'assistant', 'user']);
+});
+
+describe('Gemini as the model', () => {
+    const gemini = (text = 'Gemini javobi') => jest.fn(async () => ({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text }] } }] }) }));
+
+    test('with only a Gemini key the request goes to Gemini, the key is in a header and history is sent as user/model', async () => {
+        process.env.GEMINI_API_KEY = 'g-secret';
+        s.msgs.push({ user: 1, course: 5, role: 'user', content: 'avvalgi savol' }, { user: 1, course: 5, role: 'assistant', content: 'avvalgi javob' });
+        global.fetch = gemini();
+        const r = await chat({ message: 'useState nima?', course_id: 5 });
+        expect(r.status).toBe(200);
+        expect(r.body).toMatchObject({ reply: 'Gemini javobi', provider: 'gemini' });
+        const [url, init] = global.fetch.mock.calls[0];
+        expect(url).toMatch(/^https:\/\/generativelanguage\.googleapis\.com\/v1beta\/models\/gemini-2\.5-flash:generateContent$/);
+        expect(url).not.toContain('g-secret');
+        expect(init.headers['x-goog-api-key']).toBe('g-secret');
+        const sent = JSON.parse(init.body);
+        expect(sent.systemInstruction.parts[0].text).toMatch(/Kurs: React/);
+        expect(sent.contents.map((c) => c.role)).toEqual(['user', 'model', 'user']);
+        expect(sent.contents[2].parts[0].text).toBe('useState nima?');
+    });
+
+    test('Claude wins when both keys exist, unless AI_PROVIDER says gemini', async () => {
+        process.env.GEMINI_API_KEY = 'g'; process.env.ANTHROPIC_API_KEY = 'a';
+        global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ content: [{ type: 'text', text: 'C' }] }) }));
+        expect((await chat({ message: 'x' })).body.provider).toBe('claude');
+        process.env.AI_PROVIDER = 'gemini';
+        global.fetch = gemini('G');
+        expect((await chat({ message: 'x' }, as(2))).body).toMatchObject({ reply: 'G', provider: 'gemini' });
+    });
+
+    test('AI_PROVIDER naming a provider without a key falls back to the demo', async () => {
+        process.env.GEMINI_API_KEY = 'g'; process.env.AI_PROVIDER = 'claude';
+        global.fetch = jest.fn();
+        expect((await chat({ message: 'x' })).body.provider).toBe('demo');
+        expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    test('a failed Gemini call answers 502 and gives the question back', async () => {
+        process.env.GEMINI_API_KEY = 'g';
+        global.fetch = jest.fn(async () => ({ ok: false, status: 429, json: async () => ({}) }));
+        const r = await chat({ message: 'salom' });
+        expect(r.status).toBe(502);
+        expect(s.usage[1]).toBe(0);
+    });
 });
