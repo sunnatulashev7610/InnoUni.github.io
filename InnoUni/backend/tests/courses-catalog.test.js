@@ -37,16 +37,16 @@ test('requires login and a student role', async () => {
 });
 
 describe('course content for an enrolled student', () => {
-    let enrolled;
+    let enrolled; let aiCourse = false;
     beforeAll(() => {
         app.setDb({
             async execute(sql, p = []) {
                 const q = sql.replace(/\s+/g, ' ').trim();
                 calls.push({ sql: q, p });
                 if (q.includes('JOIN course_enrollments ce ON ce.course_id = c.id AND ce.user_id = ?')) {
-                    return [enrolled && p[0] === 5 && p[1] === 2 ? [{ id: 2, title: 'Python', description: 'd', category: 'Backend', teacher: 'Bekzod', my_progress: '10.00' }] : []];
+                    return [enrolled && p[0] === 5 && p[1] === 2 ? [{ id: 2, title: 'Python', description: 'd', category: 'Backend', teacher: 'Bekzod', my_progress: '10.00', is_ai: aiCourse ? 1 : 0 }] : []];
                 }
-                if (q.startsWith('SELECT id, kind, title, url, body, position FROM course_content')) return [[{ id: 1, kind: 'video', title: 'V', url: 'https://y.be/1', position: 1 }]];
+                if (q.startsWith('SELECT id, kind, title, url, body, position FROM course_content')) return [[{ id: 1, kind: 'video', title: 'V', url: 'https://y.be/1', body: null, position: 1 }, { id: 2, kind: 'lesson', title: 'L', url: null, body: 'dars matni', position: 2 }]];
                 throw new Error('Unexpected query: ' + q);
             },
             query: async () => [[]]
@@ -59,7 +59,16 @@ describe('course content for an enrolled student', () => {
         const res = await request(app).get('/api/student/courses/2/content').set(as(5, 'student'));
         expect(res.status).toBe(200);
         expect(res.body.course).toMatchObject({ id: 2, teacher: 'Bekzod', progress: 10 });
-        expect(res.body.items).toHaveLength(1);
+        expect(res.body.items).toHaveLength(2);
+        expect(res.body.items[1].body).toBe('dars matni');
+    });
+
+    test('an AI course does not hand out its lesson texts: they are taught through the lesson flow', async () => {
+        enrolled = true; aiCourse = true;
+        const res = await request(app).get('/api/student/courses/2/content').set(as(5, 'student'));
+        aiCourse = false;
+        expect(res.body.course.ai).toBe(true);
+        expect(res.body.items.find((i) => i.kind === 'lesson')).toMatchObject({ title: 'L', body: null });
     });
     test('not enrolled -> 404 and no content is read', async () => {
         enrolled = false;

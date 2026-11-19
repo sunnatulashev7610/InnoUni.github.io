@@ -202,9 +202,11 @@ router.get('/courses/:courseId/content', authenticateToken, studentOnly, async (
             'SELECT id, kind, title, url, body, position FROM course_content WHERE course_id = ? ORDER BY position, id',
             [courseId]
         );
+        const ai = Number(c.is_ai) === 1;
         res.json({
-            course: { id: c.id, title: c.title, description: c.description, category: c.category, teacher: creditName(c), ai: Number(c.is_ai) === 1, progress: Number(c.my_progress) || 0 },
-            items
+            course: { id: c.id, title: c.title, description: c.description, category: c.category, teacher: creditName(c), ai, progress: Number(c.my_progress) || 0 },
+            // An AI lesson is taught step by step (plan, chat, quiz) through /api/ai-lessons: its text is not handed out here
+            items: ai ? items.map((it) => (it.kind === 'lesson' ? { ...it, body: null } : it)) : items
         });
     } catch (error) {
         console.error('Course content error:', error);

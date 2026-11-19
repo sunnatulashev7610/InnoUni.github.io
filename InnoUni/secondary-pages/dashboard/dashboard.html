@@ -294,6 +294,7 @@
 	<script src="../../frontend/js/dashboard-orders.js"></script>
 	<script src="../../frontend/js/dashboard-stats.js"></script>
 	<script src="../../frontend/js/dashboard-ai.js"></script>
+	<script src="../../frontend/js/dashboard-ai-lesson.js"></script>
 	<script src="../../frontend/js/dashboard-team-chat.js"></script>
 	<script src="../../frontend/js/dashboard-teams.js"></script>
 	<script>
@@ -303,7 +304,7 @@
 		var PAGE_FEATURE = { jamoalar: 'teams', 'team-detail': 'teams', library: 'library' };
 		document.querySelectorAll('[data-feature]').forEach(function (n) { n.hidden = !FEATURES[n.dataset.feature]; });
 		// Demo visitors (no sign-in) only look from the outside: no course or group interior, no real orders.
-		var DEMO_LOCKED = { 'course-detail': 1, 'group-detail': 1 };
+		var DEMO_LOCKED = { 'course-detail': 1, 'group-detail': 1, 'ai-lesson': 1 };
 		function demoNotice(text) {
 			var old = document.querySelector('.pg-toast.demo'); if (old) old.remove();
 			var t = document.createElement('div'); t.className = 'pg-toast demo';
@@ -886,7 +887,7 @@
 				var open = e.target.closest('[data-open]');
 				if (open && !e.target.closest('.btn-join')) {
 					// detail pages keep their parent's sidebar item highlighted
-					var nav = { 'course-detail': 'courses', 'group-detail': 'groups', 'team-detail': 'jamoalar' }[open.dataset.open] || open.dataset.open;
+					var nav = { 'course-detail': 'courses', 'group-detail': 'groups', 'team-detail': 'jamoalar', 'ai-lesson': 'courses' }[open.dataset.open] || open.dataset.open;
 					var btn = navFor(nav);
 					loadPage(open.dataset.open, btn || document.querySelector('.nav-item.active'));
 					document.querySelector('.main').scrollTop = 0; window.scrollTo(0, 0);
