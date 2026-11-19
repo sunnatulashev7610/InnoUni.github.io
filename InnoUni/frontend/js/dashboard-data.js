@@ -11,7 +11,7 @@
             err.auth = true;
             throw err;
         }
-        if (!res.ok) throw new Error('HTTP ' + res.status);
+        if (!res.ok) { const bad = new Error('HTTP ' + res.status); bad.status = res.status; throw bad; }
         return res.json();
     }
 
@@ -326,16 +326,19 @@
         }
         const written = items.filter(function (x) { return x.kind === 'lesson'; });
         if (written.length) {
-            const box = el('div', 'pg-card'); box.style.marginTop = '14px';
-            box.appendChild(el('h3', 'pg-h3', 'Darslar'));
-            written.forEach(function (it, i) {
-                const d = el('details'); d.style.marginTop = '8px';
-                d.appendChild(el('summary', '', (i + 1) + '. ' + it.title));
-                const t = el('div', 'pg-muted', it.body || ''); t.style.cssText = 'white-space:pre-wrap;margin-top:6px'; d.appendChild(t);
-                if (c.ai) d.appendChild(reportBox(c.id, it.id, session));
-                box.appendChild(d);
-            });
-            pg.appendChild(box);
+            if (c.ai && window.GEData.aiLessonList) pg.appendChild(await window.GEData.aiLessonList(c, session));
+            else {
+                const box = el('div', 'pg-card'); box.style.marginTop = '14px';
+                box.appendChild(el('h3', 'pg-h3', 'Darslar'));
+                written.forEach(function (it, i) {
+                    const d = el('details'); d.style.marginTop = '8px';
+                    d.appendChild(el('summary', '', (i + 1) + '. ' + it.title));
+                    const t = el('div', 'pg-muted', it.body || ''); t.style.cssText = 'white-space:pre-wrap;margin-top:6px'; d.appendChild(t);
+                    if (c.ai) d.appendChild(reportBox(c.id, it.id, session));
+                    box.appendChild(d);
+                });
+                pg.appendChild(box);
+            }
         }
         const hasKind = function (k) { return items.some(function (x) { return x.kind === k; }); };
         // a written (AI) course has no videos or guides: do not show empty boxes for them
@@ -640,6 +643,7 @@
         },
         api: { get: get, send: send },
         twice: twice,
+        reportBox: reportBox,
         el: el,
         ctx: {}, // values handed from one page to the next, e.g. the course being edited
         toast: function (text) {
