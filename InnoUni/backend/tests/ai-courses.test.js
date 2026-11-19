@@ -16,7 +16,7 @@ const fakeDb = {
         if (q.startsWith('UPDATE ai_course_usage SET used = used + 1')) { if (s.usage[p[0]] < p[1]) { s.usage[p[0]]++; return [{ affectedRows: 1 }]; } return [{ affectedRows: 0 }]; }
         if (q.startsWith('UPDATE ai_course_usage SET used = used - 1')) { if (s.usage[p[0]] > 0) s.usage[p[0]]--; return [{ affectedRows: 1 }]; }
         if (q.startsWith('SELECT used FROM ai_course_usage')) return [s.usage[p[0]] === undefined ? [] : [{ used: s.usage[p[0]] }]];
-        if (q.startsWith('INSERT INTO courses')) { if (s.failInsert) throw new Error('db down'); s.courses.push({ id: s.courses.length + 1, title: p[0], description: p[1], category: p[2], teacher_id: p[3], creator_id: p[4], is_ai: 1, ai_provider: p[5], status: 'inactive', sql: q }); return [{ insertId: s.courses.length }]; }
+        if (q.startsWith('INSERT INTO courses')) { if (s.failInsert) throw new Error('db down'); s.courses.push({ id: s.courses.length + 1, title: p[0], description: p[1], category: p[2], teacher_id: p[3], creator_id: p[4], is_ai: 1, ai_provider: p[5], status: p[6], sql: q }); return [{ insertId: s.courses.length }]; }
         if (q.startsWith('INSERT INTO course_content')) { s.lessons.push({ course: p[0], title: p[1], body: p[2], position: p[3], sql: q }); return [{ insertId: 1 }]; }
         if (q.startsWith('SELECT id, title, description, category, status, ai_provider, created_at FROM courses')) return [s.courses.filter((c) => c.id === p[0] && c.creator_id === p[1])];
         if (q.includes('FROM courses c WHERE c.is_ai = 1 AND c.creator_id = ?')) return [s.courses.filter((c) => c.creator_id === p[1]).map((c) => ({ ...c, lessons: s.lessons.filter((l) => l.course === c.id).length, students: s.others, reports: s.reports.filter((r) => r.course_id === c.id && r.status === 'open').length }))];
@@ -60,7 +60,6 @@ test('a student can make a course: it is private, owned by them, with lessons as
     expect(r.status).toBe(201);
     expect(r.body).toMatchObject({ courseId: 1, provider: 'demo', used: 1, remaining: 2 });
     expect(s.courses[0]).toMatchObject({ creator_id: 1, teacher_id: 1, status: 'inactive', is_ai: 1, ai_provider: 'demo' });
-    expect(s.courses[0].sql).toContain("'inactive'");
     expect(s.lessons).toHaveLength(4);
     expect(s.lessons[0].sql).toContain("'lesson'");
     expect(s.lessons[0].body).toMatch(/Demo dars/);
@@ -123,7 +122,7 @@ test('only the creator sees the course and its lessons', async () => {
     expect((await request(app).get('/api/ai-courses/abc').set(as(1))).status).toBe(400);
 });
 
-test('demo courses cannot be made public; real ones can, and can go private again', async () => {
+test('a real course is public at once and can go private; a demo course stays private and cannot be published; going public again needs confirmation', async () => {
     await make();
     const demo = await request(app).patch('/api/ai-courses/1').set(as(1)).send({ public: true, confirmed: true });
     expect(demo.status).toBe(400);
@@ -135,6 +134,11 @@ test('demo courses cannot be made public; real ones can, and can go private agai
     await make();
     expect((await request(app).patch('/api/ai-courses/2').set(as(9)).send({ public: true, confirmed: true })).status).toBe(404);
     expect((await request(app).patch('/api/ai-courses/2').set(as(1)).send({ public: 'ha' })).status).toBe(400);
+    // a real course joined the catalogue when it was made (with its group); the creator hides it, then publishing again needs confirmation
+    expect(s.courses[1].status).toBe('active');
+    expect(s.groups).toBe(1);
+    expect((await request(app).patch('/api/ai-courses/2').set(as(1)).send({ public: false })).body).toEqual({ public: false });
+    expect(s.courses[1].status).toBe('inactive');
     // making it public needs the creator's explicit confirmation
     const noConfirm = await request(app).patch('/api/ai-courses/2').set(as(1)).send({ public: true });
     expect(noConfirm.status).toBe(400);
@@ -143,9 +147,6 @@ test('demo courses cannot be made public; real ones can, and can go private agai
     expect(s.courses[1].status).toBe('inactive');
     expect((await request(app).patch('/api/ai-courses/2').set(as(1)).send({ public: true, confirmed: true })).body).toEqual({ public: true });
     expect(s.courses[1].status).toBe('active');
-    expect(s.groups).toBe(1);
-    expect((await request(app).patch('/api/ai-courses/2').set(as(1)).send({ public: false })).body).toEqual({ public: false });
-    expect(s.courses[1].status).toBe('inactive');
 });
 
 test('deleting: only yours, and not while other students are enrolled', async () => {
