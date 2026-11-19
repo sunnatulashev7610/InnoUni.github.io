@@ -150,7 +150,7 @@ describe('Gemini as the model', () => {
         expect(r.status).toBe(200);
         expect(r.body).toMatchObject({ reply: 'Gemini javobi', provider: 'gemini' });
         const [url, init] = global.fetch.mock.calls[0];
-        expect(url).toMatch(/^https:\/\/generativelanguage\.googleapis\.com\/v1beta\/models\/gemini-2\.5-flash:generateContent$/);
+        expect(url).toMatch(/^https:\/\/generativelanguage\.googleapis\.com\/v1beta\/models\/gemini-3\.5-flash-lite:generateContent$/);
         expect(url).not.toContain('g-secret');
         expect(init.headers['x-goog-api-key']).toBe('g-secret');
         const sent = JSON.parse(init.body);
@@ -181,5 +181,16 @@ describe('Gemini as the model', () => {
         const r = await chat({ message: 'salom' });
         expect(r.status).toBe(502);
         expect(s.usage[1]).toBe(0);
+    });
+
+    test('the server log says why Google refused, without the key', async () => {
+        process.env.GEMINI_API_KEY = 'g-secret';
+        global.fetch = jest.fn(async () => ({ ok: false, status: 404, json: async () => ({ error: { message: 'model is not found' } }) }));
+        const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
+        await chat({ message: 'salom' });
+        const logged = spy.mock.calls.map((c) => c.join(' ')).join('\n');
+        spy.mockRestore();
+        expect(logged).toContain('404: model is not found');
+        expect(logged).not.toContain('g-secret');
     });
 });
