@@ -46,7 +46,7 @@ async function claudeReply({ system, history, message, maxTokens = 800, timeoutM
 
 // Gemini (free tier): same inputs, its own message format. The key travels in a header, never in the URL.
 async function geminiReply({ system, history, message, maxTokens = 800, timeoutMs = 25000 }) {
-    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    const model = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -62,7 +62,12 @@ async function geminiReply({ system, history, message, maxTokens = 800, timeoutM
                 generationConfig
             })
         });
-        if (!res.ok) throw new Error(`AI service answered ${res.status}`);
+        if (!res.ok) {
+            // Google explains what is wrong (bad key, unknown model, quota); keep that in the server log, never the key
+            let why = '';
+            try { why = String(((await res.json()).error || {}).message || '').slice(0, 200); } catch (e) { why = ''; }
+            throw new Error(`AI service answered ${res.status}${why ? ': ' + why : ''}`);
+        }
         const data = await res.json();
         const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
         const text = parts.map((p) => p.text || '').join('\n').trim();
