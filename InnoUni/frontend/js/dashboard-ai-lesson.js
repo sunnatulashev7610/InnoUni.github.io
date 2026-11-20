@@ -94,6 +94,13 @@
             }
         }
 
+        if (G.lessonQa) {
+            const qb = el('section', 'pg-card'); qb.style.marginTop = '14px';
+            qb.appendChild(el('h3', 'pg-h3', 'Savol-javob'));
+            qb.appendChild(G.lessonQa(d.lesson.id, session));
+            pg.appendChild(qb);
+        }
+
         function problem(e, fallback) {
             if (e.status === 429 && e.data && typeof e.data.remaining === 'number') { state.remaining = e.data.remaining; renderHead(); return 'Bugungi AI amallari tugadi. Ertaga davom etamiz.'; }
             if (e.status === 429) return 'Oldingi javobni kuting.';

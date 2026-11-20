@@ -382,8 +382,10 @@
                 b.addEventListener('click', function () { play(it); });
                 openers[it.id] = function () { play(it); };
                 r.appendChild(b); box.appendChild(r);
-                const tg = toolsFor(it, function (panel) { tg.after(panel); });
-                if (tg) { tg.style.marginBottom = '6px'; r.after(tg); }
+                const tg = toolsFor(it, function (panel) { qa ? qa.after(panel) : tg.after(panel); });
+                const qa = window.GEData.lessonQaToggle ? window.GEData.lessonQaToggle(it.id, session, function (panel) { qa.after(panel); }) : null;
+                if (qa) r.after(qa);
+                if (tg) { tg.style.marginBottom = '6px'; (qa || r).after(tg); }
             });
             return box;
         }
@@ -408,6 +410,7 @@
                     openers[it.id] = function () { d.open = true; d.scrollIntoView && d.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
                     const t = el('div', 'pg-muted', it.body || ''); t.style.cssText = 'white-space:pre-wrap;margin-top:6px'; d.appendChild(t);
                     const tg = toolsFor(it, function (panel) { d.appendChild(panel); });
+                    if (window.GEData.lessonQaToggle) d.appendChild(window.GEData.lessonQaToggle(it.id, session, function (panel) { d.appendChild(panel); }));
                     if (tg) d.appendChild(tg);
                     if (c.ai) d.appendChild(reportBox(c.id, it.id, session));
                     box.appendChild(d);
