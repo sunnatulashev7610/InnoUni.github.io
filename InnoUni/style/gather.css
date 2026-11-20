@@ -307,7 +307,7 @@ body.ge {
 	padding: 5px 11px;
 	border-radius: var(--r-md);
 	background: var(--brand-soft);
-	color: var(--brand);
+	color: var(--brand-ink);
 }
 
 .m-row {
@@ -421,7 +421,7 @@ body.ge {
 .ge-stat b {
 	display: block;
 	font: 800 clamp(32px, 4vw, 48px)/1 var(--font-display);
-	color: var(--brand);
+	color: var(--brand-ink);
 	letter-spacing: -0.03em;
 }
 
@@ -532,7 +532,7 @@ body.ge {
 
 .c-green {
 	background: var(--brand-soft);
-	color: var(--brand);
+	color: var(--brand-ink);
 }
 
 .c-sun {
@@ -671,7 +671,7 @@ body.ge {
 .ge-group .join {
 	font-weight: 700;
 	font-size: 14px;
-	color: var(--brand);
+	color: var(--brand-ink);
 	text-decoration: none;
 }
 
@@ -1121,7 +1121,7 @@ body.ge-auth {
 
 .ge-auth .register-link a,
 .ge-auth .login-link a {
-	color: var(--brand);
+	color: var(--brand-ink);
 	font-weight: 700;
 	text-decoration: none;
 }
@@ -1148,7 +1148,7 @@ body.ge-auth {
 
 .ge-auth .success-message {
 	background: var(--brand-soft);
-	color: var(--brand);
+	color: var(--brand-ink);
 }
 
 .ge-auth .password-requirements {
@@ -1293,7 +1293,7 @@ body.ge-auth {
 	height: 18px;
 	flex: none;
 	margin-top: 4px;
-	color: var(--brand);
+	color: var(--brand-ink);
 }
 
 .ge-plan.pop li svg {

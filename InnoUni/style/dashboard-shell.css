@@ -174,3 +174,18 @@ body {
 /* The "sun" button is the main call to action: lime on dark */
 :root[data-theme="dark"] .pg-btn.sun { background: var(--brand); color: var(--on-brand); }
 :root[data-theme="dark"] .pg-btn.sun:hover { background: var(--brand-2); color: var(--on-brand); }
+
+/* ---- Light shell polish ---- */
+:root[data-theme="light"] .nav-item.active { background: var(--brand-soft); color: var(--brand-ink); position: relative; }
+:root[data-theme="light"] .nav-item.active::before {
+	content: ""; position: absolute; left: -14px; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--brand-strong);
+}
+:root[data-theme="light"] .stat-card:hover { border-color: var(--line-strong); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+:root[data-theme="light"] .pg-item:hover { border-color: var(--brand-strong); }
+:root[data-theme="light"] .pg-table tbody tr:hover { background: var(--surface-2); }
+:root[data-theme="light"] .pg-input:focus,
+:root[data-theme="light"] .search-bar input:focus { border-color: var(--focus); box-shadow: 0 0 0 3px var(--brand-soft); }
+:root[data-theme="light"] .pg-toast { background: var(--ink); color: var(--bg); }
+:root[data-theme="light"] .pg-chip.on { border-color: var(--brand-strong); }
+:root[data-theme="light"] .spinner { border-top-color: var(--brand-strong); }
+:root[data-theme="light"] .pg-bar i { background: var(--brand-strong); }
