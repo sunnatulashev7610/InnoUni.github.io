@@ -106,7 +106,7 @@ body {
 	.header-content { gap: 8px; }
 	.sidebar { transform: translateX(-100%); transition: transform .25s ease; z-index: 1100; height: calc(100dvh - 64px); box-shadow: var(--shadow-lg); }
 	.sidebar.open { transform: translateX(0); }
-	.sidebar-backdrop.show { display: block; position: fixed; inset: 64px 0 0 0; z-index: 1050; background: rgba(8, 10, 24, .5); }
+	.sidebar-backdrop.show { display: block; position: fixed; inset: 64px 0 0 0; z-index: 1050; background: rgba(4, 6, 4, .6); }
 	.main { margin-left: 0; }
 	.search-bar input { width: 180px; }
 }
@@ -121,3 +121,56 @@ body {
 
 /* A menu item can be switched off with the hidden attribute (see FEATURES in dashboard.html) */
 .nav-item[hidden] { display: none; }
+
+/* ---- Black & Lime shell polish (dark). Light keeps the flat look above. ---- */
+:root[data-theme="dark"] .header { border-bottom-color: var(--glass-line); }
+:root[data-theme="dark"] .sidebar { border-right-color: var(--glass-line); }
+
+/* Active menu item: a thin lime bar instead of a filled block */
+:root[data-theme="dark"] .nav-item { position: relative; transition: background .2s var(--ease), color .2s var(--ease); }
+:root[data-theme="dark"] .nav-item.active { background: linear-gradient(90deg, var(--brand-soft), transparent 90%); }
+:root[data-theme="dark"] .nav-item.active::before {
+	content: ""; position: absolute; left: -14px; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--brand);
+}
+
+/* Cards: glass, lime hairline on hover */
+:root[data-theme="dark"] .stat-card,
+:root[data-theme="dark"] .content-area {
+	background: linear-gradient(180deg, rgba(255, 255, 255, .025), rgba(255, 255, 255, 0) 55%), var(--surface);
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
+}
+.stat-card { transition: border-color .25s var(--ease), transform .25s var(--ease); }
+:root[data-theme="dark"] .stat-card:hover { border-color: var(--line-strong); transform: translateY(-2px); }
+:root[data-theme="dark"] .pg-item:hover,
+:root[data-theme="dark"] .pg-chip:hover { border-color: var(--line-strong); }
+
+/* Tables: quiet row hover */
+:root[data-theme="dark"] .pg-table tbody tr { transition: background .15s; }
+:root[data-theme="dark"] .pg-table tbody tr:hover { background: var(--brand-soft); }
+
+/* Inputs: lime focus ring (already on tokens), darker field */
+:root[data-theme="dark"] .pg-input,
+:root[data-theme="dark"] .search-bar input { background: var(--bg); }
+
+/* Toast: lime hairline, glass */
+:root[data-theme="dark"] .pg-toast {
+	background: var(--glass); color: var(--ink); border: 1px solid var(--line-strong);
+	-webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+}
+
+/* Spinner: one lime arc */
+:root[data-theme="dark"] .spinner { border-color: var(--line); border-top-color: var(--brand); }
+
+/* Scrollbars: thin, lime-tinted */
+:root[data-theme="dark"] { scrollbar-color: rgba(182, 255, 56, .28) transparent; scrollbar-width: thin; }
+:root[data-theme="dark"] ::-webkit-scrollbar { width: 10px; height: 10px; }
+:root[data-theme="dark"] ::-webkit-scrollbar-thumb { background: rgba(182, 255, 56, .22); border-radius: 8px; border: 2px solid var(--bg); }
+:root[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: rgba(182, 255, 56, .4); }
+
+@media (prefers-reduced-motion: reduce) {
+	.stat-card, :root[data-theme="dark"] .stat-card:hover { transition: none; transform: none; }
+}
+
+/* The "sun" button is the main call to action: lime on dark */
+:root[data-theme="dark"] .pg-btn.sun { background: var(--brand); color: var(--on-brand); }
+:root[data-theme="dark"] .pg-btn.sun:hover { background: var(--brand-2); color: var(--on-brand); }

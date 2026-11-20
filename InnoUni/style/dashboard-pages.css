@@ -78,17 +78,17 @@ select.pg-input option { background: var(--surface); color: var(--ink); }
 
 /* Live room: the stage stays dark in both themes, like a video frame */
 .pg-live { display: grid; grid-template-columns: 1fr 320px; gap: 16px; }
-.pg-stage { position: relative; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: linear-gradient(135deg, #1b2358, #0d1020 62%, #2b1f5c); display: grid; place-items: center; border: 1px solid var(--line); color: #fff; }
+.pg-stage { position: relative; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: linear-gradient(135deg, #10180a, #080a08 62%, #162208); display: grid; place-items: center; border: 1px solid var(--line); color: #fff; }
 .pg-slide { width: 78%; background: rgba(0, 0, 0, .35); border-radius: 12px; padding: 26px 30px; }
 .pg-slide h2 { font: 700 1.5rem var(--font-display); margin: 0 0 10px; }
-.pg-slide code { display: block; padding: 12px 14px; border-radius: 8px; background: rgba(0, 0, 0, .4); color: #b4abff; font-size: .88rem; margin-top: 12px; }
+.pg-slide code { display: block; padding: 12px 14px; border-radius: 8px; background: rgba(0, 0, 0, .4); color: #b6ff38; font-size: .88rem; margin-top: 12px; }
 .pg-badge { position: absolute; top: 14px; left: 14px; display: inline-flex; align-items: center; gap: 8px; padding: 5px 11px; border-radius: 6px; background: #e5484d; color: #fff; font-size: .75rem; font-weight: 700; }
 .pg-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: pgpulse 1.4s infinite; }
 @keyframes pgpulse { 50% { opacity: .3; } }
 .pg-viewers { position: absolute; top: 14px; right: 14px; padding: 5px 11px; border-radius: 6px; background: rgba(0, 0, 0, .45); color: #fff; font-size: .82rem; }
 .pg-ctrl { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
 .pg-ctrl button { width: 42px; height: 42px; border-radius: 10px; border: 0; background: rgba(0, 0, 0, .5); color: #fff; cursor: pointer; }
-.pg-ctrl button.on { background: #8b7dff; color: #0d1020; }
+.pg-ctrl button.on { background: #b6ff38; color: #080a08; }
 .pg-people { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
 .pg-av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: .82rem; color: #fff; flex: none; }
 .pg-chat { display: flex; flex-direction: column; height: 100%; min-height: 420px; padding: 0; overflow: hidden; }
