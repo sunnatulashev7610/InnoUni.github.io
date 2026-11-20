@@ -84,6 +84,15 @@
         const body = el('div', 'pg-muted', d.lesson.body || ''); body.style.cssText = 'white-space:pre-wrap;margin-top:8px'; text.appendChild(body);
         if (G.reportBox) text.appendChild(G.reportBox(d.lesson.course_id, d.lesson.id, session));
         pg.appendChild(text);
+        if (G.courseTools) {
+            const T = await G.courseTools.load(d.lesson.course_id, session);
+            if (T) {
+                const nb = el('section', 'pg-card'); nb.style.marginTop = '14px';
+                nb.appendChild(el('h3', 'pg-h3', 'Eslatma va materiallar'));
+                nb.appendChild(G.courseTools.panel(T, d.lesson.id, session));
+                pg.appendChild(nb);
+            }
+        }
 
         function problem(e, fallback) {
             if (e.status === 429 && e.data && typeof e.data.remaining === 'number') { state.remaining = e.data.remaining; renderHead(); return 'Bugungi AI amallari tugadi. Ertaga davom etamiz.'; }
