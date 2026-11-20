@@ -4,5 +4,5 @@
 .ge-consent a{color:var(--brand,#2b59e8);text-decoration:underline}
 .ge-consent-btns{display:flex;gap:8px}
 .ge-consent button{font:inherit;font-weight:600;padding:8px 14px;border-radius:10px;cursor:pointer;border:1px solid var(--line,#d9dce5);background:transparent;color:inherit}
-.ge-consent button.primary{background:var(--brand,#2b59e8);border-color:var(--brand,#2b59e8);color:#fff}
+.ge-consent button.primary{background:var(--brand,#2b59e8);border-color:var(--brand,#2b59e8);color:var(--on-brand,#fff)}
 .ge-consent button:focus-visible,.ge-consent a:focus-visible{outline:2px solid var(--brand,#2b59e8);outline-offset:2px}
