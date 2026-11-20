@@ -182,10 +182,34 @@
         const data = await get('/student/courses', session);
         let courses = data.courses;
         let filter = 'all';
+        const allCats = [...new Set(courses.map(function (c) { return c.category; }).filter(Boolean))]; // chips stay the same while searching
+
+        // Search and sort: asked from the server (debounced), the newest answer wins
+        let query = ''; let sort = 'new'; let ticket = 0; let timer = null;
+        const bar = el('div'); bar.style.cssText = 'display:flex;flex-wrap:wrap;gap:10px;margin:0 0 14px';
+        const box = el('input', 'pg-input'); box.type = 'search'; box.maxLength = 100; box.placeholder = 'Kurs, mavzu yoki o\'qituvchi qidirish...'; box.setAttribute('aria-label', 'Kurs qidirish'); box.style.cssText = 'flex:1 1 220px;min-width:0';
+        const by = el('select', 'pg-input'); by.setAttribute('aria-label', 'Saralash'); by.style.cssText = 'flex:0 0 auto;width:auto';
+        [['new', 'Eng yangilari'], ['popular', 'Mashhur kurslar'], ['title', 'Nomi bo\'yicha (A-Z)']].forEach(function (o) { const op = el('option', '', o[1]); op.value = o[0]; by.appendChild(op); });
+        bar.appendChild(box); bar.appendChild(by);
+        chips.parentNode.insertBefore(bar, chips);
+        async function reload() {
+            const mine = ++ticket;
+            try {
+                const r = await get('/student/courses?q=' + encodeURIComponent(query) + '&sort=' + encodeURIComponent(sort), session);
+                if (mine !== ticket) return;
+                courses = r.courses; drawGrid();
+            } catch (e) {
+                if (mine !== ticket) return;
+                if (e.auth) { location.href = '../login/login.html'; return; }
+                grid.textContent = ''; grid.appendChild(el('p', 'pg-muted', 'Kurslarni yuklab bo\'lmadi. Keyinroq urinib ko\'ring.'));
+            }
+        }
+        box.addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(function () { query = box.value.trim(); reload(); }, 300); });
+        by.addEventListener('change', function () { sort = by.value; reload(); });
 
         function drawChips() {
             chips.textContent = '';
-            const cats = [...new Set(courses.map(function (c) { return c.category; }).filter(Boolean))];
+            const cats = allCats;
             [['all', 'Hammasi'], ['mine', 'Mening kurslarim']].concat(cats.map(function (c) { return [c.toLowerCase(), c]; })).forEach(function (p) {
                 const b = el('button', 'pg-chip' + (filter === p[0] ? ' on' : ''), p[1]); b.type = 'button'; b.dataset.cat = p[0];
                 b.addEventListener('click', function () { filter = p[0]; drawChips(); drawGrid(); });
@@ -208,7 +232,7 @@
             grid.textContent = '';
             const shown = courses.filter(function (c) { return filter === 'all' || (filter === 'mine' ? c.enrolled : (c.category || '').toLowerCase() === filter); });
             if (!shown.length) {
-                grid.appendChild(el('p', 'pg-muted', courses.length ? 'Bu bo\'limda kurs yo\'q.' : 'Hozircha kurslar yo\'q. O\'qituvchilar kurs qo\'shganda shu yerda ko\'rinadi.'));
+                grid.appendChild(el('p', 'pg-muted', query ? '"' + query + '" bo\'yicha kurs topilmadi.' : courses.length ? 'Bu bo\'limda kurs yo\'q.' : 'Hozircha kurslar yo\'q. O\'qituvchilar kurs qo\'shganda shu yerda ko\'rinadi.'));
                 return;
             }
             shown.forEach(function (c) { grid.appendChild(courseCard(c, enroll)); });
@@ -290,14 +314,32 @@
         }
         const askAi = el('button', 'pg-btn', 'AI ustozdan so\'rash'); askAi.type = 'button'; askAi.style.marginTop = '12px';
         askAi.addEventListener('click', function () { window.GEData.ctx.aiCourseId = c.id; window.GEData.open('ai', 'ai'); });
-        hero.appendChild(askAi);
+        // "Davom ettirish": back to where the student stopped (the last opened item; for an AI course the first lesson not passed yet)
+        let resumeId = data.resume || null;
+        const resumeBtn = el('button', 'pg-btn sun'); resumeBtn.type = 'button'; resumeBtn.hidden = true; resumeBtn.style.cssText = 'margin:12px 10px 0 0';
+        hero.appendChild(resumeBtn); hero.appendChild(askAi);
         pg.appendChild(hero);
+        const openers = {};
+        function markResume(itemId) {
+            if (resumeId === itemId) return;
+            resumeId = itemId; paintResume();
+            send('PUT', '/student/courses/' + id + '/resume', session, { item_id: itemId }).catch(function () {});
+        }
+        function paintResume() {
+            const target = items.find(function (x) { return x.id === resumeId && openers[x.id]; }) || items.find(function (x) { return openers[x.id]; });
+            if (!target) return;
+            resumeBtn.hidden = false;
+            resumeBtn.textContent = (target.id === resumeId ? 'Davom ettirish: ' : 'Boshlash: ') + target.title;
+            resumeBtn.onclick = function () { openers[target.id](); };
+            document.querySelectorAll('[data-last-item]').forEach(function (n) { n.hidden = Number(n.dataset.lastItem) !== resumeId; });
+        }
 
         const player = el('div', 'pg-card'); player.style.marginTop = '14px'; player.hidden = true;
         const pTitle = el('h3'); const frame = el('div'); frame.style.cssText = 'position:relative;padding-top:56.25%;margin-top:10px';
         player.appendChild(pTitle); player.appendChild(frame); pg.appendChild(player);
 
         function play(it) {
+            markResume(it.id);
             const yt = youtubeId(it.url);
             if (!yt) { window.open(it.url, '_blank', 'noopener,noreferrer'); return; }
             player.hidden = false; pTitle.textContent = it.title; frame.textContent = '';
@@ -319,21 +361,33 @@
                 r.appendChild(el('span', 'n', String(i + 1).padStart(2, '0')));
                 r.appendChild(el('i', iconCls));
                 const t = el('div'); t.style.flex = '1'; t.appendChild(el('b', '', it.title)); r.appendChild(t);
+                const last = el('span', 'pg-pill sun', 'Oxirgi ko\'rilgan'); last.dataset.lastItem = String(it.id); last.hidden = it.id !== resumeId; t.appendChild(last); last.style.marginLeft = '8px';
                 const b = el('button', 'pg-btn ghost', action); b.type = 'button';
                 b.addEventListener('click', function () { play(it); });
+                openers[it.id] = function () { play(it); };
                 r.appendChild(b); box.appendChild(r);
             });
             return box;
         }
         const written = items.filter(function (x) { return x.kind === 'lesson'; });
         if (written.length) {
-            if (c.ai && window.GEData.aiLessonList) pg.appendChild(await window.GEData.aiLessonList(c, session));
-            else {
+            if (c.ai && window.GEData.aiLessonList) {
+                const lessons = await window.GEData.aiLessonList(c, session);
+                pg.appendChild(lessons);
+                if (lessons.current) {
+                    const cur = lessons.current;
+                    resumeBtn.hidden = false; resumeBtn.textContent = (cur.score !== null ? 'Davom ettirish: ' : 'Boshlash: ') + cur.title;
+                    resumeBtn.onclick = function () { window.GEData.ctx.lessonId = cur.id; window.GEData.open('ai-lesson', 'courses'); };
+                }
+            } else {
                 const box = el('div', 'pg-card'); box.style.marginTop = '14px';
                 box.appendChild(el('h3', 'pg-h3', 'Darslar'));
                 written.forEach(function (it, i) {
                     const d = el('details'); d.style.marginTop = '8px';
-                    d.appendChild(el('summary', '', (i + 1) + '. ' + it.title));
+                    const sum = el('summary', '', (i + 1) + '. ' + it.title); d.appendChild(sum);
+                    const last = el('span', 'pg-pill sun', 'Oxirgi ko\'rilgan'); last.dataset.lastItem = String(it.id); last.hidden = it.id !== resumeId; last.style.marginLeft = '8px'; sum.appendChild(last);
+                    d.addEventListener('toggle', function () { if (d.open) markResume(it.id); });
+                    openers[it.id] = function () { d.open = true; d.scrollIntoView && d.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
                     const t = el('div', 'pg-muted', it.body || ''); t.style.cssText = 'white-space:pre-wrap;margin-top:6px'; d.appendChild(t);
                     if (c.ai) d.appendChild(reportBox(c.id, it.id, session));
                     box.appendChild(d);
@@ -345,6 +399,7 @@
         // a written (AI) course has no videos or guides: do not show empty boxes for them
         if (!written.length || hasKind('video')) pg.appendChild(list('video', 'Video darslar', 'fas fa-circle-play', 'Ko\'rish'));
         if (!written.length || hasKind('guide')) pg.appendChild(list('guide', 'Qo\'llanmalar', 'fas fa-file-lines', 'Ochish'));
+        if (!c.ai) paintResume();
     };
 
     // ---- Groups: every course has one group (teacher leads, students join by enrolling) ----

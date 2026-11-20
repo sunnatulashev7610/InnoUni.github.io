@@ -280,3 +280,37 @@ test('an AI course sits in the main list with the "AI kurs" mark at the very top
     expect(pills).toEqual(['AI kurs', 'Dasturlash']);          // the mark comes before the category
     expect(ai.querySelector('.pg-cover').nextElementSibling.textContent).toBe('AI kurs'); // right under the cover, top of the card text
 });
+
+describe('search and sort', () => {
+    const urls = () => win.fetch.mock.calls.map((c) => c[0]);
+    test('typing asks the server once after a pause; sorting asks again; a nothing-found message is plain text', async () => {
+        jest.useFakeTimers();
+        try {
+            setup(base());
+            await run();
+            const box = doc.querySelector('input[type=search]');
+            expect(box).not.toBeNull();
+            box.value = 'rea'; box.dispatchEvent(new win.Event('input'));
+            box.value = 'react'; box.dispatchEvent(new win.Event('input'));
+            expect(urls().filter((u) => u.includes('q='))).toHaveLength(0);
+            jest.advanceTimersByTime(350);
+            jest.useRealTimers(); await flush();
+            expect(urls().filter((u) => u.includes('q='))).toEqual(['https://api.test/api/student/courses?q=react&sort=new']);
+            const sel = doc.querySelector('select[aria-label=Saralash]');
+            sel.value = 'popular'; sel.dispatchEvent(new win.Event('change')); await flush();
+            expect(urls().at(-1)).toBe('https://api.test/api/student/courses?q=react&sort=popular');
+        } finally { jest.useRealTimers(); }
+    });
+    test('categories stay while searching, and an empty answer says what was searched', async () => {
+        setup(base());
+        await run();
+        win.fetch = jest.fn(async () => ({ ok: true, status: 200, json: async () => ({ courses: [] }) }));
+        const sel = doc.querySelector('select[aria-label=Saralash]');
+        const box = doc.querySelector('input[type=search]'); box.value = '<b>zzz</b>'; box.dispatchEvent(new win.Event('input'));
+        await new Promise((r) => setTimeout(r, 400));
+        expect(doc.querySelector('#pgFilterTarget').textContent).toBe('"<b>zzz</b>" bo\'yicha kurs topilmadi.');
+        expect(doc.querySelector('#pgFilterTarget b')).toBeNull();
+        expect([...doc.querySelectorAll('.pg-chip')]).toHaveLength(4);
+        expect(sel).not.toBeNull();
+    });
+});

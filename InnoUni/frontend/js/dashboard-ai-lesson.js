@@ -24,6 +24,7 @@
         const bar = el('div', 'pg-bar'); const fill = document.createElement('i'); fill.style.width = (data.total ? Math.round(100 * data.passed / data.total) : 0) + '%'; bar.appendChild(fill);
         bar.style.margin = '10px 0'; box.appendChild(bar);
         box.appendChild(el('p', 'pg-muted', data.passed + ' / ' + data.total + ' dars tugatilgan'));
+        box.current = data.lessons.find(function (l) { return l.status === 'open'; }) || null; // where "Davom ettirish" goes
         data.lessons.forEach(function (l, i) {
             const row = el('div', 'pg-lesson');
             row.appendChild(el('span', 'n', String(i + 1).padStart(2, '0')));
