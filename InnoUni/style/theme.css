@@ -50,22 +50,23 @@
 }
 
 :root[data-theme="dark"] {
+	/* Black & Lime */
 	color-scheme: dark;
-	--bg: #0d1020;
-	--surface: #151930;
-	--surface-2: #1c2140;
-	--ink: #e6e8f5;
-	--ink-2: #a0a8c8;
-	--ink-3: #737ba3;
-	--line: #262c4f;
-	--line-strong: #363e69;
-	--dot: #20264a;
+	--bg: #080a08;
+	--surface: #141914;
+	--surface-2: #101410;
+	--ink: #f5f7f2;
+	--ink-2: #a0a89c;
+	--ink-3: #858d81;
+	--line: rgba(182, 255, 56, .15);
+	--line-strong: rgba(182, 255, 56, .28);
+	--dot: rgba(182, 255, 56, .07);
 
-	--brand: #8b7dff;
-	--brand-2: #a094ff;
-	--brand-ink: #b4abff;
-	--brand-soft: rgba(139, 125, 255, .16);
-	--on-brand: #0d1020;
+	--brand: #b6ff38;
+	--brand-2: #91d52b;
+	--brand-ink: #b6ff38;
+	--brand-soft: rgba(182, 255, 56, .12);
+	--on-brand: #080a08;
 
 	--ok: #4fd6a2;
 	--ok-soft: rgba(79, 214, 162, .14);
@@ -76,12 +77,20 @@
 	--info: #72b8f2;
 	--info-soft: rgba(114, 184, 242, .15);
 
+	--glass: rgba(20, 25, 20, .62);
+	--glass-line: rgba(182, 255, 56, .16);
+	--glow: 0 0 0 1px rgba(182, 255, 56, .18), 0 12px 40px rgba(182, 255, 56, .08);
+
 	--shadow-sm: none;
-	--shadow-md: 0 8px 28px rgba(0, 0, 0, .35);
-	--shadow-lg: 0 24px 60px rgba(0, 0, 0, .5);
+	--shadow-md: 0 8px 28px rgba(0, 0, 0, .45);
+	--shadow-lg: 0 24px 60px rgba(0, 0, 0, .6);
 }
 
 :root {
+	--glass: rgba(255, 255, 255, .72);
+	--glass-line: rgba(19, 23, 34, .08);
+	--glow: 0 8px 24px rgba(19, 23, 34, .08);
+	--ease: cubic-bezier(.22, 1, .36, 1);
 	--r-sm: 8px;
 	--r-md: 12px;
 	--r-lg: 16px;
@@ -92,6 +101,15 @@
 
 html {
 	background: var(--bg);
+}
+
+/* Dark: a soft lime ambience at the top, nothing neon */
+:root[data-theme="dark"] body {
+	background:
+		radial-gradient(900px 480px at 78% -8%, rgba(182, 255, 56, .08), transparent 70%),
+		radial-gradient(700px 420px at 4% 8%, rgba(145, 213, 43, .05), transparent 70%),
+		var(--bg);
+	background-attachment: fixed;
 }
 
 html body {
@@ -118,6 +136,37 @@ h1, h2, h3, .ge-display {
 ::selection {
 	background: var(--brand-soft);
 	color: var(--ink);
+}
+
+/* Glass: header, sidebar and cards on dark. Light keeps flat surfaces. */
+:root[data-theme="dark"] .header,
+:root[data-theme="dark"] .sidebar {
+	background: var(--glass);
+	-webkit-backdrop-filter: blur(16px) saturate(1.2);
+	backdrop-filter: blur(16px) saturate(1.2);
+}
+
+:root[data-theme="dark"] .pg-card {
+	background: linear-gradient(180deg, rgba(255, 255, 255, .025), rgba(255, 255, 255, 0) 60%), var(--surface);
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
+}
+
+.ge-glass {
+	background: var(--glass);
+	border: 1px solid var(--glass-line);
+	border-radius: var(--r-lg);
+	-webkit-backdrop-filter: blur(14px);
+	backdrop-filter: blur(14px);
+}
+
+/* Primary buttons: lime on dark gets a restrained lift, never a neon glow */
+.pg-btn:not(.ghost):not(:disabled):hover {
+	transition: transform .2s var(--ease), box-shadow .2s var(--ease);
+}
+
+:root[data-theme="dark"] .pg-btn:not(.ghost):not(:disabled):hover {
+	transform: translateY(-1px);
+	box-shadow: var(--glow);
 }
 
 /* Theme switch (used on every page) */

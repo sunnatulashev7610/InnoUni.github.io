@@ -1,4 +1,4 @@
-/* Theme switch: light / dark. The saved choice wins; otherwise follow the system. */
+/* Theme switch: light / dark. The saved choice wins; the default is the Black & Lime dark theme. */
 (function () {
 	var root = document.documentElement;
 	function saved() { try { return localStorage.getItem('geTheme'); } catch (e) { return null; } }
@@ -10,7 +10,7 @@
 			b.setAttribute('aria-label', t === 'dark' ? 'Yorug\' rejimga o\'tish' : 'Tungi rejimga o\'tish');
 		});
 	}
-	set(root.dataset.theme || saved() || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+	set(root.dataset.theme || saved() || 'dark');
 	document.addEventListener('click', function (e) {
 		if (e.target.closest('[data-theme-toggle]')) set(root.dataset.theme === 'dark' ? 'light' : 'dark');
 	});
