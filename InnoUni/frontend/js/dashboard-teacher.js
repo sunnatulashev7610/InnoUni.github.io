@@ -260,6 +260,7 @@
                 up.disabled = i === 0; down.disabled = i === mine.length - 1;
                 [up, down, del].forEach(function (b) { ctl.appendChild(b); });
                 r.appendChild(t); r.appendChild(ctl); box.appendChild(r);
+                if (G.lessonQaToggle) { const qt = G.lessonQaToggle(it.id, session, function (panel) { qt.after(panel); }); r.after(qt); }
             });
             return box;
         }
