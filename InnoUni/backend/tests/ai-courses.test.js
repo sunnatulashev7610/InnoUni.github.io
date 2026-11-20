@@ -122,7 +122,7 @@ test('only the creator sees the course and its lessons', async () => {
     expect((await request(app).get('/api/ai-courses/abc').set(as(1))).status).toBe(400);
 });
 
-test('a real course is public at once and can go private; a demo course stays private and cannot be published; going public again needs confirmation', async () => {
+test('demo courses cannot be made public; real ones can, only with confirmation, and can go private again', async () => {
     await make();
     const demo = await request(app).patch('/api/ai-courses/1').set(as(1)).send({ public: true, confirmed: true });
     expect(demo.status).toBe(400);
@@ -134,11 +134,9 @@ test('a real course is public at once and can go private; a demo course stays pr
     await make();
     expect((await request(app).patch('/api/ai-courses/2').set(as(9)).send({ public: true, confirmed: true })).status).toBe(404);
     expect((await request(app).patch('/api/ai-courses/2').set(as(1)).send({ public: 'ha' })).status).toBe(400);
-    // a real course joined the catalogue when it was made (with its group); the creator hides it, then publishing again needs confirmation
-    expect(s.courses[1].status).toBe('active');
-    expect(s.groups).toBe(1);
-    expect((await request(app).patch('/api/ai-courses/2').set(as(1)).send({ public: false })).body).toEqual({ public: false });
+    // a made course is private until the creator publishes it
     expect(s.courses[1].status).toBe('inactive');
+    expect(s.groups).toBe(0);
     // making it public needs the creator's explicit confirmation
     const noConfirm = await request(app).patch('/api/ai-courses/2').set(as(1)).send({ public: true });
     expect(noConfirm.status).toBe(400);
@@ -147,6 +145,9 @@ test('a real course is public at once and can go private; a demo course stays pr
     expect(s.courses[1].status).toBe('inactive');
     expect((await request(app).patch('/api/ai-courses/2').set(as(1)).send({ public: true, confirmed: true })).body).toEqual({ public: true });
     expect(s.courses[1].status).toBe('active');
+    expect(s.groups).toBe(1);
+    expect((await request(app).patch('/api/ai-courses/2').set(as(1)).send({ public: false })).body).toEqual({ public: false });
+    expect(s.courses[1].status).toBe('inactive');
 });
 
 test('deleting: only yours, and not while other students are enrolled', async () => {
