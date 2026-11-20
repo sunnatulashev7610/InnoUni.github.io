@@ -77,6 +77,14 @@
 	--info: #72b8f2;
 	--info-soft: rgba(114, 184, 242, .15);
 
+	/* categorical colours (avatars, course covers): muted, white text stays readable */
+	--c1: #4f8f2a;
+	--c2: #c4506a;
+	--c3: #1f8a9e;
+	--c4: #b8770f;
+	--c5: #7a5bd6;
+	--c6: #b0467f;
+
 	--glass: rgba(20, 25, 20, .62);
 	--glass-line: rgba(182, 255, 56, .16);
 	--glow: 0 0 0 1px rgba(182, 255, 56, .18), 0 12px 40px rgba(182, 255, 56, .08);
