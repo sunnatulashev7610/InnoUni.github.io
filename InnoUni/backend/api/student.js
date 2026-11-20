@@ -157,8 +157,24 @@ router.get('/dashboard/:userId', authenticateToken, studentOnly, requireSelf(), 
 // AI-made courses are credited to the platform and the person who made them
 const creditName = (c) => (Number(c.is_ai) === 1 ? 'Gather Edu × ' + (c.teacher || 'muallif') : c.teacher);
 
+// Sorting is picked from this list only: nothing the user typed goes into the SQL text
+const COURSE_SORT = {
+    new: 'c.id DESC',
+    popular: 'students DESC, c.id DESC',
+    title: 'c.title ASC, c.id DESC'
+};
+
 router.get('/courses', authenticateToken, studentOnly, async (req, res) => {
     try {
+        const q = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 100) : '';
+        const sort = COURSE_SORT[req.query.sort] ? req.query.sort : 'new';
+        const params = [req.user.userId];
+        let search = '';
+        if (q) {
+            const like = '%' + q.replace(/[\\%_]/g, (m) => '\\' + m) + '%';
+            search = 'AND (c.title LIKE ? OR c.description LIKE ? OR c.category LIKE ? OR u.full_name LIKE ?)';
+            params.push(like, like, like, like);
+        }
         const [rows] = await req.db.execute(`
             SELECT c.id, c.title, c.description, c.category, c.avatar, c.is_ai, u.full_name AS teacher,
                 (SELECT COUNT(*) FROM course_enrollments e WHERE e.course_id = c.id AND e.status = 'active') AS students,
@@ -166,17 +182,18 @@ router.get('/courses', authenticateToken, studentOnly, async (req, res) => {
             FROM courses c
             LEFT JOIN users u ON c.teacher_id = u.id
             LEFT JOIN course_enrollments ce ON ce.course_id = c.id AND ce.user_id = ?
-            WHERE c.status = 'active'
-            ORDER BY c.id DESC
+            WHERE c.status = 'active' ${search}
+            ORDER BY ${COURSE_SORT[sort]}
             LIMIT 200
-        `, [req.user.userId]);
+        `, params);
         res.json({
             courses: rows.map((c) => ({
                 id: c.id, title: c.title, description: c.description, category: c.category, avatar: c.avatar,
                 teacher: creditName(c), ai: Number(c.is_ai) === 1, students: Number(c.students) || 0,
                 enrolled: c.my_status !== null && c.my_status !== undefined,
                 progress: c.my_progress === null || c.my_progress === undefined ? 0 : Number(c.my_progress)
-            }))
+            })),
+            q, sort
         });
     } catch (error) {
         console.error('Course catalogue error:', error);
@@ -203,13 +220,34 @@ router.get('/courses/:courseId/content', authenticateToken, studentOnly, async (
             [courseId]
         );
         const ai = Number(c.is_ai) === 1;
+        const [last] = await req.db.execute('SELECT item_id FROM course_resume WHERE user_id = ? AND course_id = ?', [req.user.userId, courseId]);
         res.json({
             course: { id: c.id, title: c.title, description: c.description, category: c.category, teacher: creditName(c), ai, progress: Number(c.my_progress) || 0 },
+            // where the student stopped last time (an item that was deleted since is gone with its row)
+            resume: last.length ? last[0].item_id : null,
             // An AI lesson is taught step by step (plan, chat, quiz) through /api/ai-lessons: its text is not handed out here
             items: ai ? items.map((it) => (it.kind === 'lesson' ? { ...it, body: null } : it)) : items
         });
     } catch (error) {
         console.error('Course content error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Remember the item the student opened last, so "Davom ettirish" can bring them back
+router.put('/courses/:courseId/resume', authenticateToken, studentOnly, async (req, res) => {
+    try {
+        const courseId = Number(req.params.courseId);
+        const itemId = Number(req.body.item_id);
+        if (!Number.isInteger(courseId) || courseId < 1 || !Number.isInteger(itemId) || itemId < 1) return res.status(400).json({ error: 'Invalid course or item id' });
+        const [ok] = await req.db.execute(
+            `SELECT 1 AS ok FROM course_content cc JOIN course_enrollments ce ON ce.course_id = cc.course_id AND ce.user_id = ? AND ce.status = 'active'
+             WHERE cc.id = ? AND cc.course_id = ?`, [req.user.userId, itemId, courseId]);
+        if (!ok.length) return res.status(404).json({ error: 'Item not found in a course you are enrolled in' });
+        await req.db.execute('INSERT INTO course_resume (user_id, course_id, item_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE item_id = VALUES(item_id)', [req.user.userId, courseId, itemId]);
+        res.json({ ok: true });
+    } catch (error) {
+        console.error('Course resume error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });

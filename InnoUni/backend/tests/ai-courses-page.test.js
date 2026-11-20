@@ -85,7 +85,7 @@ test('lessons show as text; publish sends public:true; demo courses cannot be pu
     const { c, calls, run } = boot();
     await run();
     btn(c, 'Darslarni ko\'rish').click(); await tick();
-    expect(c.querySelector('details summary').textContent).toBe('1. Kirish');
+    expect(c.querySelector('details summary').firstChild.textContent).toBe('1. Kirish');
     expect(c.querySelector('details div').textContent).toBe('<b>Matn</b>');
     // making it public asks for a confirmation first: nothing is sent until the box is ticked
     btn(c, 'Public qilish').click(); await tick();
@@ -123,7 +123,7 @@ test('student course page shows written lessons as text and hides empty video/gu
     const c = w.document.getElementById('c');
     await w.GEData.hydrate('course-detail', c, { id: 2, token: 't', role: 'student' }, () => {}, (e) => { throw e; });
     expect(c.textContent).toContain('Gather Edu × Sam');
-    expect(c.querySelector('details summary').textContent).toBe('1. Kirish');
+    expect(c.querySelector('details summary').firstChild.textContent).toBe('1. Kirish');
     expect(c.querySelector('details div').textContent).toBe('<u>Matn</u>');
     expect(c.textContent).not.toContain('Video darslar');
     expect(c.textContent).not.toContain('Qo\'llanmalar');
