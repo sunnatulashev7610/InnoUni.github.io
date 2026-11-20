@@ -125,7 +125,7 @@
             await loadHistory();
         });
     });
-    // ---- AI course creator: brief -> private course -> optionally public ----
+    // ---- AI course creator: brief -> private course -> optionally public (then it is in the main catalogue, marked AI) ----
     G.register('ai-courses', async function (root, session) {
         root.textContent = '';
         const pg = el('div', 'pg'); root.appendChild(pg);
@@ -133,7 +133,7 @@
         const status = await G.api.get('/ai/status', session);
 
         const head = el('div', 'pg-head'); const hd = el('div');
-        hd.appendChild(el('h1', '', 'AI kurs yaratuvchi')); hd.appendChild(el('p', '', 'Mavzu ayting: AI kurs tuzib beradi. Kurs sizda shaxsiy turadi, xohlasangiz public qilasiz'));
+        hd.appendChild(el('h1', '', 'AI kurs yaratuvchi')); hd.appendChild(el('p', '', 'Mavzu ayting: AI kurs tuzib beradi. Kurs sizda shaxsiy turadi. "Public qilsangiz", u asosiy kurslar ro\'yxatiga "AI kurs" belgisi bilan qo\'shiladi'));
         head.appendChild(hd); head.appendChild(el('span', 'pg-pill ' + (status.live ? '' : 'sky'), status.live ? 'AI faol' : 'Demo rejim'));
         pg.appendChild(head);
         pg.appendChild(notice(AI_WARN + ' Kursni public qilishdan oldin o\'zingiz to\'liq o\'qib chiqing.'));
@@ -291,7 +291,7 @@
                     topic: topic.value, level: level.value, lessons: Number(lessons.value),
                     style: style.value, goal: goal.value
                 });
-                msg.textContent = 'Kurs tayyor. U hozircha faqat sizda.';
+                msg.textContent = 'Kurs tayyor. U hozircha faqat sizda. Public qilsangiz, asosiy kurslarda "AI kurs" belgisi bilan chiqadi.';
                 topic.value = ''; style.value = ''; goal.value = '';
                 const fresh = await G.api.get('/ai-courses', session);
                 courses = fresh.courses; drawMeter(fresh); drawList();

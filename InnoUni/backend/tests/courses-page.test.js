@@ -268,3 +268,15 @@ describe('student tasks page', () => {
         expect(doc.body.textContent).toContain('Hozircha vazifa yo\'q');
     });
 });
+
+test('an AI course sits in the main list with the "AI kurs" mark at the very top of its card; normal courses have none', async () => {
+    setup([...base(), { id: 3, title: 'JavaScript asoslari', description: 'd', category: 'Dasturlash', teacher: 'Gather Edu × Sam', ai: true, students: 1, enrolled: false, progress: 0 }]);
+    await run();
+    expect(titles()).toHaveLength(3);
+    const cards = [...doc.querySelectorAll('#pgFilterTarget article')];
+    expect(cards[0].textContent).not.toContain('AI kurs');
+    const ai = cards[2];
+    const pills = [...ai.querySelectorAll('.pg-pill')].map((p) => p.textContent);
+    expect(pills).toEqual(['AI kurs', 'Dasturlash']);          // the mark comes before the category
+    expect(ai.querySelector('.pg-cover').nextElementSibling.textContent).toBe('AI kurs'); // right under the cover, top of the card text
+});

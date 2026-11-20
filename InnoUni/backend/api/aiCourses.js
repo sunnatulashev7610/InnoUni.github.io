@@ -1,4 +1,4 @@
-// AI course creator: the user briefs the AI, gets a course. It stays private (only the creator sees it) until the creator makes it public.
+// AI course creator: the user briefs the AI and gets a course. It stays private (only the creator sees it) until the creator makes it public.
 // A public AI course is a normal course in the catalogue, credited to "Gather Edu" and the creator.
 const express = require('express');
 const { authenticateToken } = require('../middleware/roleBased');
@@ -90,17 +90,18 @@ router.post('/', requireVerifiedEmail, async (req, res) => {
         reserved = true;
 
         const { course, provider } = await courseDraft(parsed.brief);
-        // Private by default ('inactive'): only the creator can open it until they publish it
+        // A made course is private ('inactive') until its creator makes it public; only then it joins the main catalogue (marked "AI kurs")
+        const status = 'inactive';
         const [ins] = await db.execute(
-            "INSERT INTO courses (title, description, category, teacher_id, creator_id, is_ai, ai_provider, status) VALUES (?, ?, ?, ?, ?, 1, ?, 'inactive')",
-            [course.title, course.description || null, course.category, userId, userId, provider]
+            'INSERT INTO courses (title, description, category, teacher_id, creator_id, is_ai, ai_provider, status) VALUES (?, ?, ?, ?, ?, 1, ?, ?)',
+            [course.title, course.description || null, course.category, userId, userId, provider, status]
         );
         for (let i = 0; i < course.lessons.length; i++) {
             const l = course.lessons[i];
             await db.execute("INSERT INTO course_content (course_id, kind, title, url, body, position) VALUES (?, 'lesson', ?, NULL, ?, ?)", [ins.insertId, l.title, l.body, i + 1]);
         }
         reserved = false;
-        res.status(201).json({ courseId: ins.insertId, provider, ...(await usage(db, userId)) });
+        res.status(201).json({ courseId: ins.insertId, provider, public: false, ...(await usage(db, userId)) });
     } catch (e) {
         console.error('AI course create error:', e.message);
         if (reserved) await req.db.execute('UPDATE ai_course_usage SET used = used - 1 WHERE user_id = ? AND day = CURDATE() AND used > 0', [userId]).catch(() => {});
