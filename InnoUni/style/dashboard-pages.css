@@ -187,7 +187,7 @@ select.pg-input option { background: var(--surface); color: var(--ink); }
 .pg-price .u { color: var(--ink-2); font-size: .88rem; }
 .pg-feat { list-style: none; padding: 0; margin: 0 0 24px; display: grid; gap: 10px; flex: 1; }
 .pg-feat li { display: flex; gap: 10px; align-items: flex-start; font-size: .93rem; }
-.pg-feat li i { color: var(--brand); margin-top: 4px; font-size: .78rem; }
+.pg-feat li i { color: var(--brand-ink); margin-top: 4px; font-size: .78rem; }
 .pg-feat li.off { color: var(--ink-3); }
 .pg-feat li.off i { color: var(--ink-3); }
 .pg-plan-btn { width: 100%; justify-content: center; padding: 12px; }

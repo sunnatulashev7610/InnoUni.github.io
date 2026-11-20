@@ -4,22 +4,25 @@
 
 :root,
 :root[data-theme="light"] {
+	/* Premium minimal light: clean paper, white surfaces, lime used sparingly */
 	color-scheme: light;
-	--bg: #f4f5f8;
+	--bg: #f7f9f5;
 	--surface: #ffffff;
-	--surface-2: #eceff5;
-	--ink: #131722;
-	--ink-2: #545d6e;
-	--ink-3: #7b8496;
-	--line: #e1e5ee;
-	--line-strong: #c9d0de;
-	--dot: #d6dbe6;
+	--surface-2: #eef2eb;
+	--ink: #172017;
+	--ink-2: #687366;
+	--ink-3: #6f796c;
+	--line: #e5eae1;
+	--line-strong: #d3dacd;
+	--dot: rgba(101, 163, 13, .09);
 
-	--brand: #2b59e8;
-	--brand-2: #2147c4;
-	--brand-ink: #2147c4;
-	--brand-soft: #e6ecff;
-	--on-brand: #ffffff;
+	--brand: #a3e635;
+	--brand-2: #93d226;
+	--brand-ink: #3f6212;
+	--brand-strong: #65a30d;
+	--brand-soft: rgba(163, 230, 53, .22);
+	--on-brand: #172017;
+	--focus: #4d7c0f;
 
 	--ok: #0b855a;
 	--ok-soft: #dff4ea;
@@ -37,16 +40,20 @@
 	--sky: var(--info);
 	--sky-soft: var(--info-soft);
 
-	--c1: #3d5be0;
+	--c1: #4d7c0f;
 	--c2: #d0485f;
 	--c3: #0e8a9e;
 	--c4: #a8650a;
 	--c5: #7648d6;
 	--c6: #b03f8a;
 
-	--shadow-sm: 0 1px 2px rgba(19, 23, 34, .05);
-	--shadow-md: 0 8px 24px rgba(19, 23, 34, .08);
-	--shadow-lg: 0 20px 50px rgba(19, 23, 34, .12);
+	--glass: rgba(255, 255, 255, .82);
+	--glass-line: #e5eae1;
+	--glow: 0 6px 20px rgba(101, 163, 13, .16);
+
+	--shadow-sm: 0 1px 2px rgba(23, 32, 23, .05);
+	--shadow-md: 0 8px 24px rgba(23, 32, 23, .07);
+	--shadow-lg: 0 20px 50px rgba(23, 32, 23, .12);
 }
 
 :root[data-theme="dark"] {
@@ -67,6 +74,8 @@
 	--brand-ink: #b6ff38;
 	--brand-soft: rgba(182, 255, 56, .12);
 	--on-brand: #080a08;
+	--brand-strong: #91d52b;
+	--focus: #b6ff38;
 
 	--ok: #4fd6a2;
 	--ok-soft: rgba(79, 214, 162, .14);
@@ -94,10 +103,8 @@
 	--shadow-lg: 0 24px 60px rgba(0, 0, 0, .6);
 }
 
+
 :root {
-	--glass: rgba(255, 255, 255, .72);
-	--glass-line: rgba(19, 23, 34, .08);
-	--glow: 0 8px 24px rgba(19, 23, 34, .08);
 	--ease: cubic-bezier(.22, 1, .36, 1);
 	--r-sm: 8px;
 	--r-md: 12px;
@@ -137,7 +144,7 @@ h1, h2, h3, .ge-display {
 }
 
 :focus-visible {
-	outline: 2px solid var(--brand);
+	outline: 2px solid var(--focus);
 	outline-offset: 2px;
 }
 
@@ -166,6 +173,12 @@ h1, h2, h3, .ge-display {
 	-webkit-backdrop-filter: blur(14px);
 	backdrop-filter: blur(14px);
 }
+
+/* Light: flat white header and sidebar, a hairline border, soft shadow. No glass. */
+:root[data-theme="light"] .header { box-shadow: 0 1px 0 var(--line); }
+:root[data-theme="light"] .pg-card,
+:root[data-theme="light"] .stat-card,
+:root[data-theme="light"] .content-area { box-shadow: var(--shadow-sm); }
 
 /* Primary buttons: lime on dark gets a restrained lift, never a neon glow */
 .pg-btn:not(.ghost):not(:disabled):hover {
@@ -198,14 +211,10 @@ h1, h2, h3, .ge-display {
 	color: var(--brand-ink);
 }
 
-.theme-toggle .ico-moon,
-:root[data-theme="dark"] .theme-toggle .ico-sun {
-	display: none;
-}
-
-:root[data-theme="dark"] .theme-toggle .ico-moon {
-	display: inline;
-}
+.theme-toggle i { display: none; }
+:root[data-theme-pref="light"] .theme-toggle .ico-sun,
+:root[data-theme-pref="dark"] .theme-toggle .ico-moon,
+:root[data-theme-pref="system"] .theme-toggle .ico-auto { display: inline; }
 
 @media (prefers-reduced-motion: reduce) {
 	*, *::before, *::after {

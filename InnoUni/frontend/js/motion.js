@@ -73,17 +73,17 @@
 		[track, lit].forEach(function (p) { p.setAttribute('pathLength', '1'); svg.appendChild(p); });
 		lit.style.strokeDasharray = '1'; lit.style.strokeDashoffset = '1';
 		document.body.style.position = 'relative'; document.body.appendChild(svg);
-		var H = 1;
+		var H = 1; var top1 = 0;
 		function layout() {
 			var W = document.documentElement.clientWidth; H = document.documentElement.scrollHeight;
 			svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.style.height = H + 'px';
-			var d = 'M ' + (W * .5) + ' 0';
+			// the stream starts below the hero so it never crosses the headline
+			var top0 = secs[1].getBoundingClientRect().top + scrollY; top1 = top0;
+			var d = 'M ' + (W * .5) + ' ' + top0;
 			var x = W * .06; var side = 0;
-			var top0 = secs[0].getBoundingClientRect().top + scrollY;
-			d += ' L ' + (W * .5) + ' ' + top0;
 			var px = W * .5, py = top0;
 			Array.prototype.forEach.call(secs, function (s, i) {
-				if (i === 0) return;
+				if (i < 2) return;
 				var y = s.getBoundingClientRect().top + scrollY;
 				x = side ? W * .94 : W * .06; side = 1 - side;
 				d += ' C ' + px + ' ' + (py + (y - py) * .55) + ', ' + x + ' ' + (py + (y - py) * .45) + ', ' + x + ' ' + (py + (y - py) * .5);
@@ -95,7 +95,7 @@
 			paint();
 		}
 		function paint() {
-			var p = Math.min(1, Math.max(0, (scrollY + innerHeight * .6) / H));
+			var p = Math.min(1, Math.max(0, (scrollY + innerHeight * .6 - top1) / Math.max(1, H - top1)));
 			lit.style.strokeDashoffset = String(1 - p);
 		}
 		var raf = 0;

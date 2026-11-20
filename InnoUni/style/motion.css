@@ -20,7 +20,7 @@
 .m-intro svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
 .m-intro circle { fill: none; stroke-width: 3; stroke-linecap: round; }
 .m-intro .track { stroke: var(--line); }
-.m-intro .ring { stroke: var(--brand); stroke-dasharray: 1; stroke-dashoffset: 1; }
+.m-intro .ring { stroke: var(--brand-strong); stroke-dasharray: 1; stroke-dashoffset: 1; }
 .m-intro img { position: absolute; inset: 22px; width: 76px; height: 76px; border-radius: 20px; opacity: 0; transform: scale(.6); }
 .m-hide-mark { visibility: hidden; }
 
@@ -28,8 +28,8 @@
 .m-stream { position: absolute; left: 0; top: 0; width: 100%; pointer-events: none; z-index: 0; overflow: visible; }
 .m-stream path { fill: none; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .m-stream .m-track { stroke: var(--line); stroke-width: 1; }
-.m-stream .m-lit { stroke: var(--brand); stroke-width: 2; filter: drop-shadow(0 0 6px rgba(182, 255, 56, .35)); }
-:root[data-theme="light"] .m-stream { display: none; }
+.m-stream .m-lit { stroke: var(--brand-strong); stroke-width: 2; }
+:root[data-theme="dark"] .m-stream .m-lit { stroke: var(--brand); filter: drop-shadow(0 0 6px rgba(182, 255, 56, .35)); }
 @media (max-width: 900px) { .m-stream { display: none; } }
 .m-on main, .m-on .ge-footer { position: relative; z-index: 1; }
 
