@@ -320,6 +320,22 @@
         hero.appendChild(resumeBtn); hero.appendChild(askAi);
         pg.appendChild(hero);
         const openers = {};
+        // notes, bookmarks and materials (null when they cannot be loaded: the page still works)
+        const T = window.GEData.courseTools ? await window.GEData.courseTools.load(id, session) : null;
+        function toolsFor(it, anchor) {
+            if (!T) return null;
+            const tg = el('button', 'pg-btn ghost'); tg.type = 'button'; tg.style.cssText = 'padding:6px 12px;margin-top:6px';
+            let panel = null;
+            const label = function () { tg.textContent = 'Eslatma va materiallar' + window.GEData.courseTools.badge(T, it.id); };
+            label();
+            tg.setAttribute('aria-expanded', 'false');
+            tg.addEventListener('click', function () {
+                if (panel) { panel.remove(); panel = null; tg.setAttribute('aria-expanded', 'false'); return; }
+                panel = window.GEData.courseTools.panel(T, it.id, session, label);
+                anchor(panel); tg.setAttribute('aria-expanded', 'true');
+            });
+            return tg;
+        }
         function markResume(itemId) {
             if (resumeId === itemId) return;
             resumeId = itemId; paintResume();
@@ -366,6 +382,8 @@
                 b.addEventListener('click', function () { play(it); });
                 openers[it.id] = function () { play(it); };
                 r.appendChild(b); box.appendChild(r);
+                const tg = toolsFor(it, function (panel) { tg.after(panel); });
+                if (tg) { tg.style.marginBottom = '6px'; r.after(tg); }
             });
             return box;
         }
@@ -389,6 +407,8 @@
                     d.addEventListener('toggle', function () { if (d.open) markResume(it.id); });
                     openers[it.id] = function () { d.open = true; d.scrollIntoView && d.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
                     const t = el('div', 'pg-muted', it.body || ''); t.style.cssText = 'white-space:pre-wrap;margin-top:6px'; d.appendChild(t);
+                    const tg = toolsFor(it, function (panel) { d.appendChild(panel); });
+                    if (tg) d.appendChild(tg);
                     if (c.ai) d.appendChild(reportBox(c.id, it.id, session));
                     box.appendChild(d);
                 });
@@ -399,6 +419,7 @@
         // a written (AI) course has no videos or guides: do not show empty boxes for them
         if (!written.length || hasKind('video')) pg.appendChild(list('video', 'Video darslar', 'fas fa-circle-play', 'Ko\'rish'));
         if (!written.length || hasKind('guide')) pg.appendChild(list('guide', 'Qo\'llanmalar', 'fas fa-file-lines', 'Ochish'));
+        if (T) pg.appendChild(window.GEData.courseTools.mine(T, items, openers));
         if (!c.ai) paintResume();
     };
 

@@ -224,6 +224,8 @@
 
         const lists = el('div'); lists.style.marginTop = '18px'; left.appendChild(lists);
         const listMsg = message();
+        const mats = G.courseTools ? G.courseTools.manager(id, session, function () { return items; }) : null;
+        if (mats) left.appendChild(mats);
 
         async function call(method, path, body) {
             listMsg.textContent = '';
@@ -266,6 +268,7 @@
             lists.appendChild(section('video', 'Video darslar'));
             lists.appendChild(section('guide', 'Qo\'llanmalar'));
             lists.appendChild(listMsg);
+            if (mats) mats.refresh();
             drawSide();
         }
 
