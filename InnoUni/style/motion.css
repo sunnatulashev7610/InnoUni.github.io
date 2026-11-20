@@ -1,0 +1,43 @@
+/* Gather Edu motion: blur-to-focus reveal, logo intro, light stream, glass tilt.
+   Everything here is opt-in through html.m-on (set by motion.js) and is switched off for reduced motion. */
+
+/* ---- Blur-to-focus ---- */
+.m-on [data-reveal] {
+	opacity: 0; filter: blur(12px); transform: scale(.96);
+	transition: opacity .8s var(--ease), filter .8s var(--ease), transform .8s var(--ease);
+	transition-delay: calc(var(--i, 0) * 90ms);
+	will-change: opacity, filter, transform;
+}
+.m-on [data-reveal].in { opacity: 1; filter: blur(0); transform: none; will-change: auto; }
+
+/* ---- Logo intro ---- */
+.m-intro {
+	position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; background: var(--bg);
+	transition: opacity .5s var(--ease);
+}
+.m-intro.out { opacity: 0; pointer-events: none; }
+.m-intro-box { position: relative; width: 120px; height: 120px; }
+.m-intro svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.m-intro circle { fill: none; stroke-width: 3; stroke-linecap: round; }
+.m-intro .track { stroke: var(--line); }
+.m-intro .ring { stroke: var(--brand); stroke-dasharray: 1; stroke-dashoffset: 1; }
+.m-intro img { position: absolute; inset: 22px; width: 76px; height: 76px; border-radius: 20px; opacity: 0; transform: scale(.6); }
+.m-hide-mark { visibility: hidden; }
+
+/* ---- Light stream (dark only, wide screens) ---- */
+.m-stream { position: absolute; left: 0; top: 0; width: 100%; pointer-events: none; z-index: 0; overflow: visible; }
+.m-stream path { fill: none; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.m-stream .m-track { stroke: var(--line); stroke-width: 1; }
+.m-stream .m-lit { stroke: var(--brand); stroke-width: 2; filter: drop-shadow(0 0 6px rgba(182, 255, 56, .35)); }
+:root[data-theme="light"] .m-stream { display: none; }
+@media (max-width: 900px) { .m-stream { display: none; } }
+.m-on main, .m-on .ge-footer { position: relative; z-index: 1; }
+
+/* ---- Glass tilt (hero preview) ---- */
+.m-tilt { transition: transform .25s var(--ease); transform-style: preserve-3d; will-change: transform; }
+
+@media (prefers-reduced-motion: reduce) {
+	.m-on [data-reveal] { opacity: 1; filter: none; transform: none; transition: none; }
+	.m-intro { display: none; }
+	.m-stream { display: none; }
+}
