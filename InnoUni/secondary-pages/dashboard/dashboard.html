@@ -293,6 +293,7 @@
 	<script src="../../frontend/js/dashboard-course-tools.js"></script>
 	<script src="../../frontend/js/dashboard-lesson-qa.js"></script>
 	<script src="../../frontend/js/dashboard-notifications.js"></script>
+	<script src="../../frontend/js/dashboard-search.js"></script>
 	<script src="../../frontend/js/dashboard-teacher.js"></script>
 	<script src="../../frontend/js/dashboard-orders.js"></script>
 	<script src="../../frontend/js/dashboard-stats.js"></script>
@@ -446,6 +447,7 @@
 			// Real mode: no sample numbers. The bell badge stays hidden until the server reports unread notifications; the live-lesson links are hidden.
 			document.querySelectorAll('.notification-badge').forEach(function (b) { b.hidden = true; b.style.display = 'none'; });
 			if (window.GEData && window.GEData.notifications) window.GEData.notifications.start(session);
+			if (window.GEData && window.GEData.search) window.GEData.search.start(session);
 			document.querySelectorAll('.nav-item[onclick*="\'live\'"], .nav-item[onclick*="\'t-schedule\'"]').forEach(function (b) { b.hidden = true; });
 			if (session.name) document.getElementById('userName').textContent = session.name;
 			// Ask the server whether the address is confirmed; if not (and mail works), offer to resend the link
@@ -502,14 +504,7 @@
 			applySession();
 			setRole(initialRole());
 			
-			// Add search functionality
-			const searchInput = document.querySelector('.search-bar input');
-			if (searchInput) {
-				searchInput.addEventListener('input', function(e) {
-					console.log('Searching for:', e.target.value);
-					// Implement search functionality here
-				});
-			}
+			// The header search is started in applySession (dashboard-search.js)
 
 
 			// Add user profile functionality

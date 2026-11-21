@@ -205,3 +205,13 @@ body {
 :root[data-theme="light"] .pg-chip.on { border-color: var(--brand-strong); }
 :root[data-theme="light"] .spinner { border-top-color: var(--brand-strong); }
 :root[data-theme="light"] .pg-bar i { background: var(--brand-strong); }
+
+/* Header search results */
+.search-results { position: absolute; top: calc(100% + 6px); right: 0; width: min(360px, 90vw); max-height: 340px; overflow: auto; z-index: 60;
+	background: var(--surface, var(--bg)); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: 0 12px 32px rgba(0,0,0,.28); padding: 6px; }
+.search-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--ink); font: inherit; font-size: .92rem; text-align: left; cursor: pointer; }
+.search-item:hover, .search-item.on { background: var(--brand-soft); }
+.search-kind { flex: none; font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--brand-soft); color: var(--brand-ink); }
+.search-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.search-empty { padding: 10px; color: var(--ink-3); font-size: .9rem; }
+.search-bar { z-index: 50; }
