@@ -50,7 +50,7 @@
 							<div class="user-role" id="userRole">O'quvchi</div>
 						</div>
 						<img src="https://picsum.photos/seed/user/35/35" alt="User" class="user-avatar">
-						<button type="button" class="pg-btn ghost" id="logoutBtn" hidden style="padding:8px 14px" aria-label="Chiqish"><i class="fas fa-right-from-bracket" aria-hidden="true"></i><span class="lbl"> Chiqish</span></button>
+						<button type="button" class="pg-btn ghost" id="logoutBtn" data-logout hidden style="padding:8px 14px" aria-label="Chiqish"><i class="fas fa-right-from-bracket" aria-hidden="true"></i><span class="lbl"> Chiqish</span></button>
 					</div>
 				</div>
 			</div>
@@ -464,8 +464,10 @@
 					var main = document.querySelector('.main'); main.insertBefore(bar, main.firstChild);
 				}).catch(function () { /* the bar is only a hint */ });
 			}
-			var lo = document.getElementById('logoutBtn'); lo.hidden = false;
-			lo.addEventListener('click', function () {
+			// every [data-logout] button signs out: the header one, and the one in Settings (the only one on phones)
+			document.getElementById('logoutBtn').hidden = false;
+			document.addEventListener('click', function (e) {
+				if (!e.target.closest('[data-logout]')) return;
 				['token', 'user', 'userRole'].forEach(function (k) { try { localStorage.removeItem(k); } catch (x) { /* ignore */ } });
 				location.href = '../login/login.html';
 			});

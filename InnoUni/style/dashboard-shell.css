@@ -123,13 +123,17 @@ body {
 	.logo { font-size: 1.15rem; gap: 8px; }
 	.header-actions, .user-menu { gap: 8px; }
 	.user-profile { padding: 3px; gap: 4px; }
-	.user-profile .pg-btn { padding: 0 !important; width: 34px; height: 34px; display: inline-grid; place-items: center; }
-	#logoutBtn .lbl { display: none; }
+	/* Sign-out lives in Settings on phones; only the logo mark stays next to the menu */
+	.header #logoutBtn { display: none; }
+	.logo { font-size: 0; gap: 0; }
 	.notification-btn, .theme-toggle { width: 38px; height: 38px; }
 }
-/* Very small phones: only the logo mark */
-@media (max-width: 440px) { .logo { font-size: 0; } .menu-btn { margin-right: 6px; } }
+@media (max-width: 440px) { .menu-btn { margin-right: 6px; } }
 @media (max-width: 340px) { .header { padding: 0 8px; } .header-actions, .user-menu { gap: 6px; } .notification-btn, .theme-toggle { width: 34px; height: 34px; } }
+
+/* Shown only on phones (e.g. sign-out inside Settings) */
+.m-only { display: none; }
+@media (max-width: 576px) { .m-only { display: block; } }
 
 /* A menu item can be switched off with the hidden attribute (see FEATURES in dashboard.html) */
 .nav-item[hidden] { display: none; }
