@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 
 const { JWT_SECRET } = require('../config');
+const { verificationRequired } = require('../utils/verified');
 
 // Role-based access control middleware
 // A token is valid for 24 hours, but the account may be blocked, deleted or get another role meanwhile.
@@ -13,11 +14,16 @@ const invalidateUserCache = (userId) => { if (userId === undefined) statusCache.
 async function currentAccount(db, userId) {
     const hit = statusCache.get(userId);
     if (hit && Date.now() - hit.at < STATUS_TTL_MS) return hit.row;
-    const [rows] = await db.execute('SELECT role, blocked, token_version FROM users WHERE id = ?', [userId]);
+    const [rows] = await db.execute('SELECT role, blocked, token_version, email_verified FROM users WHERE id = ?', [userId]);
     const row = rows[0] || null;
     statusCache.set(userId, { at: Date.now(), row });
     return row;
 }
+
+// Without a confirmed e-mail a person may read, but not change anything. Account routes (to confirm the mail, change
+// the password, delete the account) and notifications stay open. Admins are never held back.
+const READ_ONLY = new Set(['GET', 'HEAD', 'OPTIONS']);
+const OPEN_FOR_UNVERIFIED = /^\/api\/(auth|notifications)(\/|$)/;
 
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -47,6 +53,10 @@ const authenticateToken = (req, res, next) => {
                 return res.status(401).json({ error: 'Session expired. Sign in again', code: 'SESSION_EXPIRED' });
             }
             user.role = account.role; // the database is the truth, not the role written in the token
+            if (!READ_ONLY.has(req.method) && user.role !== 'admin' && Number(account.email_verified) !== 1
+                && !OPEN_FOR_UNVERIFIED.test(req.baseUrl || '') && verificationRequired()) {
+                return res.status(403).json({ error: 'Confirm your email address first', code: 'EMAIL_NOT_VERIFIED' });
+            }
         }
         req.user = user;
         next();

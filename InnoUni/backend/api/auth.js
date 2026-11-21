@@ -416,6 +416,7 @@ router.post('/verify-email', async (req, res) => {
         const userId = await consumeToken(req.db, req.body && req.body.token, 'verify');
         if (!userId) return res.status(400).json({ error: 'This link is invalid or has expired' });
         await req.db.execute('UPDATE users SET email_verified = 1 WHERE id = ?', [userId]);
+        invalidateUserCache(userId);
         res.json({ message: 'Email confirmed' });
     } catch (error) {
         console.error('Verify email error:', error);
