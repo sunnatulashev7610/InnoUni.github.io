@@ -44,6 +44,22 @@ describe('DELETE /api/auth/account', () => {
         expect(res.status).toBe(200);
         expect(calls.find((c) => /^DELETE FROM users/.test(c.sql)).params).toEqual([7]);
     });
+    test('clears the rows whose foreign keys have no ON DELETE before the user row', async () => {
+        await del({ password: 'Parol123!' });
+        const order = calls.map((c) => c.sql).filter((q) => /^(DELETE|UPDATE)/.test(q));
+        expect(order[order.length - 1]).toMatch(/^DELETE FROM users/);
+        ['group_members', 'course_enrollments', 'user_achievements', 'groups', 'tasks'].forEach((t) => expect(order.some((q) => q.includes(t))).toBe(true));
+    });
+    test('with a pool it runs in a transaction and rolls back on failure', async () => {
+        const log = [];
+        const conn = { execute: async (sql) => { log.push(sql.split(' ')[0] + ' ' + sql.split(' ')[1]); if (/^DELETE FROM users/.test(sql)) throw new Error('fk'); return [{}]; },
+            beginTransaction: async () => log.push('BEGIN'), commit: async () => log.push('COMMIT'), rollback: async () => log.push('ROLLBACK'), release: () => log.push('RELEASE') };
+        const base = { execute: async (sql) => (/^SELECT id, role, password/.test(sql) ? [[user]] : /FROM courses/.test(sql) ? [[{ n: 0 }]] : [[{ n: 2 }]]), query: async () => [[]], getConnection: async () => conn };
+        app.setDb(withAccounts(base));
+        const res = await del({ password: 'Parol123!' });
+        expect(res.status).toBe(500);
+        expect(log).toContain('ROLLBACK'); expect(log).not.toContain('COMMIT'); expect(log[log.length - 1]).toBe('RELEASE');
+    });
     test('a teacher with courses must remove them first', async () => {
         owned = 2;
         const res = await del({ password: 'Parol123!' });
