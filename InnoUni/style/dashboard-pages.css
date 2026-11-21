@@ -74,7 +74,7 @@ select.pg-input option { background: var(--surface); color: var(--ink); }
 .pg-swatches { display: flex; gap: 10px; }
 .pg-swatches i { width: 28px; height: 28px; border-radius: 8px; border: 3px solid transparent; cursor: pointer; }
 .pg-swatches i.on { border-color: var(--ink); }
-@media (max-width: 800px) { .pg-set { grid-template-columns: 1fr; } .pg-set nav { flex-direction: row; overflow-x: auto; } }
+@media (max-width: 800px) { .pg-set { grid-template-columns: 1fr; } .pg-set nav { flex-direction: row; overflow-x: auto; align-items: flex-start; } .pg-set nav > * { flex: none; white-space: nowrap; } }
 
 /* Live room: the stage stays dark in both themes, like a video frame */
 .pg-live { display: grid; grid-template-columns: 1fr 320px; gap: 16px; }
@@ -247,6 +247,14 @@ body[data-role="student"] .only-teacher, body[data-role="teacher"] .only-student
 }
 .pg-detail > *, .pg-grid > *, .pg-hero > * { min-width: 0; }
 @media (max-width: 768px) { .pg-chart { overflow-x: auto; } }
+@media (max-width: 576px) {
+	.pg-hero { padding: 16px; gap: 16px; }
+	.pg-hero h1, .pg-head h1, .pg-card > h1 { font-size: clamp(1.25rem, 5.6vw, 1.5rem); line-height: 1.2; overflow-wrap: anywhere; }
+	.pg-lesson { flex-wrap: wrap; gap: 6px 10px; }
+	.pg-lesson > div { flex: 1 1 calc(100% - 64px) !important; min-width: 0; overflow-wrap: anywhere; }
+	.pg-lesson > .pg-btn { margin-left: 42px; }
+}
+@media (max-width: 576px) { .pg-card { padding: 16px; border-radius: 12px; } .pg-row { flex-wrap: wrap; gap: 10px; } .pg-row > div { min-width: 0; } }
 .pg-detail > div[style*="display:grid"] { grid-template-columns: minmax(0, 1fr); }
 .pg-card { min-width: 0; }
 
