@@ -15,7 +15,7 @@ function withAccounts(db) {
     return {
         ...db,
         async execute(sql, params = []) {
-            if (/^\s*SELECT role, blocked FROM users WHERE id = \?/.test(sql)) {
+            if (/^\s*SELECT role, blocked(, token_version)? FROM users WHERE id = \?/.test(sql)) {
                 const id = Number(params[0]);
                 return [roles.has(id) ? [{ role: roles.get(id), blocked: blocked.has(id) ? 1 : 0 }] : []];
             }

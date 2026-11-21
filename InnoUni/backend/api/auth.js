@@ -1,5 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const loginGuard = require('../utils/loginGuard');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
 
@@ -7,7 +8,7 @@ const { JWT_SECRET } = require('../config');
 const { validatePassword, isValidEmail } = require('../utils/validation');
 
 // Single shared JWT verification middleware
-const { authenticateToken } = require('../middleware/roleBased');
+const { authenticateToken, invalidateUserCache } = require('../middleware/roleBased');
 const mailer = require('../utils/mailer');
 const { createToken, consumeToken, sentRecently } = require('../utils/authTokens');
 
@@ -116,6 +117,15 @@ router.post('/login', async (req, res) => {
             return res.status(400).json({ error: 'Email and password are required' });
         }
 
+        if (typeof email !== 'string' || typeof password !== 'string') {
+            return res.status(400).json({ error: 'Email and password are required' });
+        }
+        const lockMs = loginGuard.lockedFor(email);
+        if (lockMs) {
+            res.set('Retry-After', String(Math.ceil(lockMs / 1000)));
+            return res.status(429).json({ error: 'Too many failed attempts. Try again later' });
+        }
+
         // Find user
         const [users] = await db.execute(
             'SELECT * FROM users WHERE LOWER(email) = ?',
@@ -123,6 +133,7 @@ router.post('/login', async (req, res) => {
         );
 
         if (users.length === 0) {
+            loginGuard.recordFailure(email);
             return res.status(401).json({ error: 'Invalid email or password' });
         }
 
@@ -130,8 +141,10 @@ router.post('/login', async (req, res) => {
         const isValidPassword = await bcrypt.compare(password, user.password);
 
         if (!isValidPassword) {
+            loginGuard.recordFailure(email);
             return res.status(401).json({ error: 'Invalid email or password' });
         }
+        loginGuard.recordSuccess(email);
 
         if (user.blocked) {
             return res.status(403).json({ error: 'This account is blocked' });
@@ -150,7 +163,8 @@ router.post('/login', async (req, res) => {
             { 
                 userId: user.id, 
                 email: user.email, 
-                role: user.role 
+                role: user.role,
+                tv: Number(user.token_version || 0)
             },
             JWT_SECRET,
             { expiresIn: '24h' }
@@ -305,12 +319,20 @@ router.put('/password', authenticateToken, async (req, res) => {
         const hashedNewPassword = await bcrypt.hash(new_password, 10);
 
         // Update password
+        // Raising token_version signs out every other device; this one gets a fresh token
         await db.execute(
-            'UPDATE users SET password = ? WHERE id = ?',
+            'UPDATE users SET password = ?, token_version = token_version + 1 WHERE id = ?',
             [hashedNewPassword, userId]
         );
+        invalidateUserCache(userId);
+        const [fresh] = await db.execute('SELECT email, role, token_version FROM users WHERE id = ?', [userId]);
+        const token = jwt.sign(
+            { userId, email: fresh[0].email, role: fresh[0].role, tv: Number(fresh[0].token_version || 0) },
+            JWT_SECRET,
+            { expiresIn: '24h' }
+        );
 
-        res.json({ message: 'Password changed successfully' });
+        res.json({ message: 'Password changed successfully', token });
     } catch (error) {
         console.error('Password change error:', error);
         res.status(500).json({ error: 'Internal server error' });
@@ -387,7 +409,8 @@ router.post('/reset-password', async (req, res) => {
         if (passwordError) return res.status(400).json({ error: passwordError });
         const userId = await consumeToken(db, token, 'reset');
         if (!userId) return res.status(400).json({ error: 'This link is invalid or has expired' });
-        await db.execute('UPDATE users SET password = ?, email_verified = 1 WHERE id = ?', [await bcrypt.hash(password, 10), userId]); // opening the mailed link also proves the address is theirs
+        await db.execute('UPDATE users SET password = ?, email_verified = 1, token_version = token_version + 1 WHERE id = ?', [await bcrypt.hash(password, 10), userId]);
+        invalidateUserCache(userId); // opening the mailed link also proves the address is theirs
         await db.execute("UPDATE auth_tokens SET used_at = NOW() WHERE user_id = ? AND kind = 'reset' AND used_at IS NULL", [userId]);
         res.json({ message: 'Password changed. You can sign in now' });
     } catch (error) {
