@@ -709,9 +709,9 @@
             root.appendChild(cols);
             return root;
         },
-        // Menu badges and the header bell show real counts, or nothing
+        // Menu badges show real counts, or nothing (the bell has its own module: dashboard-notifications.js)
         badges: async function (session) {
-            document.querySelectorAll('.nav-badge, .notification-badge').forEach(function (b) { b.hidden = true; });
+            document.querySelectorAll('.nav-badge').forEach(function (b) { b.hidden = true; });
             const c = await get('/summary/counts', session);
             const set = function (page, n) {
                 const item = document.querySelector('.nav-item[onclick*="\'' + page + '\'"] .nav-badge');

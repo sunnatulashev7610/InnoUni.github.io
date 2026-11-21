@@ -292,6 +292,7 @@
 	<script src="../../frontend/js/dashboard-data.js"></script>
 	<script src="../../frontend/js/dashboard-course-tools.js"></script>
 	<script src="../../frontend/js/dashboard-lesson-qa.js"></script>
+	<script src="../../frontend/js/dashboard-notifications.js"></script>
 	<script src="../../frontend/js/dashboard-teacher.js"></script>
 	<script src="../../frontend/js/dashboard-orders.js"></script>
 	<script src="../../frontend/js/dashboard-stats.js"></script>
@@ -442,8 +443,9 @@
 				return;
 			}
 			var sw = document.querySelector('.role-switch'); if (sw) sw.style.display = 'none';
-			// Real mode: no sample numbers. Hide the bell badge (no notification system) and the live-lesson links.
+			// Real mode: no sample numbers. The bell badge stays hidden until the server reports unread notifications; the live-lesson links are hidden.
 			document.querySelectorAll('.notification-badge').forEach(function (b) { b.hidden = true; b.style.display = 'none'; });
+			if (window.GEData && window.GEData.notifications) window.GEData.notifications.start(session);
 			document.querySelectorAll('.nav-item[onclick*="\'live\'"], .nav-item[onclick*="\'t-schedule\'"]').forEach(function (b) { b.hidden = true; });
 			if (session.name) document.getElementById('userName').textContent = session.name;
 			// Ask the server whether the address is confirmed; if not (and mail works), offer to resend the link
@@ -504,14 +506,6 @@
 				});
 			}
 
-			// Add notification functionality
-			const notificationBtn = document.querySelector('.notification-btn');
-			if (notificationBtn) {
-				notificationBtn.addEventListener('click', function() {
-					console.log('Notifications clicked');
-					// Implement notification panel here
-				});
-			}
 
 			// Add user profile functionality
 			const userProfile = document.querySelector('.user-profile');

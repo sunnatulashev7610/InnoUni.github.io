@@ -21,13 +21,16 @@ const fakeDb = {
         if (q.startsWith('UPDATE item_questions SET answer = ?')) { s.qs.find((y) => y.id === p[2]).answer = p[0]; return [{}]; }
         if (q.startsWith('UPDATE item_questions SET answer = NULL')) { s.qs.find((y) => y.id === p[0]).answer = null; return [{}]; }
         if (q.startsWith('DELETE FROM item_questions')) { s.qs = s.qs.filter((y) => y.id !== p[0]); return [{}]; }
+        if (q.startsWith('SELECT teacher_id, creator_id FROM courses')) { const c = s.courses.find((x) => x.id === p[0]); return [c ? [c] : []]; }
+        if (q.startsWith('INSERT INTO notifications')) { s.notes.push({ to: p[0], kind: p[1], page: p[4], ref: p[5] }); return [{}]; }
+        if (q.startsWith('DELETE FROM notifications')) return [{}];
         throw new Error('Unexpected query: ' + q);
     },
     query: async () => [[]]
 };
 beforeAll(() => app.setDb(fakeDb));
 beforeEach(() => {
-    s = { courses: [{ id: 1, teacher_id: 8, creator_id: null }], items: [{ id: 10, course_id: 1 }, { id: 11, course_id: 1 }], enrolled: ['1:1', '1:2'], qs: [] };
+    s = { courses: [{ id: 1, teacher_id: 8, creator_id: null }], items: [{ id: 10, course_id: 1 }, { id: 11, course_id: 1 }], enrolled: ['1:1', '1:2'], qs: [], notes: [] };
 });
 const ask = (item, body, who = as(1)) => request(app).post(`/api/lesson-qa/items/${item}`).set(who).send({ body });
 const list = (item, who = as(1)) => request(app).get(`/api/lesson-qa/items/${item}`).set(who);
@@ -88,4 +91,13 @@ test('delete: the author or the teacher, nobody else', async () => {
     expect((await del(1, as(1))).status).toBe(200);
     expect((await del(2, teacher)).status).toBe(200);
     expect(s.qs).toHaveLength(0);
+});
+
+test('a new question notifies the teacher; an answer notifies the asker (not the answerer)', async () => {
+    await ask(10, 'savol');
+    expect(s.notes).toEqual([{ to: 8, kind: 'question', page: 't-course-edit', ref: 1 }]);
+    await request(app).put('/api/lesson-qa/questions/1/answer').set(teacher).send({ answer: 'Javob' });
+    expect(s.notes[1]).toEqual({ to: 1, kind: 'answer', page: 'course-detail', ref: 1 });
+    await request(app).put('/api/lesson-qa/questions/1/answer').set(teacher).send({ answer: '' });
+    expect(s.notes).toHaveLength(2); // clearing an answer sends nothing
 });

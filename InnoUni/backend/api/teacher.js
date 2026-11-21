@@ -1,6 +1,7 @@
 const express = require('express');
 const { ensureCourseGroup } = require('../utils/courseGroups');
 const { requireFeature } = require('../utils/features');
+const { notify } = require('../utils/notify');
 const router = express.Router();
 const { teacherOnly, authenticateToken, requireSelf } = require('../middleware/roleBased');
 const { parseId, validateGrade, validateText, validateUrl } = require('../utils/validation');
@@ -588,6 +589,8 @@ router.post('/tasks/:taskId/grade', authenticateToken, teacherOnly, async (req, 
             SET grade = ?, feedback = ?, status = 'graded', graded_at = NOW(), graded_by = ?
             WHERE id = ?
         `, [gradeResult.value, feedbackResult.value, teacherId, submissions[0].id]);
+
+        await notify(db, studentId, { kind: 'grade', title: 'Vazifangiz baholandi', body: `Baho: ${gradeResult.value}`, page: 'vazifalar' });
 
         res.json({
             message: 'Submission graded successfully',
