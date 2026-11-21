@@ -380,7 +380,25 @@ router.delete('/account', authenticateToken, async (req, res) => {
         if (Number(owned[0].n) > 0) {
             return res.status(409).json({ error: 'Delete your courses first', code: 'OWNS_COURSES' });
         }
-        await db.execute('DELETE FROM users WHERE id = ?', [userId]);
+        // Tables made by server.js have foreign keys without ON DELETE, so those rows are cleared by hand first.
+        // One transaction when the pool offers it: either everything goes or nothing does.
+        const conn = typeof db.getConnection === 'function' ? await db.getConnection() : null;
+        const q = conn || db;
+        try {
+            if (conn) await conn.beginTransaction();
+            await q.execute('DELETE FROM group_members WHERE user_id = ?', [userId]);
+            await q.execute('DELETE FROM course_enrollments WHERE user_id = ?', [userId]);
+            await q.execute('DELETE FROM user_achievements WHERE user_id = ?', [userId]);
+            await q.execute('UPDATE `groups` SET created_by = NULL WHERE created_by = ?', [userId]);
+            await q.execute('UPDATE tasks SET assigned_to = NULL WHERE assigned_to = ?', [userId]);
+            await q.execute('DELETE FROM users WHERE id = ?', [userId]);
+            if (conn) await conn.commit();
+        } catch (err) {
+            if (conn) await conn.rollback().catch(() => {});
+            throw err;
+        } finally {
+            if (conn) conn.release();
+        }
         invalidateUserCache(userId);
         res.json({ message: 'Account deleted' });
     } catch (error) {
