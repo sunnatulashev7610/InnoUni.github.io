@@ -110,18 +110,7 @@ describe('dashboard menu', () => {
     });
 });
 
-describe('url() inside project stylesheets', () => {
-    test('style/style.css background images exist and are not root-absolute', () => {
-        const cssFile = path.join(SITE, 'style/style.css');
-        const css = fs.readFileSync(cssFile, 'utf8');
-        const urls = [...css.matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/g)].map((m) => m[1]).filter((u) => !/^(data:|https?:)/.test(u));
-        expect(urls.length).toBeGreaterThan(0);
-        for (const u of urls) {
-            expect(u.startsWith('/')).toBe(false);
-            expect(fs.existsSync(path.resolve(path.dirname(cssFile), u))).toBe(true);
-        }
-    });
-
+describe('project stylesheets', () => {
     test('no stylesheet file name contains a space', () => {
         const bad = [];
         const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).forEach((e) => {
@@ -137,9 +126,8 @@ describe('url() inside project stylesheets', () => {
 
 describe('the server serves the site', () => {
     test.each([
-        ['/css/bootstrap.min.css', /text\/css/],
         ['/style/gather.css', /text\/css/],
-        ['/imgs/hero.bg.png', /image\/png/],
+        ['/imgs/logo/logo-icon.png', /image\/png/],
         ['/secondary-pages/login/login.html', /text\/html/],
         ['/frontend/js/utils.js', /javascript/],
         ['/js/utils.js', /javascript/],   // dashboards request /js/... through the /dashboard/:id route

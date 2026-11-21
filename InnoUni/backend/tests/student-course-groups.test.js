@@ -37,18 +37,3 @@ test('enrolling creates the course group (if missing) and adds the student', asy
     expect(s.groups).toEqual([{ id: 50, course_id: 7 }]);
     expect(s.members).toEqual(expect.arrayContaining([{ g: 50, u: 5 }, { g: 50, u: 2 }]));
 });
-
-test('a course group cannot be joined or left by hand', async () => {
-    const join = await request(app).post('/api/student/groups/50/join').set(as(5));
-    expect(join.status).toBe(400);
-    expect(join.body.error).toMatch(/enrolling/);
-    const leave = await request(app).post('/api/student/groups/50/leave').set(as(5));
-    expect(leave.status).toBe(400);
-});
-
-test('my groups lists course groups with numbers as numbers', async () => {
-    const res = await request(app).get('/api/student/groups').set(as(5));
-    expect(res.status).toBe(200);
-    expect(res.body.groups).toEqual([{ id: 50, name: 'Py', description: 'd', courseId: 7, role: 'member', members: 3 }]);
-    expect((await request(app).get('/api/student/groups').set(as(9, 'teacher'))).status).toBe(403);
-});

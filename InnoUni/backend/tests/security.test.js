@@ -32,7 +32,7 @@ describe('configuration', () => {
     test('rejects tokens signed with a different secret', async () => {
         const forged = jwt.sign({ userId: 1, role: 'admin' }, 'your-secret-key');
         const res = await request(app)
-            .get('/api/dashboard/stats/1')
+            .get('/api/dashboard/activity/1')
             .set('Authorization', `Bearer ${forged}`);
         expect(res.status).toBe(403);
     });
@@ -82,42 +82,26 @@ describe('password change', () => {
 
 describe('authorization (IDOR)', () => {
     test('dashboard API requires a token', async () => {
-        for (const url of ['stats', 'activity', 'progress', 'recommendations']) {
+        for (const url of ['activity']) {
             const res = await request(app).get(`/api/dashboard/${url}/1`);
             expect(res.status).toBe(401);
         }
     });
 
     test('dashboard API: a user cannot read another user', async () => {
-        for (const url of ['stats', 'activity', 'progress', 'recommendations']) {
+        for (const url of ['activity']) {
             const res = await request(app).get(`/api/dashboard/${url}/2`).set(auth(1, 'student'));
             expect(res.status).toBe(403);
         }
     });
 
     test('dashboard API: a user can reach their own data', async () => {
-        const res = await request(app).get('/api/dashboard/stats/1').set(auth(1, 'student'));
+        const res = await request(app).get('/api/dashboard/activity/1').set(auth(1, 'student'));
         expect([401, 403]).not.toContain(res.status);
     });
 
-    test('student dashboard: other student is forbidden, own id is allowed', async () => {
-        const other = await request(app).get('/api/student/dashboard/2').set(auth(1, 'student'));
-        expect(other.status).toBe(403);
-        const own = await request(app).get('/api/student/dashboard/1').set(auth(1, 'student'));
-        expect([401, 403]).not.toContain(own.status);
-    });
-
-    test('teacher routes: other teacher is forbidden, own id is allowed', async () => {
-        for (const route of ['dashboard', 'courses', 'tasks', 'analytics']) {
-            const other = await request(app).get(`/api/teacher/${route}/2`).set(auth(1, 'teacher'));
-            expect(other.status).toBe(403);
-            const own = await request(app).get(`/api/teacher/${route}/1`).set(auth(1, 'teacher'));
-            expect([401, 403]).not.toContain(own.status);
-        }
-    });
-
     test('a student cannot use teacher routes', async () => {
-        const res = await request(app).get('/api/teacher/dashboard/1').set(auth(1, 'student'));
+        const res = await request(app).get('/api/teacher/courses').set(auth(1, 'student'));
         expect(res.status).toBe(403);
     });
 

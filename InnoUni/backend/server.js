@@ -415,7 +415,7 @@ app.post('/api/contact', contactLimiter, async (req, res) => {
 // same relative links work here, on GitHub Pages and on a plain static server.
 // Only these folders are exposed, never the project root: backend/ holds the source code and .env.
 const siteRoot = path.join(__dirname, '..');
-['css', 'imgs', 'style', 'secondary-pages', 'frontend'].forEach((dir) => {
+['imgs', 'style', 'secondary-pages', 'frontend'].forEach((dir) => {
     app.use(`/${dir}`, express.static(path.join(siteRoot, dir)));
 });
 app.use(express.static(path.join(siteRoot, 'frontend')));

@@ -5,7 +5,6 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Vazifalar - Gather Edu</title>
-	<link rel="stylesheet" href="../../css/bootstrap.min.css">
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 	<style>
 
@@ -424,23 +423,6 @@
 		</div>
 	</div>
 
-	<script>
-		// Filter functionality
-		document.querySelectorAll('.filter-btn').forEach(btn => {
-			btn.addEventListener('click', function() {
-				document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-				this.classList.add('active');
-			});
-		});
-
-		// Task action handlers
-		document.querySelectorAll('.action-btn').forEach(btn => {
-			btn.addEventListener('click', function() {
-				const action = this.textContent.trim();
-				console.log('Action clicked:', action);
-			});
-		});
-	</script>
 </body>
 
 </html>
