@@ -1323,3 +1323,13 @@ body.ge-auth {
 .ge-nav-cta { display: flex; align-items: center; gap: 10px; }
 
 .ge-logo-mark, .ge-auth .logo img { border-radius: 10px; }
+
+/* Small phones (320-380px): keep the header on one line */
+@media (max-width: 380px) {
+	.ge-logo { font-size: 17px; gap: 8px; }
+	.ge-nav-cta { gap: 6px; }
+	.ge-nav-cta .ge-btn { padding-inline: 12px; }
+}
+@media (max-width: 340px) {
+	.ge-logo { font-size: 0; }
+}
