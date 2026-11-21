@@ -1,5 +1,5 @@
 const express = require('express');
-const { authenticateToken, teacherOnly, studentOnly } = require('../middleware/roleBased');
+const { authenticateToken, teacherOnly } = require('../middleware/roleBased');
 const { parseId, validateText } = require('../utils/validation');
 const { requireVerifiedEmail } = require('../utils/verified');
 const { findSuggestions } = require('../utils/orderSuggestions');

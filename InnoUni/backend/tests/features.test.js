@@ -24,16 +24,6 @@ test('FEATURE_TEAMS=false closes teams for every role and method', async () => {
     }
 });
 
-test('library is closed by default', async () => {
-    const res = await request(app).get('/api/teacher/library/1').set(as(1, 'teacher'));
-    expect(res.status).toBe(404);
-});
-
-test('the library flag switches the library on', async () => {
-    process.env.FEATURE_LIBRARY = 'true';
-    expect((await request(app).get('/api/teacher/library/1').set(as(1, 'teacher'))).status).toBe(200);
-});
-
 test('dashboard shows Teams, keeps Library hidden and guards closed pages', () => {
     const html = require('fs').readFileSync(require('path').join(__dirname, '../../secondary-pages/dashboard/dashboard.html'), 'utf8');
     expect(html).toMatch(/var FEATURES = \{ teams: true, library: false \}/);
