@@ -1330,6 +1330,6 @@ body.ge-auth {
 	.ge-nav-cta { gap: 6px; }
 	.ge-nav-cta .ge-btn { padding-inline: 12px; }
 }
-@media (max-width: 340px) {
-	.ge-logo { font-size: 0; }
+@media (max-width: 576px) {
+	.ge-logo { font-size: 0; gap: 0; }
 }
