@@ -161,6 +161,7 @@ const creditName = (c) => (Number(c.is_ai) === 1 ? 'Gather Edu × ' + (c.teacher
 const COURSE_SORT = {
     new: 'c.id DESC',
     popular: 'students DESC, c.id DESC',
+    rating: 'rating IS NULL, rating DESC, rating_count DESC, c.id DESC',
     title: 'c.title ASC, c.id DESC'
 };
 
@@ -178,6 +179,8 @@ router.get('/courses', authenticateToken, studentOnly, async (req, res) => {
         const [rows] = await req.db.execute(`
             SELECT c.id, c.title, c.description, c.category, c.avatar, c.is_ai, u.full_name AS teacher,
                 (SELECT COUNT(*) FROM course_enrollments e WHERE e.course_id = c.id AND e.status = 'active') AS students,
+                (SELECT ROUND(AVG(r.rating), 1) FROM course_reviews r WHERE r.course_id = c.id) AS rating,
+                (SELECT COUNT(*) FROM course_reviews r WHERE r.course_id = c.id) AS rating_count,
                 ce.progress AS my_progress, ce.status AS my_status
             FROM courses c
             LEFT JOIN users u ON c.teacher_id = u.id
@@ -190,6 +193,7 @@ router.get('/courses', authenticateToken, studentOnly, async (req, res) => {
             courses: rows.map((c) => ({
                 id: c.id, title: c.title, description: c.description, category: c.category, avatar: c.avatar,
                 teacher: creditName(c), ai: Number(c.is_ai) === 1, students: Number(c.students) || 0,
+                rating: c.rating === null || c.rating === undefined ? null : Number(c.rating), rating_count: Number(c.rating_count) || 0,
                 enrolled: c.my_status !== null && c.my_status !== undefined,
                 progress: c.my_progress === null || c.my_progress === undefined ? 0 : Number(c.my_progress)
             })),
