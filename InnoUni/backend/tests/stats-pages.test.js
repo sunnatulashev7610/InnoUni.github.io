@@ -153,3 +153,62 @@ test('a wrong current password (401) shows a message instead of crashing', async
     submit(w, c.querySelector('#pfOld').form); await tick();
     expect(c.textContent).toContain('Joriy parol noto');
 });
+
+describe('delete account and photo', () => {
+    const delCall = (w) => w.fetch.mock.calls.find(([, o]) => o && o.method === 'DELETE');
+    function withDelete(w, result) {
+        const prev = w.fetch;
+        w.fetch = jest.fn(async (url, o) => (o && o.method === 'DELETE' ? result : prev(url, o)));
+    }
+
+    test('needs the password and a second click before anything is sent', async () => {
+        const { w, c, run } = profileBoot('student', async () => ({ ok: true, status: 200, json: async () => ({}) }));
+        await run('profile');
+        withDelete(w, { ok: true, status: 200, json: async () => ({ message: 'Account deleted' }) });
+        const form = c.querySelector('#pfDel').form;
+        submit(w, form); await tick();
+        expect(c.textContent).toContain('Parolni kiriting');
+        c.querySelector('#pfDel').value = 'Parol123!';
+        submit(w, form); await tick();
+        expect(delCall(w)).toBeUndefined();
+        expect(form.querySelector('button').textContent).toContain('Yana bosing');
+        submit(w, form); await tick();
+        expect(JSON.parse(delCall(w)[1].body)).toEqual({ password: 'Parol123!' });
+        expect(w.localStorage.getItem('token')).toBeNull();
+    });
+
+    test('a wrong password and owned courses get clear messages', async () => {
+        const { w, c, run } = profileBoot('teacher', async () => ({ ok: true, status: 200, json: async () => ({}) }));
+        await run('profile');
+        const form = c.querySelector('#pfDel').form;
+        c.querySelector('#pfDel').value = 'x';
+        withDelete(w, { ok: false, status: 401, json: async () => ({ error: 'Password is incorrect' }) });
+        submit(w, form); await tick(); submit(w, form); await tick();
+        expect(c.textContent).toContain('Parol noto');
+        withDelete(w, { ok: false, status: 409, json: async () => ({ error: 'Delete your courses first' }) });
+        submit(w, form); await tick(); submit(w, form); await tick();
+        expect(c.textContent).toContain('kurslaringizni o\'chiring');
+    });
+
+    test('a saved photo is shown as an image; only a safe data URL is ever used', async () => {
+        const ok = 'data:image/jpeg;base64,/9j/4AAQ';
+        const { w, c, run } = profileBoot('student', async () => ({ ok: true, status: 200, json: async () => ({ user: { avatar: null } }) }));
+        const base = w.fetch;
+        w.fetch = jest.fn(async (url, o) => ((!o || !o.method) && url.includes('/auth/profile') ? { ok: true, status: 200, json: async () => ({ user: { full_name: 'Sam', avatar: ok } }) } : base(url, o)));
+        await run('profile');
+        expect(c.querySelector('.pg-av img').getAttribute('src')).toBe(ok);
+        const bad = profileBoot('student', async () => ({ ok: true, status: 200, json: async () => ({}) }));
+        const base2 = bad.w.fetch;
+        bad.w.fetch = jest.fn(async (url, o) => ((!o || !o.method) && url.includes('/auth/profile') ? { ok: true, status: 200, json: async () => ({ user: { full_name: 'Sam', avatar: 'javascript:alert(1)' } }) } : base2(url, o)));
+        await bad.run('profile');
+        expect(bad.c.querySelector('.pg-av img')).toBeNull();
+    });
+
+    test('removing the photo sends null', async () => {
+        const { w, c, run } = profileBoot('student', async () => ({ ok: true, status: 200, json: async () => ({ user: { avatar: null } }) }));
+        await run('profile');
+        [...c.querySelectorAll('button')].find((b) => /olib tashlash/.test(b.textContent)).click(); await tick();
+        const call = w.fetch.mock.calls.find(([, o]) => o && o.method === 'PUT');
+        expect(JSON.parse(call[1].body)).toEqual({ avatar: null });
+    });
+});

@@ -212,6 +212,9 @@ router.get('/profile', authenticateToken, async (req, res) => {
     }
 });
 
+const AVATAR_MAX = 40000;
+const AVATAR_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
+
 // Update user profile. Only the fields that are sent change; every field is validated.
 router.put('/profile', authenticateToken, async (req, res) => {
     try {
@@ -247,6 +250,17 @@ router.put('/profile', authenticateToken, async (req, res) => {
                 return res.status(400).json({ error: 'Bio must be at most 500 characters' });
             }
             updates.bio = bio || null;
+        }
+
+        if (body.avatar !== undefined) {
+            // A small picture kept right in the row: null removes it, otherwise a jpeg/png/webp data URL under 40 KB
+            if (body.avatar === null || body.avatar === '') {
+                updates.avatar = null;
+            } else if (typeof body.avatar === 'string' && body.avatar.length <= AVATAR_MAX && AVATAR_RE.test(body.avatar)) {
+                updates.avatar = body.avatar;
+            } else {
+                return res.status(400).json({ error: 'Invalid avatar image' });
+            }
         }
 
         const columns = Object.keys(updates);
@@ -335,6 +349,42 @@ router.put('/password', authenticateToken, async (req, res) => {
         res.json({ message: 'Password changed successfully', token });
     } catch (error) {
         console.error('Password change error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Delete the account for good. Needs the current password. A teacher who still owns courses must remove them first,
+// and the last admin cannot leave. Everything else of the user goes with the row (foreign keys cascade).
+router.delete('/account', authenticateToken, async (req, res) => {
+    try {
+        const db = req.db;
+        const userId = req.user.userId;
+        const password = req.body && req.body.password;
+        if (typeof password !== 'string' || !password) {
+            return res.status(400).json({ error: 'Password is required' });
+        }
+        const [users] = await db.execute('SELECT id, role, password FROM users WHERE id = ?', [userId]);
+        if (users.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        if (!(await bcrypt.compare(password, users[0].password))) {
+            return res.status(401).json({ error: 'Password is incorrect' });
+        }
+        if (users[0].role === 'admin') {
+            const [admins] = await db.execute("SELECT COUNT(*) AS n FROM users WHERE role = 'admin'");
+            if (Number(admins[0].n) <= 1) {
+                return res.status(409).json({ error: 'The last admin cannot be deleted', code: 'LAST_ADMIN' });
+            }
+        }
+        const [owned] = await db.execute('SELECT COUNT(*) AS n FROM courses WHERE teacher_id = ? OR creator_id = ?', [userId, userId]);
+        if (Number(owned[0].n) > 0) {
+            return res.status(409).json({ error: 'Delete your courses first', code: 'OWNS_COURSES' });
+        }
+        await db.execute('DELETE FROM users WHERE id = ?', [userId]);
+        invalidateUserCache(userId);
+        res.json({ message: 'Account deleted' });
+    } catch (error) {
+        console.error('Account delete error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
