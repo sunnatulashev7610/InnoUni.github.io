@@ -242,12 +242,62 @@
         const pg = page(root);
         pg.appendChild(head('Profil', 'Hisobingiz haqida ma\'lumot'));
         const top = el('div', 'pg-card pg-file'); top.style.marginBottom = '18px';
-        const av = el('span', 'pg-av', initials(user.full_name || session.name)); av.style.cssText = 'background:var(--c1);width:64px;height:64px;font-size:22px'; top.appendChild(av);
-        const d = el('div'); const n = el('h2', '', user.full_name || session.name || 'Foydalanuvchi'); n.style.margin = '0';
+        const av = el('span', 'pg-av', initials(user.full_name || session.name)); av.style.cssText = 'background:var(--c1);width:64px;height:64px;font-size:22px;overflow:hidden;flex:none'; top.appendChild(av);
+        const AV_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
+        function paintAvatar(src) {
+            av.textContent = '';
+            if (typeof src === 'string' && AV_RE.test(src)) { const im = el('img'); im.alt = ''; im.src = src; im.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block'; av.appendChild(im); }
+            else av.textContent = initials(session.name);
+            const hd = document.querySelector('.user-avatar'); if (hd && typeof src === 'string' && AV_RE.test(src)) hd.src = src;
+        }
+        paintAvatar(user.avatar);
+        const d = el('div'); d.style.minWidth = '0'; const n = el('h2', '', user.full_name || session.name || 'Foydalanuvchi'); n.style.margin = '0';
         d.appendChild(n);
         d.appendChild(el('div', 'pg-muted', teacher ? 'O\'qituvchi' : 'O\'quvchi'));
         const mail = el('div', 'pg-muted', user.email || ''); d.appendChild(mail);
         const bioLine = el('div', 'pg-muted', user.bio || ''); bioLine.style.marginTop = '4px'; d.appendChild(bioLine);
+        // Photo: cropped to a small square in the browser, so only a few KB are stored
+        const photoRow = el('div'); photoRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px';
+        const fileIn = el('input'); fileIn.type = 'file'; fileIn.accept = 'image/jpeg,image/png,image/webp'; fileIn.hidden = true; fileIn.setAttribute('aria-label', 'Rasm tanlash');
+        const pick = el('button', 'pg-btn ghost', 'Rasm yuklash'); pick.type = 'button'; pick.style.padding = '6px 12px';
+        const rem = el('button', 'pg-btn ghost', 'Rasmni olib tashlash'); rem.type = 'button'; rem.style.padding = '6px 12px';
+        const photoMsg = el('span', 'pg-muted'); photoMsg.setAttribute('role', 'status');
+        [pick, rem, photoMsg, fileIn].forEach(function (x) { photoRow.appendChild(x); });
+        d.appendChild(photoRow);
+        function squareJpeg(file) {
+            return new Promise(function (resolve, reject) {
+                const url = URL.createObjectURL(file); const im = new Image();
+                im.onload = function () {
+                    try {
+                        const size = 128; const c = document.createElement('canvas'); c.width = size; c.height = size;
+                        const side = Math.min(im.naturalWidth, im.naturalHeight);
+                        c.getContext('2d').drawImage(im, (im.naturalWidth - side) / 2, (im.naturalHeight - side) / 2, side, side, 0, 0, size, size);
+                        resolve(c.toDataURL('image/jpeg', 0.82));
+                    } catch (e) { reject(e); } finally { URL.revokeObjectURL(url); }
+                };
+                im.onerror = function () { URL.revokeObjectURL(url); reject(new Error('bad image')); };
+                im.src = url;
+            });
+        }
+        async function savePhoto(value) {
+            photoMsg.textContent = '';
+            try {
+                const out = await G.api.send('PUT', '/auth/profile', session, { avatar: value });
+                const u = out.user || {}; user.avatar = u.avatar || null;
+                let stored = {}; try { stored = JSON.parse(localStorage.getItem('user') || '{}'); } catch (x) { /* ignore */ }
+                try { localStorage.setItem('user', JSON.stringify(Object.assign(stored, { avatar: user.avatar }))); } catch (x) { /* storage may be blocked */ }
+                paintAvatar(user.avatar); G.toast(value ? 'Rasm saqlandi' : 'Rasm olib tashlandi');
+            } catch (e) { if (e.auth) throw e; photoMsg.textContent = 'Saqlab bo\'lmadi. Boshqa rasm tanlang.'; }
+        }
+        pick.addEventListener('click', function () { fileIn.click(); });
+        fileIn.addEventListener('change', async function () {
+            const f = fileIn.files && fileIn.files[0]; fileIn.value = '';
+            if (!f) return;
+            if (!/^image\/(jpeg|png|webp)$/.test(f.type) || f.size > 8 * 1024 * 1024) { photoMsg.textContent = 'JPG, PNG yoki WebP rasm tanlang (8 MB gacha).'; return; }
+            let data; try { data = await squareJpeg(f); } catch (e) { photoMsg.textContent = 'Rasmni o\'qib bo\'lmadi.'; return; }
+            await savePhoto(data);
+        });
+        rem.addEventListener('click', function () { savePhoto(null); });
         top.appendChild(d); pg.appendChild(top);
 
         const row = cardRow();
@@ -315,7 +365,7 @@
                 session.name = u.full_name || session.name;
                 const hdr = document.getElementById('userName'); if (hdr) hdr.textContent = session.name;
                 n.textContent = session.name; mail.textContent = u.email || ''; bioLine.textContent = u.bio || '';
-                av.textContent = initials(session.name);
+                paintAvatar(user.avatar);
                 iName.value = u.full_name || ''; iMail.value = u.email || ''; iPhone.value = u.phone || ''; iBio.value = u.bio || '';
                 G.toast('Profil saqlandi');
             } catch (err) {
@@ -356,5 +406,38 @@
             } finally { psave.disabled = false; psave.textContent = 'Parolni yangilash'; }
         });
         pass.appendChild(pform); pg.appendChild(pass);
+
+        // ---- Delete account (needs the password; teachers must remove their courses first) ----
+        const danger = card('Hisobni o\'chirish'); danger.style.cssText = 'margin-top:18px;border-color:var(--danger)';
+        danger.appendChild(el('p', 'pg-muted', 'Hisob, eslatmalar, javoblar va barcha ma\'lumotlaringiz butunlay o\'chadi. Qaytarib bo\'lmaydi.'));
+        const dform = el('form'); dform.noValidate = true;
+        const dPass = input('password', '', 72); dPass.autocomplete = 'current-password';
+        dform.appendChild(field('Tasdiqlash uchun parolingiz', dPass, 'pfDel'));
+        const dmsg = note(); dform.appendChild(dmsg);
+        const dbtn = el('button', 'pg-btn danger', 'Hisobni o\'chirish'); dbtn.type = 'submit'; dform.appendChild(dbtn);
+        let armed = false; let armTimer = null;
+        dform.addEventListener('submit', async function (e) {
+            e.preventDefault(); dmsg.textContent = '';
+            if (!dPass.value) { dmsg.textContent = 'Parolni kiriting.'; return; }
+            if (!armed) {
+                armed = true; dbtn.textContent = 'Aniqmi? Yana bosing';
+                armTimer = setTimeout(function () { armed = false; dbtn.textContent = 'Hisobni o\'chirish'; }, 5000);
+                return;
+            }
+            clearTimeout(armTimer); armed = false; dbtn.disabled = true; dbtn.textContent = 'O\'chirilmoqda...';
+            try {
+                await G.api.send('DELETE', '/auth/account', session, { password: dPass.value });
+                ['token', 'user', 'userRole'].forEach(function (k) { try { localStorage.removeItem(k); } catch (x) { /* ignore */ } });
+                location.href = '../login/login.html';
+            } catch (err) {
+                dbtn.disabled = false; dbtn.textContent = 'Hisobni o\'chirish';
+                // 401 here means a wrong password
+                if (err.auth || /incorrect/i.test(err.message)) { dmsg.textContent = 'Parol noto\'g\'ri.'; return; }
+                if (/courses/i.test(err.message)) { dmsg.textContent = 'Avval o\'zingizning barcha kurslaringizni o\'chiring.'; return; }
+                if (/last admin/i.test(err.message)) { dmsg.textContent = 'Oxirgi adminni o\'chirib bo\'lmaydi.'; return; }
+                dmsg.textContent = 'O\'chirib bo\'lmadi. Keyinroq urinib ko\'ring.';
+            }
+        });
+        danger.appendChild(dform); pg.appendChild(danger);
     });
 })();

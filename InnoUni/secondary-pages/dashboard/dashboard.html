@@ -468,6 +468,11 @@
 			}
 			// every [data-logout] button signs out: the header one, and the one in Settings (the only one on phones)
 			document.getElementById('logoutBtn').hidden = false;
+			// [data-open-page="x"] opens another dashboard page (used by Settings)
+			document.addEventListener('click', function (e) {
+				var go = e.target.closest('[data-open-page]');
+				if (go) loadPage(go.getAttribute('data-open-page'), navFor(go.getAttribute('data-open-page')));
+			});
 			document.addEventListener('click', function (e) {
 				if (!e.target.closest('[data-logout]')) return;
 				['token', 'user', 'userRole'].forEach(function (k) { try { localStorage.removeItem(k); } catch (x) { /* ignore */ } });
