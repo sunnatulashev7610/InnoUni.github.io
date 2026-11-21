@@ -155,13 +155,15 @@ router.get('/courses', authenticateToken, teacherOnly, async (req, res) => {
             SELECT c.id, c.title, c.description, c.category, c.status, c.created_at,
                 (SELECT COUNT(*) FROM course_content x WHERE x.course_id = c.id AND x.kind = 'video') AS videos,
                 (SELECT COUNT(*) FROM course_content x WHERE x.course_id = c.id AND x.kind = 'guide') AS guides,
-                (SELECT COUNT(*) FROM course_enrollments e WHERE e.course_id = c.id AND e.status = 'active') AS students
+                (SELECT COUNT(*) FROM course_enrollments e WHERE e.course_id = c.id AND e.status = 'active') AS students,
+                (SELECT ROUND(AVG(r.rating), 1) FROM course_reviews r WHERE r.course_id = c.id) AS rating,
+                (SELECT COUNT(*) FROM course_reviews r WHERE r.course_id = c.id) AS rating_count
             FROM courses c
             WHERE c.teacher_id = ?
             ORDER BY c.id DESC
         `, [req.user.userId]);
         res.json({
-            courses: courses.map((c) => ({ ...c, videos: Number(c.videos), guides: Number(c.guides), students: Number(c.students) }))
+            courses: courses.map((c) => ({ ...c, videos: Number(c.videos), guides: Number(c.guides), students: Number(c.students), rating: c.rating == null ? null : Number(c.rating), rating_count: Number(c.rating_count) || 0 }))
         });
     } catch (error) {
         console.error('My courses error:', error);

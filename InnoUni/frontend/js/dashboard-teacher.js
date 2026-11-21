@@ -100,6 +100,7 @@
             meta.appendChild(el('span', '', c.videos + ' video'));
             meta.appendChild(el('span', '', c.guides + ' qo\'llanma'));
             meta.appendChild(el('span', '', c.students + ' o\'quvchi'));
+            if (G.reviews) meta.appendChild(el('span', '', G.reviews.label(c.rating, c.rating_count)));
             a.appendChild(meta);
             const msg = message(); msg.style.fontSize = '.85rem';
             const row = el('div'); row.style.cssText = 'display:flex;gap:8px;margin-top:16px';
@@ -226,6 +227,7 @@
         const listMsg = message();
         const mats = G.courseTools ? G.courseTools.manager(id, session, function () { return items; }) : null;
         if (mats) left.appendChild(mats);
+        if (G.reviews) left.appendChild(G.reviews.card(id, session));
 
         async function call(method, path, body) {
             listMsg.textContent = '';

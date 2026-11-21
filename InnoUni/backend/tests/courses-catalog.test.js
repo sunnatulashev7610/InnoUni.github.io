@@ -25,13 +25,21 @@ test('students get the catalogue with their own enrollment and numbers as number
     const res = await request(app).get('/api/student/courses').set(as(5, 'student'));
     expect(res.status).toBe(200);
     expect(res.body.courses).toEqual([
-        { id: 2, title: 'Python', description: 'd', category: 'Backend', avatar: null, ai: false, teacher: 'Bekzod', students: 3, enrolled: true, progress: 45.5 },
-        { id: 1, title: 'React', description: 'd', category: 'Frontend', avatar: null, ai: false, teacher: null, students: 0, enrolled: false, progress: 0 }
+        { id: 2, title: 'Python', description: 'd', category: 'Backend', avatar: null, ai: false, teacher: 'Bekzod', students: 3, rating: null, rating_count: 0, enrolled: true, progress: 45.5 },
+        { id: 1, title: 'React', description: 'd', category: 'Frontend', avatar: null, ai: false, teacher: null, students: 0, rating: null, rating_count: 0, enrolled: false, progress: 0 }
     ]);
     expect(calls[0].p).toEqual([5]); // only the caller's own enrollment is joined
 });
 
 const cat = () => calls.find((x) => x.sql.includes('FROM courses c'));
+describe('ratings in the catalogue', () => {
+    test('the average and the count come from the reviews; "rating" sorts best first with unrated last', async () => {
+        await request(app).get('/api/student/courses').query({ sort: 'rating' }).set(as(5, 'student'));
+        expect(cat().sql).toContain('FROM course_reviews r WHERE r.course_id = c.id');
+        expect(cat().sql).toContain('ORDER BY rating IS NULL, rating DESC, rating_count DESC, c.id DESC');
+    });
+});
+
 describe('search and sort', () => {
     test('a search word becomes four LIKE parameters, with % and _ escaped; the sort is picked from a list', async () => {
         const res = await request(app).get('/api/student/courses').query({ q: '  50%_off  ', sort: 'popular' }).set(as(5, 'student'));

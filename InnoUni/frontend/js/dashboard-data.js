@@ -156,6 +156,7 @@
         }
         const meta = el('div', 'pg-meta');
         meta.appendChild(el('span', '', c.students + ' o\'quvchi'));
+        if (c.rating_count && window.GEData.reviews) meta.appendChild(el('span', '', window.GEData.reviews.label(c.rating, c.rating_count)));
         if (c.enrolled) {
             const pct = el('b', '', Math.round(c.progress) + '%'); pct.style.color = 'var(--ink)'; meta.appendChild(pct);
         } else {
@@ -194,7 +195,7 @@
         const bar = el('div'); bar.style.cssText = 'display:flex;flex-wrap:wrap;gap:10px;margin:0 0 14px';
         const box = el('input', 'pg-input'); box.type = 'search'; box.maxLength = 100; box.placeholder = 'Kurs, mavzu yoki o\'qituvchi qidirish...'; box.setAttribute('aria-label', 'Kurs qidirish'); box.style.cssText = 'flex:1 1 220px;min-width:0';
         const by = el('select', 'pg-input'); by.setAttribute('aria-label', 'Saralash'); by.style.cssText = 'flex:0 0 auto;width:auto';
-        [['new', 'Eng yangilari'], ['popular', 'Mashhur kurslar'], ['title', 'Nomi bo\'yicha (A-Z)']].forEach(function (o) { const op = el('option', '', o[1]); op.value = o[0]; by.appendChild(op); });
+        [['new', 'Eng yangilari'], ['popular', 'Mashhur kurslar'], ['rating', 'Yuqori baholangan'], ['title', 'Nomi bo\'yicha (A-Z)']].forEach(function (o) { const op = el('option', '', o[1]); op.value = o[0]; by.appendChild(op); });
         bar.appendChild(box); bar.appendChild(by);
         chips.parentNode.insertBefore(bar, chips);
         async function reload() {
@@ -428,6 +429,7 @@
         if (!written.length || hasKind('video')) pg.appendChild(list('video', 'Video darslar', 'fas fa-circle-play', 'Ko\'rish'));
         if (!written.length || hasKind('guide')) pg.appendChild(list('guide', 'Qo\'llanmalar', 'fas fa-file-lines', 'Ochish'));
         if (T) pg.appendChild(window.GEData.courseTools.mine(T, items, openers));
+        if (window.GEData.reviews) pg.appendChild(window.GEData.reviews.card(id, session));
         if (!c.ai) paintResume();
     };
 
