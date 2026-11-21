@@ -126,8 +126,8 @@ describe('forgot and reset password', () => {
 
 describe('optional rule: teachers need a confirmed email', () => {
     const create = () => request(app).post('/api/teacher/courses').set(as(1, 'teacher')).send({ title: 'Python', description: 'x', category: 'IT' });
-    test('off by default', async () => {
-        delete process.env.REQUIRE_EMAIL_VERIFICATION;
+    test('off when switched off', async () => {
+        process.env.REQUIRE_EMAIL_VERIFICATION = 'false';
         expect((await create()).status).not.toBe(403);
     });
     test('on: unconfirmed teachers are stopped, confirmed ones continue', async () => {

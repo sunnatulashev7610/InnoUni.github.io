@@ -4,6 +4,7 @@ const { invalidateUserCache } = require('../../middleware/roleBased');
 
 const roles = new Map();
 const blocked = new Set();
+const unverified = new Set(); // everybody counts as confirmed unless a test says otherwise
 
 function register(userId, role) {
     roles.set(Number(userId), role);
@@ -11,17 +12,19 @@ function register(userId, role) {
 }
 function setBlocked(userId, value) { value ? blocked.add(Number(userId)) : blocked.delete(Number(userId)); invalidateUserCache(userId); }
 
+function setVerified(userId, value) { value ? unverified.delete(Number(userId)) : unverified.add(Number(userId)); invalidateUserCache(userId); }
+
 function withAccounts(db) {
     return {
         ...db,
         async execute(sql, params = []) {
-            if (/^\s*SELECT role, blocked(, token_version)? FROM users WHERE id = \?/.test(sql)) {
+            if (/^\s*SELECT role, blocked(, token_version)?(, email_verified)? FROM users WHERE id = \?/.test(sql)) {
                 const id = Number(params[0]);
-                return [roles.has(id) ? [{ role: roles.get(id), blocked: blocked.has(id) ? 1 : 0 }] : []];
+                return [roles.has(id) ? [{ role: roles.get(id), blocked: blocked.has(id) ? 1 : 0, email_verified: unverified.has(id) ? 0 : 1 }] : []];
             }
             return db.execute(sql, params);
         }
     };
 }
 
-module.exports = { register, setBlocked, withAccounts };
+module.exports = { register, setBlocked, setVerified, withAccounts };

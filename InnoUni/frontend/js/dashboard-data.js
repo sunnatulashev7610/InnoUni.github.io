@@ -22,7 +22,12 @@
         const res = await fetch(apiBase() + path, init);
         if (res.status === 401) { const err = new Error('auth'); err.auth = true; throw err; }
         const out = await res.json().catch(function () { return {}; });
-        if (!res.ok) { const err = new Error(out.error || 'HTTP ' + res.status); err.status = res.status; err.data = out; throw err; }
+        if (!res.ok) {
+            const err = new Error(out.error || 'HTTP ' + res.status); err.status = res.status; err.data = out;
+            // The server holds every change until the e-mail is confirmed: say so once, in plain words
+            if (res.status === 403 && out.code === 'EMAIL_NOT_VERIFIED' && window.GEData && window.GEData.toast) window.GEData.toast('Avval emailingizni tasdiqlang. Pochtangizdagi havolani oching.');
+            throw err;
+        }
         return out;
     }
 
