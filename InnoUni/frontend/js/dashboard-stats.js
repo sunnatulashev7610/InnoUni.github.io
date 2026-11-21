@@ -344,7 +344,9 @@
             if (pNew.value !== pNew2.value) { pmsg.textContent = 'Yangi parollar bir xil emas.'; return; }
             psave.disabled = true; psave.textContent = 'Yangilanmoqda...';
             try {
-                await G.api.send('PUT', '/auth/password', session, { current_password: pOld.value, new_password: pNew.value });
+                const changed = await G.api.send('PUT', '/auth/password', session, { current_password: pOld.value, new_password: pNew.value });
+                // other devices are signed out; this one keeps working with the fresh token
+                if (changed && changed.token) { session.token = changed.token; try { localStorage.setItem('token', changed.token); } catch (x) { /* private mode */ } }
                 pOld.value = ''; pNew.value = ''; pNew2.value = '';
                 G.toast('Parol yangilandi');
             } catch (err) {

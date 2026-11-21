@@ -24,7 +24,7 @@ const fakeDb = {
         if (q.startsWith('UPDATE users SET email_verified = 1 WHERE id = ?')) { s.users.find((u) => u.id === p[0]).verified = 1; return [{ affectedRows: 1 }]; }
         if (q.startsWith('SELECT email, email_verified FROM users WHERE id = ?')) { const u = s.users.find((x) => x.id === p[0]); return [u ? [{ email: u.email, email_verified: u.verified }] : []]; }
         if (q.startsWith('SELECT id, email, blocked FROM users WHERE LOWER(email) = ?')) return [s.users.filter((u) => u.email === p[0]).map((u) => ({ id: u.id, email: u.email, blocked: 0 }))];
-        if (q.startsWith('UPDATE users SET password = ?, email_verified = 1 WHERE id = ?')) { s.users.find((u) => u.id === p[1]).password = p[0]; s.users.find((u) => u.id === p[1]).verified = 1; return [{ affectedRows: 1 }]; }
+        if (q.startsWith('UPDATE users SET password = ?, email_verified = 1')) { s.users.find((u) => u.id === p[1]).password = p[0]; s.users.find((u) => u.id === p[1]).verified = 1; return [{ affectedRows: 1 }]; }
         if (q.startsWith('SELECT email_verified FROM users WHERE id = ?')) { const u = s.users.find((x) => x.id === p[0]); return [[{ email_verified: u ? u.verified : 0 }]]; }
         if (q.startsWith("INSERT INTO courses")) return [{ insertId: 77 }];
         if (q.includes('courses') && q.startsWith('SELECT')) return [[]];

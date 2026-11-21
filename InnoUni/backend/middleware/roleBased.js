@@ -4,6 +4,7 @@ const { JWT_SECRET } = require('../config');
 
 // Role-based access control middleware
 // A token is valid for 24 hours, but the account may be blocked, deleted or get another role meanwhile.
+// A password change or reset raises users.token_version; tokens signed before that (claim `tv`) stop working.
 // So the account state is checked in the database (cached for a short time, and cleared at once when an admin changes it).
 const STATUS_TTL_MS = 60 * 1000;
 const statusCache = new Map(); // userId -> { at, row }
@@ -12,7 +13,7 @@ const invalidateUserCache = (userId) => { if (userId === undefined) statusCache.
 async function currentAccount(db, userId) {
     const hit = statusCache.get(userId);
     if (hit && Date.now() - hit.at < STATUS_TTL_MS) return hit.row;
-    const [rows] = await db.execute('SELECT role, blocked FROM users WHERE id = ?', [userId]);
+    const [rows] = await db.execute('SELECT role, blocked, token_version FROM users WHERE id = ?', [userId]);
     const row = rows[0] || null;
     statusCache.set(userId, { at: Date.now(), row });
     return row;
@@ -42,6 +43,9 @@ const authenticateToken = (req, res, next) => {
             }
             if (!account) return res.status(401).json({ error: 'Account no longer exists' });
             if (account.blocked) return res.status(403).json({ error: 'This account is blocked' });
+            if (Number(account.token_version || 0) !== Number(user.tv || 0)) {
+                return res.status(401).json({ error: 'Session expired. Sign in again', code: 'SESSION_EXPIRED' });
+            }
             user.role = account.role; // the database is the truth, not the role written in the token
         }
         req.user = user;

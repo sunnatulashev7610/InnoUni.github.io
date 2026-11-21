@@ -11,7 +11,7 @@ let s;
 const fakeDb = {
     async execute(raw, p = []) {
         const q = norm(raw);
-        if (q.startsWith('SELECT role, blocked FROM users')) return [[{ role: p[0] === 2 ? 'teacher' : 'student', blocked: 0 }]];
+        if (q.startsWith('SELECT role, blocked')) return [[{ role: p[0] === 2 ? 'teacher' : 'student', blocked: 0 }]];
         if (q.startsWith('INSERT IGNORE INTO ai_course_usage')) { s.usage[p[0]] = s.usage[p[0]] || 0; return [{ affectedRows: 1 }]; }
         if (q.startsWith('UPDATE ai_course_usage SET used = used + 1')) { if (s.usage[p[0]] < p[1]) { s.usage[p[0]]++; return [{ affectedRows: 1 }]; } return [{ affectedRows: 0 }]; }
         if (q.startsWith('UPDATE ai_course_usage SET used = used - 1')) { if (s.usage[p[0]] > 0) s.usage[p[0]]--; return [{ affectedRows: 1 }]; }

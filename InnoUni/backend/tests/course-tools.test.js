@@ -10,7 +10,7 @@ let s;
 const fakeDb = {
     async execute(raw, p = []) {
         const q = norm(raw);
-        if (q.startsWith('SELECT role, blocked FROM users')) return [[{ role: 'student', blocked: 0 }]];
+        if (q.startsWith('SELECT role, blocked')) return [[{ role: 'student', blocked: 0 }]];
         if (q.startsWith('SELECT id, teacher_id, creator_id FROM courses')) { const c = s.courses.find((x) => x.id === p[0]); return [c ? [c] : []]; }
         if (q.startsWith('SELECT 1 AS ok FROM course_enrollments')) return [s.enrolled.includes(p[0] + ':' + p[1]) ? [{ ok: 1 }] : []];
         if (q.startsWith('SELECT item_id, body, bookmarked FROM item_notes')) return [s.notes.filter((n) => n.user === p[0] && n.course === p[1]).map((n) => ({ item_id: n.item, body: n.body, bookmarked: n.mark }))];

@@ -52,7 +52,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    limit: 30,
+    limit: Number(process.env.AUTH_RATE_LIMIT) || 30,
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'Too many attempts, please try again later' }
@@ -66,6 +66,24 @@ const aiLimiter = rateLimit({
     legacyHeaders: false,
     message: { error: 'Too many requests, try again later' }
 });
+
+// A general ceiling for every API call, and a tighter one for writes (chat, questions, notes...): stops spam and scraping.
+// Limits can be changed in Render's Environment (API_RATE_LIMIT, WRITE_RATE_LIMIT per 5 minutes).
+const apiLimiter = rateLimit({
+    windowMs: 5 * 60 * 1000,
+    limit: Number(process.env.API_RATE_LIMIT) || (process.env.NODE_ENV === 'test' ? 1e9 : 600),
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, slow down' }
+});
+const writeLimiter = rateLimit({
+    windowMs: 5 * 60 * 1000,
+    limit: Number(process.env.WRITE_RATE_LIMIT) || (process.env.NODE_ENV === 'test' ? 1e9 : 120),
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many changes in a short time, slow down' }
+});
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 const contactLimiter = rateLimit({
     windowMs: 60 * 60 * 1000,
@@ -272,6 +290,8 @@ app.use((req, res, next) => {
 });
 
 // API Routes
+app.use('/api', apiLimiter);
+app.use('/api', (req, res, next) => (SAFE_METHODS.has(req.method) ? next() : writeLimiter(req, res, next)));
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 app.use('/api/auth/password', authLimiter);
