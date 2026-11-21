@@ -6,6 +6,7 @@ const { LIMITS, MUTE_MINUTES, INVITE_MODES } = require('../utils/teamLimits');
 const { getTeam, getMember, countActive } = require('../utils/teamAccess');
 const chatRouter = require('./teamChat');
 
+const { notify } = require('../utils/notify');
 const router = express.Router();
 router.use(authenticateToken);
 
@@ -343,6 +344,7 @@ router.post('/:id/invite', inviteLimiter, async (req, res) => {
         if (existing) return res.status(409).json({ error: existing.status === 'active' ? 'Already a member' : 'Already requested or invited' });
         if (await countActive(req.db, teamId) >= LIMITS.maxMembers) return res.status(400).json({ error: 'Team is full' });
         await req.db.execute('INSERT INTO team_members (team_id, user_id, status, invited_by) VALUES (?, ?, \'pending\', ?)', [teamId, users[0].id, req.user.userId]);
+        await notify(req.db, users[0].id, { kind: 'team_invite', title: 'Jamoaga taklif qilindingiz', body: 'Jamoalar bo\'limida qabul qilishingiz mumkin', page: 'jamoalar', refId: teamId });
         res.status(201).json({ message: 'Invitation sent', name: users[0].full_name });
     } catch (e) {
         serverError(res, e);

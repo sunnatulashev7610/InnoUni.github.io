@@ -4,6 +4,7 @@ const express = require('express');
 const { authenticateToken } = require('../middleware/roleBased');
 const { parseId, validateText } = require('../utils/validation');
 const { roleIn } = require('../utils/courseAccess');
+const { notify } = require('../utils/notify');
 
 const router = express.Router();
 router.use(authenticateToken);
@@ -52,6 +53,16 @@ router.post('/items/:itemId', async (req, res) => {
         const [n] = await req.db.execute('SELECT COUNT(*) AS n FROM item_questions WHERE user_id = ? AND course_id = ? AND answer IS NULL', [req.user.userId, acc.courseId]);
         if (Number(n[0].n) >= MAX_OPEN_PER_STUDENT) return res.status(429).json({ error: 'Too many unanswered questions. Wait for answers first.' });
         const [r] = await req.db.execute('INSERT INTO item_questions (course_id, item_id, user_id, body) VALUES (?, ?, ?, ?)', [acc.courseId, itemId, req.user.userId, text.value]);
+        // tell the teacher (and the creator of an AI course)
+        try {
+            const [c] = await req.db.execute('SELECT teacher_id, creator_id FROM courses WHERE id = ?', [acc.courseId]);
+            // a teacher opens the course in the editor, the creator of an AI course (a student) in the course page
+            const targets = new Map();
+            if (c[0] && c[0].teacher_id) targets.set(c[0].teacher_id, 't-course-edit');
+            if (c[0] && c[0].creator_id && !targets.has(c[0].creator_id)) targets.set(c[0].creator_id, 'course-detail');
+            targets.delete(req.user.userId);
+            for (const [o, page] of targets) await notify(req.db, o, { kind: 'question', title: 'Darsda yangi savol', body: text.value.slice(0, 120), page, refId: acc.courseId });
+        } catch (e) { /* the question is saved; the notice is only a convenience */ }
         res.status(201).json({ id: r.insertId, body: text.value, mine: true, answer: null });
     } catch (e) {
         console.error('Q&A ask error:', e);
@@ -76,7 +87,10 @@ router.put('/questions/:id/answer', async (req, res) => {
         if (!acc) return res.status(404).json({ error: 'Question not found' });
         if (acc.role !== 'owner') return res.status(403).json({ error: 'Only the teacher answers' });
         const answer = req.body.answer.trim();
-        if (answer) await req.db.execute('UPDATE item_questions SET answer = ?, answered_by = ?, answered_at = CURRENT_TIMESTAMP WHERE id = ?', [answer, req.user.userId, id]);
+        if (answer) {
+            await req.db.execute('UPDATE item_questions SET answer = ?, answered_by = ?, answered_at = CURRENT_TIMESTAMP WHERE id = ?', [answer, req.user.userId, id]);
+            if (acc.q.user_id !== req.user.userId) await notify(req.db, acc.q.user_id, { kind: 'answer', title: 'Savolingizga javob berildi', body: answer.slice(0, 120), page: 'course-detail', refId: acc.q.course_id });
+        }
         else await req.db.execute('UPDATE item_questions SET answer = NULL, answered_by = NULL, answered_at = NULL WHERE id = ?', [id]);
         res.json({ id, answer: answer || null });
     } catch (e) {
