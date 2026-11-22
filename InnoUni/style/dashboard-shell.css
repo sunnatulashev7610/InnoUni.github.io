@@ -11,6 +11,7 @@ body {
 	min-height: 100vh;
 	overflow-x: hidden;
 	line-height: 1.55;
+	display: flow-root; /* the canvas margin-top must not collapse through the body (it added 64px of empty scroll) */
 }
 
 /* Header */

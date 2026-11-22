@@ -432,3 +432,24 @@ describe('events tab', () => {
         expect(t.c.querySelector('[data-pane="events"]')).toBeNull();
     });
 });
+
+describe('team workspace layout', () => {
+    test('a member gets tabs + chat in the main column and the facts in the side column', async () => {
+        const state = makeState(); state.teams[1].my_status = 'active'; state.members = [];
+        const t = boot(state); t.w.GEData.ctx.teamId = 2; await t.run('team-detail'); await t.flush();
+        const grid = t.c.querySelector('.pg-team .tt-grid');
+        expect(grid).not.toBeNull();
+        const main = grid.querySelector('.tt-main'); const side = grid.querySelector('.tt-side');
+        expect(main.querySelector('.pg-tabs')).not.toBeNull();
+        expect(main.querySelector('[data-pane="chat"] .tc-compose')).not.toBeNull();
+        expect(side.textContent).toContain('Ochilgan sana');
+        expect(side.textContent).toContain('Jamoalarga qaytish');
+        expect(side.querySelector('.tt-line').textContent).toContain("a'zo");
+        expect(main.querySelector('.tt-facts')).toBeNull();
+    });
+    test('a visitor keeps the plain page: no workspace grid', async () => {
+        const t = boot(makeState()); t.w.GEData.ctx.teamId = 1; await t.run('team-detail'); await t.flush();
+        expect(t.c.querySelector('.tt-grid')).toBeNull();
+        expect(t.c.textContent).toContain('Ochilgan sana');
+    });
+});

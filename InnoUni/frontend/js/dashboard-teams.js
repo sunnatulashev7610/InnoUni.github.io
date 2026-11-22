@@ -326,7 +326,7 @@
         let tab = G.ctx.teamTab || null; G.ctx.teamTab = null;
         let chat = null;
         function toList(listTab) { if (chat) chat.stop(); G.ctx.teamsTab = listTab; G.open('jamoalar', 'jamoalar'); }
-        function backButton() { const b = el('button', 'pg-btn ghost', '← Jamoalarga qaytish'); b.type = 'button'; b.style.marginBottom = '16px'; b.addEventListener('click', function () { toList('all'); }); return b; }
+        function backButton() { const b = el('button', 'pg-btn ghost tt-back', '← Jamoalarga qaytish'); b.type = 'button'; b.setAttribute('aria-label', 'Jamoalarga qaytish'); b.addEventListener('click', function () { toList('all'); }); return b; }
 
         async function draw() {
             if (chat) { chat.stop(); chat = null; }
@@ -345,16 +345,27 @@
             const keys = isMember ? ['chat', 'resources', 'events', 'members', 'about'].concat(isAdmin ? ['settings'] : []) : ['about', 'members'];
             if (!tab || keys.indexOf(tab) === -1) tab = isMember ? 'chat' : 'about';
 
-            const pg = page(root); pg.appendChild(backButton());
+            const pg = page(root);
+            // Members get a fixed-height workspace: tabs and the chat on the left, team facts on the right
+            // (on a phone the facts become a slim bar on top). Visitors keep the plain stacked page.
+            let side = pg; let main = pg;
+            if (isMember) {
+                pg.classList.add('pg-team');
+                const grid = el('div', 'tt-grid'); side = el('aside', 'tt-side'); main = el('div', 'tt-main');
+                grid.appendChild(side); grid.appendChild(main); pg.appendChild(grid);
+            }
+            const bb = backButton(); if (!isMember) bb.style.marginBottom = '16px'; side.appendChild(bb);
 
             // Top: who it is
-            const top = el('div', 'pg-card pg-file'); top.style.marginBottom = '18px';
+            const top = el('div', 'pg-card pg-file tt-id'); if (!isMember) top.style.marginBottom = '18px';
             top.appendChild(cover(team, 64));
-            const d = el('div'); const n = el('h2', '', team.name); n.style.margin = '0'; d.appendChild(n);
-            const pills = el('div'); pills.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:6px';
+            const d = el('div'); d.style.minWidth = '0'; const n = el('h2', '', team.name); n.style.margin = '0'; d.appendChild(n);
+            const pills = el('div', 'tt-pills'); pills.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:6px';
             pills.appendChild(el('span', 'pg-pill', team.direction || 'Boshqa'));
             const st = statusPill(team); if (st) pills.appendChild(st);
-            d.appendChild(pills); top.appendChild(d); pg.appendChild(top);
+            d.appendChild(pills);
+            d.appendChild(el('div', 'tt-line pg-muted', (team.direction || 'Boshqa') + ' · ' + team.members + " a'zo · " + (team.rating || 0) + ' ball'));
+            top.appendChild(d); side.appendChild(top);
 
             // Join / invitation / request strip
             if (team.invited) {
@@ -383,18 +394,23 @@
                 pg.appendChild(c);
             }
 
-            const facts = el('div', 'pg-grid'); facts.style.cssText = 'grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:18px';
-            [['Ochgan', team.captain_name || '–'], ['Ochilgan sana', dateText(team.created_at)], ["A'zolar soni", team.members + ' / ' + limits.maxMembers], ['Soha', team.sphere || '–'], ['Haftalik ball', String(team.rating || 0) + (team.rank ? ' (#' + team.rank + ')' : '')], ['Holat', team.recruiting ? 'A\'zo qabul qilmoqda' : 'Yopiq']].forEach(function (f) {
-                const c = el('div', 'pg-card'); c.appendChild(el('div', 'pg-muted', f[0])); const v = el('b', '', f[1]); v.style.fontSize = '1.05rem'; c.appendChild(v); facts.appendChild(c);
-            });
-            pg.appendChild(facts);
+            const factRows = [['Ochgan', team.captain_name || '–'], ['Ochilgan sana', dateText(team.created_at)], ["A'zolar soni", team.members + ' / ' + limits.maxMembers], ['Soha', team.sphere || '–'], ['Haftalik ball', String(team.rating || 0) + (team.rank ? ' (#' + team.rank + ')' : '')], ['Holat', team.recruiting ? 'A\'zo qabul qilmoqda' : 'Yopiq']];
+            function factsNode(cls) {
+                const facts = el('div', 'pg-grid ' + (cls || ''));
+                factRows.forEach(function (f) {
+                    const c = el('div', 'pg-card'); c.appendChild(el('div', 'pg-muted', f[0])); const v = el('b', '', f[1]); v.style.fontSize = '1.05rem'; c.appendChild(v); facts.appendChild(c);
+                });
+                return facts;
+            }
+            const facts = factsNode(isMember ? 'tt-facts' : ''); if (!isMember) facts.style.cssText = 'grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:18px';
+            side.appendChild(facts);
 
             const labels = { chat: 'Chat', resources: 'Resurslar', events: 'Tadbirlar', members: "A'zolar", about: 'Haqida', settings: 'Sozlamalar' };
             const panes = {};
             keys.forEach(function (k) { const p = el('div'); p.hidden = k !== tab; p.dataset.pane = k; panes[k] = p; });
             tabs.onChange = function (k) { tab = k; };
-            pg.appendChild(tabs(keys.map(function (k) { return [k, labels[k]]; }), tab, panes));
-            keys.forEach(function (k) { pg.appendChild(panes[k]); });
+            main.appendChild(tabs(keys.map(function (k) { return [k, labels[k]]; }), tab, panes));
+            keys.forEach(function (k) { main.appendChild(panes[k]); });
 
             // ---- Chat
             if (isMember) {
@@ -637,6 +653,7 @@
 
             // ---- About
             const ap = panes.about; ap.style.cssText = 'display:grid;gap:18px';
+            if (isMember) { const mf = factsNode('tt-facts-m'); mf.style.cssText = 'grid-template-columns:repeat(auto-fit,minmax(140px,1fr))'; ap.appendChild(mf); }
             const goals = card('Jamoa maqsadlari');
             const lines = goalLines(team.goals);
             if (!lines.length) goals.appendChild(empty('Maqsadlar yozilmagan.'));

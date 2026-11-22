@@ -308,3 +308,36 @@ body[data-role="student"] .only-teacher, body[data-role="teacher"] .only-student
 .pg-soon-card { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin-bottom: 14px; }
 .pg-off { opacity: .55; }
 .pg-off .pg-switch input { cursor: not-allowed; }
+
+/* ---- Team workspace (members): one fixed-height screen so the message box never scrolls away.
+   Desktop: tabs + chat on the left, team facts as a side dashboard. Phone: slim info bar on top, chat below.
+   --tt-h is the screen minus the header and the page paddings (see .main and .content-area). */
+.pg-team { --tt-h: max(480px, calc(100dvh - 202px)); }
+.tt-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; grid-template-areas: "main side"; gap: 18px; height: var(--tt-h); }
+.tt-main { grid-area: main; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.tt-side { grid-area: side; display: flex; flex-direction: column; gap: 14px; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+.tt-side .tt-back { align-self: flex-start; }
+.tt-side .tt-facts { grid-template-columns: 1fr 1fr; gap: 10px; }
+.tt-side .tt-facts b { font-size: .95rem !important; }
+.tt-side .tt-id h2 { font-size: 1.15rem; overflow-wrap: anywhere; }
+.tt-side .tt-facts .pg-card { padding: 12px 14px; }
+.tt-line, .tt-facts-m { display: none; }
+.tt-main > .pg-tabs { flex: none; margin-bottom: 12px; }
+.tt-main > [data-pane] { flex: 1; min-height: 0; overflow-y: auto; align-content: start; overscroll-behavior: contain; }
+.tt-main > [data-pane="chat"]:not([hidden]) { display: flex; flex-direction: column; overflow: hidden; }
+.pg-team .tc { flex: 1; height: auto; min-height: 0; }
+@media (max-width: 900px) {
+	.tt-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "side" "main"; grid-template-rows: auto minmax(0, 1fr); gap: 10px; }
+	.tt-side { flex-direction: row; align-items: center; gap: 10px; overflow: visible; }
+	.tt-side .tt-back { font-size: 0; padding: 8px 12px; align-self: center; flex: none; }
+	.tt-side .tt-back::before { content: "←"; font-size: 1.1rem; line-height: 1; }
+	.tt-side .tt-id { flex: 1; min-width: 0; padding: 6px 10px; gap: 10px; border-radius: 12px; }
+	.tt-side .tt-id .pg-cover { width: 34px !important; height: 34px !important; font-size: .8rem !important; border-radius: 10px; }
+	.tt-side .tt-id h2 { font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.tt-side .tt-pills, .tt-side .tt-facts { display: none; }
+	.tt-line { display: block; font-size: .78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.tt-facts-m { display: grid; }
+	.tt-main > .pg-tabs { margin-bottom: 8px; }
+}
+/* On a phone the page has no card around it (see dashboard-shell.css), so less is subtracted */
+@media (max-width: 576px) { .pg-team { --tt-h: max(420px, calc(100dvh - 124px)); } }
