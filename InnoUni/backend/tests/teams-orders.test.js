@@ -22,8 +22,9 @@ const details = { direction: 'Dasturlash', sphere: 'Veb dasturlash', goals: 'Loy
 const makeTeam = () => request(app).post('/api/teams').set(as(CAPTAIN)).send({ name: 'Alfa', description: 'Test', ...details });
 
 describe('rating', () => {
-    test('topics x2 + achievements x10', () => {
-        expect(teamsRouter.rating({ topics_done: 5, achievements: 2 })).toBe(30);
+    test('5 per member who wrote + their messages', () => {
+        expect(teamsRouter.rating({ writers: 3, messages: 12 })).toBe(27);
+        expect(teamsRouter.rating(undefined)).toBe(0);
     });
 });
 
@@ -114,13 +115,32 @@ describe('teams', () => {
         expect((await request(app).get('/api/teams/abc').set(as(STUDENT))).status).toBe(400);
     });
 
-    test('lists teams sorted by rating', async () => {
-        await makeTeam();
-        await request(app).post('/api/teams').set(as(CAPTAIN)).send({ name: 'Beta', ...details });
-        s.teams[1].achievements = 3;
-        const res = await request(app).get('/api/teams').set(as(STUDENT));
+    test('the rating comes from real chat activity of the last 7 days and the list is ordered by it', async () => {
+        const a = (await makeTeam()).body.id;
+        const b = (await request(app).post('/api/teams').set(as(CAPTAIN)).send({ name: 'Beta', ...details })).body.id;
+        await request(app).post(`/api/teams/${b}/join`).set(as(STUDENT)).send({});
+        await request(app).post(`/api/teams/${b}/members/${STUDENT}/accept`).set(as(CAPTAIN));
+        const say = (team, who, n) => Promise.all(Array.from({ length: n }, (_, i) => request(app).post(`/api/teams/${team}/messages`).set(as(who)).send({ body: 'salom ' + i })));
+        await say(b, CAPTAIN, 2); await say(b, STUDENT, 1);
+        const res = await request(app).get('/api/teams').set(as(OTHER));
         expect(res.body.teams.map((t) => t.name)).toEqual(['Beta', 'Alfa']);
-        expect(res.body.teams[0].rating).toBe(30);
+        expect(res.body.teams[0]).toMatchObject({ rating: 3 + 10, rank: 1, activity: { writers: 2, messages: 3 } });
+        expect(res.body.teams[1]).toMatchObject({ rating: 0, rank: null });
+        void a;
+    });
+
+    test('one person cannot lift a team: at most 20 messages count', async () => {
+        const id = (await makeTeam()).body.id;
+        for (let i = 0; i < 25; i++) s.messages.push({ id: 1000 + i, team_id: id, user_id: CAPTAIN, body: 'x', created_at: Date.now(), deleted_at: null });
+        const res = await request(app).get('/api/teams').set(as(OTHER));
+        expect(res.body.teams[0].rating).toBe(20 + 5);
+    });
+
+    test('old and deleted messages do not count', async () => {
+        const id = (await makeTeam()).body.id;
+        s.messages.push({ id: 2000, team_id: id, user_id: CAPTAIN, body: 'old', created_at: Date.now() - 8 * 24 * 3600 * 1000, deleted_at: null });
+        s.messages.push({ id: 2001, team_id: id, user_id: CAPTAIN, body: '', created_at: Date.now(), deleted_at: Date.now() });
+        expect((await request(app).get('/api/teams').set(as(OTHER))).body.teams[0].rating).toBe(0);
     });
 
     test('join request, no duplicates, unknown team', async () => {

@@ -6,7 +6,7 @@ function createTeamsFake() {
     const s = {
         users: { 1: 'Captain', 2: 'Ali', 3: 'Vali', 4: 'Dilnoza' },
         emails: { 1: 'captain@x.uz', 2: 'ali@x.uz', 3: 'vali@x.uz', 4: 'dilnoza@x.uz' },
-        blocked: {},
+        blocked: {}, interests: {}, notices: [],
         teams: [], members: [], messages: [], id: 1, mid: 1, memberId: 1
     };
     const now = () => Date.now();
@@ -22,11 +22,11 @@ function createTeamsFake() {
         // ---- teams
         if (q.startsWith('INSERT INTO teams (')) {
             if (s.teams.some((t) => t.name === p[0])) throw Object.assign(new Error('dup'), { code: 'ER_DUP_ENTRY' });
-            const t = { id: s.id++, name: p[0], description: p[1], direction: p[2], sphere: p[3], goals: p[4], captain_id: p[5], invite_mode: 'admin', topics_done: 0, achievements: 0, created_at: '2026-11-13T09:00:00.000Z' };
+            const t = { id: s.id++, name: p[0], description: p[1], direction: p[2], sphere: p[3], goals: p[4], captain_id: p[5], invite_mode: 'admin', recruiting: 1, topics_done: 0, achievements: 0, created_at: '2026-11-13T09:00:00.000Z' };
             s.teams.push(t);
             return [{ insertId: t.id }];
         }
-        if (q.startsWith('SELECT id, name, captain_id, invite_mode FROM teams WHERE id = ?')) return [s.teams.filter((t) => t.id === p[0])];
+        if (q.startsWith('SELECT id, name, captain_id, invite_mode, recruiting FROM teams WHERE id = ?')) return [s.teams.filter((t) => t.id === p[0])];
         if (q.startsWith('SELECT COUNT(*) AS n FROM teams WHERE captain_id')) return [[{ n: s.teams.filter((t) => t.captain_id === p[0]).length }]];
         if (q.startsWith('SELECT t.id, t.name')) {
             // p = [viewer x3] for the list, [viewer x3, teamId] for one team; newest first like the real ORDER BY
@@ -99,6 +99,17 @@ function createTeamsFake() {
             s.members = s.members.filter((m) => !(m.team_id === p[0] && m.user_id === p[1] && (!onlyInvitations || (m.status === 'pending' && m.invited_by !== null))));
             return [{ affectedRows: n - s.members.length }];
         }
+
+        // ---- activity, interests, notices
+        if (q.startsWith('SELECT team_id, user_id, COUNT(*) AS n FROM team_messages WHERE created_at >=')) {
+            const from = now() - 7 * 24 * 3600 * 1000; const g = {};
+            s.messages.filter((m) => m.deleted_at === null && m.created_at >= from).forEach((m) => { const k = m.team_id + ':' + m.user_id; g[k] = (g[k] || 0) + 1; });
+            return [Object.entries(g).map(([k, n]) => ({ team_id: Number(k.split(':')[0]), user_id: Number(k.split(':')[1]), n }))];
+        }
+        if (q === 'SELECT direction FROM user_interests WHERE user_id = ?') return [(s.interests[p[0]] || []).map((direction) => ({ direction }))];
+        if (q === 'DELETE FROM user_interests WHERE user_id = ?') { s.interests[p[0]] = []; return [{}]; }
+        if (q.startsWith('INSERT INTO user_interests')) { (s.interests[p[0]] = s.interests[p[0]] || []).push(p[1]); return [{}]; }
+        if (q.startsWith('INSERT INTO notifications')) { s.notices.push({ user_id: p[0], kind: p[1], title: p[2], body: p[3], page: p[4], ref_id: p[5] }); return [{ insertId: s.notices.length }]; }
 
         // ---- chat
         if (q.startsWith('SELECT COUNT(*) AS n FROM team_messages WHERE team_id = ? AND user_id = ?')) {
