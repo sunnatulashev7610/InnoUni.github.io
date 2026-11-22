@@ -52,6 +52,9 @@
         if (/No invitation/i.test(m)) return 'Taklif topilmadi.';
         if (/admin cannot leave/i.test(m)) return "Admin jamoadan chiqa olmaydi. Uni o'chirishi mumkin.";
         if (/Only the (admin|owner)/i.test(m)) return 'Bu amalni faqat admin bajara oladi.';
+        if (/must be in the future/i.test(m)) return "Uchrashuv vaqti kelajakda bo'lsin.";
+        if (/too far ahead/i.test(m)) return "Uchrashuvni 1 yildan ortiq oldin rejalab bo'lmaydi.";
+        if (/At most \d+ upcoming/i.test(m)) return "Rejalashtirilgan uchrashuvlar juda ko'p. Eskilarini o'chiring.";
         if (/Too many resources/i.test(m)) return "Bugun juda ko'p havola qo'shdingiz. Ertaga urinib ko'ring.";
         if (/restricted from writing/i.test(m)) return "Hozir yozish cheklangan. Keyinroq urinib ko'ring.";
         if (/own resource/i.test(m)) return "O'z havolangizga ovoz bera olmaysiz.";
@@ -339,7 +342,7 @@
             const isAdmin = team.is_captain;
             const isMember = isAdmin || team.my_status === 'active';
             const canInvite = isAdmin || (isMember && data.invite_mode === 'members');
-            const keys = isMember ? ['chat', 'resources', 'members', 'about'].concat(isAdmin ? ['settings'] : []) : ['about', 'members'];
+            const keys = isMember ? ['chat', 'resources', 'events', 'members', 'about'].concat(isAdmin ? ['settings'] : []) : ['about', 'members'];
             if (!tab || keys.indexOf(tab) === -1) tab = isMember ? 'chat' : 'about';
 
             const pg = page(root); pg.appendChild(backButton());
@@ -386,7 +389,7 @@
             });
             pg.appendChild(facts);
 
-            const labels = { chat: 'Chat', resources: 'Resurslar', members: "A'zolar", about: 'Haqida', settings: 'Sozlamalar' };
+            const labels = { chat: 'Chat', resources: 'Resurslar', events: 'Tadbirlar', members: "A'zolar", about: 'Haqida', settings: 'Sozlamalar' };
             const panes = {};
             keys.forEach(function (k) { const p = el('div'); p.hidden = k !== tab; p.dataset.pane = k; panes[k] = p; });
             tabs.onChange = function (k) { tab = k; };
@@ -563,6 +566,73 @@
                 });
                 rList.appendChild(rBody); rp.appendChild(rform); rp.appendChild(rList);
                 await rDraw();
+            }
+
+            // ---- Events: the admin plans meetups, members say "Qatnashaman"
+            if (isMember) {
+                const ep = panes.events; ep.style.cssText = 'display:grid;gap:18px';
+                const eList = el('div', 'pg-card'); eList.appendChild(el('h3', 'pg-h3', 'Yaqin uchrashuvlar'));
+                const eBody = el('div');
+                const when = (iso) => new Date(iso).toLocaleString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                async function eDraw() {
+                    eBody.textContent = '';
+                    let r;
+                    try { r = await get('/teams/' + id + '/events', session); } catch (err) { eBody.appendChild(empty(problem(err))); return; }
+                    if (!r.events.length) { eBody.appendChild(empty(isAdmin ? "Hali uchrashuv yo'q. Yuqoridan birinchisini rejalashtiring." : "Hali uchrashuv rejalashtirilmagan.")); return; }
+                    r.events.forEach(function (x) {
+                        const past = new Date(x.starts_at).getTime() < Date.now();
+                        const row = el('div', 'pg-row'); row.style.cssText = 'align-items:flex-start;gap:12px;flex-wrap:wrap';
+                        const mid = el('div'); mid.style.cssText = 'flex:1;min-width:200px';
+                        mid.appendChild(el('b', '', x.title));
+                        const meta = el('p', 'pg-muted', when(x.starts_at) + (x.place ? ' · ' + x.place : '') + (past ? " · O'tgan" : '')); meta.style.margin = '4px 0 0'; mid.appendChild(meta);
+                        if (x.note) { const n = el('p', 'pg-muted', x.note); n.style.margin = '4px 0 0'; mid.appendChild(n); }
+                        const cnt = el('p', 'pg-muted', x.going + ' kishi qatnashadi'); cnt.style.cssText = 'margin:4px 0 0;font-size:.85rem'; mid.appendChild(cnt);
+                        row.appendChild(mid);
+                        if (!past) {
+                            const go = el('button', 'pg-btn' + (x.i_go ? '' : ' ghost'), x.i_go ? '✓ Qatnashaman' : 'Qatnashaman'); go.type = 'button'; small(go); go.setAttribute('aria-pressed', String(x.i_go));
+                            go.addEventListener('click', async function () {
+                                go.disabled = true;
+                                try { await send('POST', '/teams/' + id + '/events/' + x.id + '/going', session); await eDraw(); }
+                                catch (err) { G.toast(problem(err)); go.disabled = false; }
+                            });
+                            row.appendChild(go);
+                        }
+                        if (isAdmin) {
+                            const del = el('button', 'pg-btn ghost', "O'chirish"); del.type = 'button'; small(del);
+                            twice(del, 'Aniqmi?', async function () {
+                                try { await send('DELETE', '/teams/' + id + '/events/' + x.id, session); await eDraw(); } catch (err) { G.toast(problem(err)); }
+                            });
+                            row.appendChild(del);
+                        }
+                        eBody.appendChild(row);
+                    });
+                }
+                if (isAdmin) {
+                    const eform = el('form', 'pg-card'); eform.noValidate = true; eform.appendChild(el('h3', 'pg-h3', 'Uchrashuv rejalashtirish'));
+                    const eTitle = el('input', 'pg-input'); eTitle.type = 'text'; eTitle.maxLength = 150; eTitle.placeholder = 'Masalan: Haftalik uchrashuv';
+                    const eWhen = el('input', 'pg-input'); eWhen.type = 'datetime-local';
+                    const ePlace = el('input', 'pg-input'); ePlace.type = 'text'; ePlace.maxLength = 200; ePlace.placeholder = 'Joy yoki onlayn havola (ixtiyoriy)';
+                    const eNote = el('textarea', 'pg-input'); eNote.rows = 2; eNote.maxLength = 500; eNote.placeholder = 'Nimani muhokama qilamiz? (ixtiyoriy)';
+                    eform.appendChild(field('Nomi', eTitle, 'teTitle')); eform.appendChild(field('Sana va vaqt', eWhen, 'teWhen')); eform.appendChild(field('Joy', ePlace, 'tePlace')); eform.appendChild(field('Izoh', eNote, 'teNote'));
+                    const eMsg = note(); eform.appendChild(eMsg);
+                    const eAdd = el('button', 'pg-btn', 'Rejalashtirish'); eAdd.type = 'submit'; eform.appendChild(eAdd);
+                    eform.addEventListener('submit', async function (e) {
+                        e.preventDefault(); eMsg.textContent = '';
+                        if (!eTitle.value.trim()) { eMsg.textContent = 'Uchrashuv nomini kiriting.'; return; }
+                        const at = new Date(eWhen.value);
+                        if (!eWhen.value || Number.isNaN(at.getTime())) { eMsg.textContent = 'Sana va vaqtni tanlang.'; return; }
+                        if (at.getTime() <= Date.now()) { eMsg.textContent = "Uchrashuv vaqti kelajakda bo'lsin."; return; }
+                        eAdd.disabled = true;
+                        try {
+                            await send('POST', '/teams/' + id + '/events', session, { title: eTitle.value, place: ePlace.value, note: eNote.value, starts_at: at.toISOString() });
+                            eTitle.value = ''; eWhen.value = ''; ePlace.value = ''; eNote.value = ''; G.toast("Uchrashuv rejalashtirildi. A'zolarga xabar yuborildi"); await eDraw();
+                        } catch (err) { eMsg.textContent = problem(err); }
+                        eAdd.disabled = false;
+                    });
+                    ep.appendChild(eform);
+                }
+                eList.appendChild(eBody); ep.appendChild(eList);
+                await eDraw();
             }
 
             // ---- About

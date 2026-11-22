@@ -32,7 +32,13 @@ function boot(state) {
         const body = opts.body ? JSON.parse(opts.body) : undefined;
         calls.push({ path: p, method, body });
         let r = { body: { message: 'ok' } };
-        if (/\/resources/.test(p)) {
+        if (/\/events/.test(p)) {
+            const evs = state.events = state.events || [{ id: 1, title: '<b>Haftalik</b> uchrashuv', place: 'Kutubxona', note: null, starts_at: new Date(Date.now() + 2 * 86400000).toISOString(), going: 1, i_go: false }];
+            if (method === 'GET') r = { body: { events: evs } };
+            else if (method === 'POST' && /\/going$/.test(p)) { evs[0].i_go = true; evs[0].going++; r = { body: { i_go: true } }; }
+            else if (method === 'POST') { evs.push({ id: 2, title: body.title, place: body.place, note: body.note, starts_at: body.starts_at, going: 0, i_go: false }); r = { status: 201, body: { id: 2 } }; }
+            else r = { body: { message: 'Deleted' } };
+        } else if (/\/resources/.test(p)) {
             const res = state.resources = state.resources || [{ id: 1, title: '<i>Python</i> darsi', url: 'https://x.uz/p', note: 'Yaxshi', added_by: 'Vali', created_at: '2026-11-20T09:00:00.000Z', mine: false, votes: 2, voted: false }, { id: 2, title: 'Mening havolam', url: 'javascript:alert(1)', note: null, added_by: 'Sam Test', created_at: '2026-11-21T09:00:00.000Z', mine: true, votes: 0, voted: false }];
             if (method === 'GET') r = { body: { resources: res } };
             else if (method === 'POST' && /\/vote$/.test(p)) { const x = res.find((q) => '/teams/1/resources/' + q.id + '/vote' === p); x.voted = true; x.votes++; r = { body: { voted: true } }; }
@@ -390,5 +396,39 @@ describe('resources tab', () => {
     test('visitors who are not members have no Resurslar tab', async () => {
         const t = boot(makeState()); t.w.GEData.ctx.teamId = 1; await t.run('team-detail'); await t.flush();
         expect(t.c.querySelector('[data-pane="resources"]')).toBeNull();
+    });
+});
+
+describe('events tab', () => {
+    const asMember = () => { const state = makeState(); state.teams[1].my_status = 'active'; state.members = []; return state; };
+    test('a member sees the meetup as text and can say "Qatnashaman"; no planning form or delete', async () => {
+        const t = boot(asMember()); t.w.GEData.ctx.teamId = 2; await t.run('team-detail'); await t.flush();
+        const ep = pane(t.c, 'events');
+        expect(ep.textContent).toContain('<b>Haftalik</b> uchrashuv');
+        expect(ep.querySelector('b b')).toBeNull();
+        expect(ep.textContent).toContain('1 kishi qatnashadi');
+        expect(ep.querySelector('form')).toBeNull();
+        expect(btn(ep, "O'chirish")).toBeUndefined();
+        click(btn(ep, 'Qatnashaman')); await t.flush();
+        expect(t.calls.some((c) => c.method === 'POST' && c.path === '/teams/2/events/1/going')).toBe(true);
+        expect(ep.textContent).toContain('2 kishi qatnashadi');
+    });
+    test('the admin plans a meetup: past time is stopped, a good one is sent as UTC', async () => {
+        const state = makeState(); state.members = [];
+        const t = boot(state); t.w.GEData.ctx.teamId = 3; await t.run('team-detail'); await t.flush();
+        const ep = pane(t.c, 'events');
+        expect(btn(ep, "O'chirish")).toBeTruthy();
+        setVal(t.c, 'teTitle', 'Yangi'); setVal(t.c, 'teWhen', '2020-01-01T10:00');
+        submit(ep.querySelector('form')); await t.flush();
+        expect(ep.textContent).toContain('kelajakda');
+        expect(t.calls.some((c) => c.method === 'POST' && c.path === '/teams/3/events')).toBe(false);
+        setVal(t.c, 'teWhen', '2099-01-01T10:00');
+        submit(ep.querySelector('form')); await t.flush();
+        const sent = t.calls.find((c) => c.method === 'POST' && c.path === '/teams/3/events').body;
+        expect(sent.title).toBe('Yangi'); expect(sent.starts_at).toMatch(/^2099-01-01T.*Z$/);
+    });
+    test('visitors have no Tadbirlar tab', async () => {
+        const t = boot(makeState()); t.w.GEData.ctx.teamId = 1; await t.run('team-detail'); await t.flush();
+        expect(t.c.querySelector('[data-pane="events"]')).toBeNull();
     });
 });
