@@ -46,10 +46,10 @@
 					
 					<div class="user-profile">
 						<div class="user-info">
-							<div class="user-name" id="userName">Sunnat Ulashev</div>
+							<div class="user-name" id="userName">Mehmon</div>
 							<div class="user-role" id="userRole">O'quvchi</div>
 						</div>
-						<img src="https://picsum.photos/seed/user/35/35" alt="User" class="user-avatar">
+						<img src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 35 35%27%3E%3Crect width=%2735%27 height=%2735%27 rx=%2710%27 fill=%27%23a3e635%27/%3E%3C/svg%3E" alt="" class="user-avatar">
 						<button type="button" class="pg-btn ghost" id="logoutBtn" data-logout hidden style="padding:8px 14px" aria-label="Chiqish"><i class="fas fa-right-from-bracket" aria-hidden="true"></i><span class="lbl"> Chiqish</span></button>
 					</div>
 				</div>
@@ -427,7 +427,17 @@
 			try { r = r || localStorage.getItem('geRole'); } catch (e) { /* storage may be blocked */ }
 			return r === 'teacher' ? 'teacher' : 'student';
 		}
+		// Header picture: the saved photo, otherwise the initials on the brand colour (no random stock photo)
+		function paintHeaderAvatar(name) {
+			var img = document.querySelector('.user-avatar'); if (!img) return;
+			var saved = null; try { saved = JSON.parse(localStorage.getItem('user') || '{}').avatar; } catch (e) { /* ignore */ }
+			if (typeof saved === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/]+={0,2}$/.test(saved)) { img.src = saved; return; }
+			var letters = String(name || '').trim().split(/\s+/).slice(0, 2).map(function (w) { return (w.match(/\p{L}/u) || [''])[0].toUpperCase(); }).join('');
+			if (!letters) return;
+			img.src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 35 35"><rect width="35" height="35" rx="10" fill="#a3e635"/><text x="17.5" y="23" font-family="Arial,sans-serif" font-size="15" font-weight="700" text-anchor="middle" fill="#0a0f0a">' + letters + '</text></svg>');
+		}
 		function applySession() {
+			paintHeaderAvatar(session && session.name);
 			if (!session) {
 				// Demo mode: say clearly that it is look-only
 				var bar = document.createElement('div');
