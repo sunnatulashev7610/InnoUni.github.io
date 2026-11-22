@@ -238,7 +238,18 @@
             } finally { st.busy = false; }
         }
 
-        function stop() { st.stopped = true; clearInterval(st.timer); }
+        function stop() { st.stopped = true; clearInterval(st.timer); if (sizeWatch) sizeWatch.disconnect(); }
+
+        // The list can only be scrolled once it is on screen: when the page is built off-screen, or the chat tab was
+        // hidden, its height is 0 and the scroll position is lost. Jump to the newest message the first time it has a size.
+        let sizeWatch = null; let placed = false;
+        if (window.ResizeObserver) {
+            sizeWatch = new ResizeObserver(function () {
+                if (!list.clientHeight) { placed = false; return; }
+                if (!placed && st.msgs.length) { placed = true; toBottom(); }
+            });
+            sizeWatch.observe(list);
+        }
 
         st.timer = setInterval(function () {
             if (!root.isConnected) { stop(); return; }
