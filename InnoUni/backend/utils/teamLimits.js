@@ -14,4 +14,7 @@ const FLOOD = { messages: 8, windowSeconds: 20, muteMinutes: 5 };
 // Who may invite new members (a team setting)
 const INVITE_MODES = ['admin', 'members'];
 
-module.exports = { LIMITS, MUTE_MINUTES, FLOOD, INVITE_MODES };
+// Resource library
+const RESOURCE_LIMITS = { maxTitleLength: 150, maxNoteLength: 500, maxUrlLength: 500, perPersonPerDay: 20 };
+
+module.exports = { RESOURCE_LIMITS, LIMITS, MUTE_MINUTES, FLOOD, INVITE_MODES };

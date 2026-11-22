@@ -7,7 +7,7 @@ function createTeamsFake() {
         users: { 1: 'Captain', 2: 'Ali', 3: 'Vali', 4: 'Dilnoza' },
         emails: { 1: 'captain@x.uz', 2: 'ali@x.uz', 3: 'vali@x.uz', 4: 'dilnoza@x.uz' },
         blocked: {}, interests: {}, notices: [],
-        teams: [], members: [], messages: [], id: 1, mid: 1, memberId: 1
+        teams: [], members: [], messages: [], resources: [], votes: [], id: 1, mid: 1, memberId: 1, rid: 1
     };
     const now = () => Date.now();
     const find = (t, u) => s.members.find((m) => m.team_id === t && m.user_id === u);
@@ -110,6 +110,20 @@ function createTeamsFake() {
         if (q === 'DELETE FROM user_interests WHERE user_id = ?') { s.interests[p[0]] = []; return [{}]; }
         if (q.startsWith('INSERT INTO user_interests')) { (s.interests[p[0]] = s.interests[p[0]] || []).push(p[1]); return [{}]; }
         if (q.startsWith('INSERT INTO notifications')) { s.notices.push({ user_id: p[0], kind: p[1], title: p[2], body: p[3], page: p[4], ref_id: p[5] }); return [{ insertId: s.notices.length }]; }
+
+        // ---- resources
+        if (q.startsWith('SELECT r.id, r.user_id, r.title, r.url, r.note, r.created_at, u.full_name, tm.anonymous FROM team_resources r')) {
+            return [s.resources.filter((r) => r.team_id === p[0]).sort((a, b) => b.id - a.id).map((r) => ({ ...r, full_name: s.users[r.user_id], anonymous: (find(r.team_id, r.user_id) || {}).anonymous || 0 }))];
+        }
+        if (q === 'SELECT resource_id, user_id FROM team_resource_votes WHERE team_id = ?') return [s.votes.filter((v) => v.team_id === p[0])];
+        if (q.startsWith('SELECT COUNT(*) AS n FROM team_resources WHERE team_id = ? AND user_id = ?')) return [[{ n: s.resources.filter((r) => r.team_id === p[0] && r.user_id === p[1]).length }]];
+        if (q.startsWith('INSERT INTO team_resources')) { const r = { id: s.rid++, team_id: p[0], user_id: p[1], title: p[2], url: p[3], note: p[4], created_at: '2026-11-22T09:00:00.000Z' }; s.resources.push(r); return [{ insertId: r.id }]; }
+        if (q === 'SELECT id, user_id FROM team_resources WHERE id = ? AND team_id = ?') return [s.resources.filter((r) => r.id === p[0] && r.team_id === p[1])];
+        if (q === 'SELECT resource_id FROM team_resource_votes WHERE resource_id = ? AND user_id = ?') return [s.votes.filter((v) => v.resource_id === p[0] && v.user_id === p[1])];
+        if (q === 'DELETE FROM team_resource_votes WHERE resource_id = ? AND user_id = ?') { s.votes = s.votes.filter((v) => !(v.resource_id === p[0] && v.user_id === p[1])); return [{}]; }
+        if (q.startsWith('INSERT INTO team_resource_votes')) { s.votes.push({ resource_id: p[0], user_id: p[1], team_id: p[2] }); return [{}]; }
+        if (q === 'DELETE FROM team_resource_votes WHERE resource_id = ?') { s.votes = s.votes.filter((v) => v.resource_id !== p[0]); return [{}]; }
+        if (q === 'DELETE FROM team_resources WHERE id = ? AND team_id = ?') { s.resources = s.resources.filter((r) => !(r.id === p[0] && r.team_id === p[1])); return [{}]; }
 
         // ---- chat
         if (q.startsWith('SELECT COUNT(*) AS n FROM team_messages WHERE team_id = ? AND user_id = ?')) {
