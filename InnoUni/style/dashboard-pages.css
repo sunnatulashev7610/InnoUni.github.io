@@ -302,3 +302,9 @@ body[data-role="student"] .only-teacher, body[data-role="teacher"] .only-student
 .tc-note { padding: 14px 16px; border-top: 1px solid var(--line); background: var(--warn-soft); color: var(--warn); font-size: .9rem; font-weight: 600; }
 .tc-error { padding: 0 14px 10px; color: var(--danger); font-size: .82rem; min-height: 0; }
 @media (max-width: 600px) { .tc-bubble { max-width: 86%; } .tc { height: 70vh; } }
+
+/* "Tez orada": parts that are not built yet */
+.pg-soon { display: inline-block; padding: 2px 9px; border-radius: 6px; font-size: .72rem; font-weight: 700; letter-spacing: .02em; vertical-align: middle; background: var(--warn-soft); color: var(--warn); }
+.pg-soon-card { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin-bottom: 14px; }
+.pg-off { opacity: .55; }
+.pg-off .pg-switch input { cursor: not-allowed; }
