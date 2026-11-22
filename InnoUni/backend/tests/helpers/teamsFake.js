@@ -7,7 +7,7 @@ function createTeamsFake() {
         users: { 1: 'Captain', 2: 'Ali', 3: 'Vali', 4: 'Dilnoza' },
         emails: { 1: 'captain@x.uz', 2: 'ali@x.uz', 3: 'vali@x.uz', 4: 'dilnoza@x.uz' },
         blocked: {}, interests: {}, notices: [],
-        teams: [], members: [], messages: [], resources: [], votes: [], id: 1, mid: 1, memberId: 1, rid: 1
+        teams: [], members: [], messages: [], resources: [], votes: [], id: 1, mid: 1, memberId: 1, rid: 1, events: [], going: [], eid: 1
     };
     const now = () => Date.now();
     const find = (t, u) => s.members.find((m) => m.team_id === t && m.user_id === u);
@@ -124,6 +124,22 @@ function createTeamsFake() {
         if (q.startsWith('INSERT INTO team_resource_votes')) { s.votes.push({ resource_id: p[0], user_id: p[1], team_id: p[2] }); return [{}]; }
         if (q === 'DELETE FROM team_resource_votes WHERE resource_id = ?') { s.votes = s.votes.filter((v) => v.resource_id !== p[0]); return [{}]; }
         if (q === 'DELETE FROM team_resources WHERE id = ? AND team_id = ?') { s.resources = s.resources.filter((r) => !(r.id === p[0] && r.team_id === p[1])); return [{}]; }
+
+        // ---- meetups (starts_at is kept as a Date)
+        if (q.startsWith("SELECT id, title, place, note, DATE_FORMAT(starts_at, '%Y-%m-%dT%H:%i:%sZ') AS starts_at FROM team_events")) {
+            const from = now() - 86400000;
+            return [s.events.filter((e) => e.team_id === p[0] && e.starts_at.getTime() >= from).sort((a, b) => a.starts_at - b.starts_at).map((e) => ({ id: e.id, title: e.title, place: e.place, note: e.note, starts_at: e.starts_at.toISOString().slice(0, 19) + 'Z' }))];
+        }
+        if (q === 'SELECT event_id, user_id FROM team_event_going WHERE team_id = ?') return [s.going.filter((g) => g.team_id === p[0])];
+        if (q.startsWith('SELECT COUNT(*) AS n FROM team_events WHERE team_id = ?')) return [[{ n: s.events.filter((e) => e.team_id === p[0] && e.starts_at.getTime() >= now()).length }]];
+        if (q.startsWith('INSERT INTO team_events')) { const e = { id: s.eid++, team_id: p[0], user_id: p[1], title: p[2], place: p[3], note: p[4], starts_at: new Date(p[5].replace(' ', 'T') + 'Z') }; s.events.push(e); return [{ insertId: e.id }]; }
+        if (q.startsWith("SELECT user_id FROM team_members WHERE team_id = ? AND status = 'active' AND user_id <> ?")) return [s.members.filter((m) => m.team_id === p[0] && m.status === 'active' && m.user_id !== p[1]).map((m) => ({ user_id: m.user_id }))];
+        if (q === 'SELECT id FROM team_events WHERE id = ? AND team_id = ?') return [s.events.filter((e) => e.id === p[0] && e.team_id === p[1]).map((e) => ({ id: e.id }))];
+        if (q === 'SELECT event_id FROM team_event_going WHERE event_id = ? AND user_id = ?') return [s.going.filter((g) => g.event_id === p[0] && g.user_id === p[1])];
+        if (q === 'DELETE FROM team_event_going WHERE event_id = ? AND user_id = ?') { s.going = s.going.filter((g) => !(g.event_id === p[0] && g.user_id === p[1])); return [{}]; }
+        if (q.startsWith('INSERT INTO team_event_going')) { s.going.push({ event_id: p[0], user_id: p[1], team_id: p[2] }); return [{}]; }
+        if (q === 'DELETE FROM team_event_going WHERE event_id = ?') { s.going = s.going.filter((g) => g.event_id !== p[0]); return [{}]; }
+        if (q === 'DELETE FROM team_events WHERE id = ? AND team_id = ?') { s.events = s.events.filter((e) => !(e.id === p[0] && e.team_id === p[1])); return [{}]; }
 
         // ---- chat
         if (q.startsWith('SELECT COUNT(*) AS n FROM team_messages WHERE team_id = ? AND user_id = ?')) {

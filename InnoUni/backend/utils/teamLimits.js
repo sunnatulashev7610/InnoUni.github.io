@@ -17,4 +17,7 @@ const INVITE_MODES = ['admin', 'members'];
 // Resource library
 const RESOURCE_LIMITS = { maxTitleLength: 150, maxNoteLength: 500, maxUrlLength: 500, perPersonPerDay: 20 };
 
-module.exports = { RESOURCE_LIMITS, LIMITS, MUTE_MINUTES, FLOOD, INVITE_MODES };
+// Meetups
+const EVENT_LIMITS = { maxTitleLength: 150, maxPlaceLength: 200, maxNoteLength: 500, maxUpcoming: 20, maxDaysAhead: 365 };
+
+module.exports = { EVENT_LIMITS, RESOURCE_LIMITS, LIMITS, MUTE_MINUTES, FLOOD, INVITE_MODES };

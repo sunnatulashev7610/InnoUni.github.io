@@ -6,6 +6,7 @@ const { LIMITS, MUTE_MINUTES, INVITE_MODES } = require('../utils/teamLimits');
 const { getTeam, getMember, countActive } = require('../utils/teamAccess');
 const chatRouter = require('./teamChat');
 const resourcesRouter = require('./teamResources');
+const eventsRouter = require('./teamEvents');
 
 const { notify } = require('../utils/notify');
 const router = express.Router();
@@ -14,6 +15,7 @@ router.use(authenticateToken);
 // Chat: /api/teams/:id/messages
 router.use('/:id/messages', chatRouter);
 router.use('/:id/resources', resourcesRouter);
+router.use('/:id/events', eventsRouter);
 
 // Rating = what the team really did in the last 7 days: every member who wrote counts 5, plus the messages
 // (at most 20 from one person, so a single spammer cannot lift the team). Deleted messages do not count.
