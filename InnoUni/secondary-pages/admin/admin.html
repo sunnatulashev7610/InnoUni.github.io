@@ -53,6 +53,7 @@
 	<script src="../../frontend/js/theme.js"></script>
 	<script src="../../frontend/js/config.js"></script>
 	<script src="../../frontend/js/admin-orders.js"></script>
+	<script src="../../frontend/js/admin-panel.js"></script>
 	<script>
 		var content = document.getElementById('content');
 		function loadPage(page, el) {
@@ -62,8 +63,12 @@
 				.then(function (h) {
 					content.innerHTML = h;
 					var tk = null; try { tk = localStorage.getItem('token'); } catch (e) {}
-					if (page === 'a-orders' && tk && window.AdminOrders) {
-						window.AdminOrders.render(content, tk, function () { location.href = 'admin-login.html'; }, toast);
+					var out = function () { location.href = 'admin-login.html'; };
+					if (page === 'a-orders' && tk && window.AdminOrders) window.AdminOrders.render(content, tk, out, toast);
+					if (page === 'a-home' && tk && window.AdminPanel) window.AdminPanel.home(content, tk, out, toast);
+					if (page === 'a-users' && tk && window.AdminPanel) {
+						var me = null; try { me = JSON.parse(localStorage.getItem('user') || '{}').id; } catch (e) {}
+						window.AdminPanel.users(content, tk, out, toast, me);
 					}
 				})
 				.catch(function () { content.textContent = 'Sahifa topilmadi'; });
