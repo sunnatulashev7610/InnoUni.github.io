@@ -32,7 +32,13 @@ function boot(state) {
         const body = opts.body ? JSON.parse(opts.body) : undefined;
         calls.push({ path: p, method, body });
         let r = { body: { message: 'ok' } };
-        if (method === 'GET' && p === '/teams/interests') r = { body: { interests: state.interests || [] } };
+        if (/\/resources/.test(p)) {
+            const res = state.resources = state.resources || [{ id: 1, title: '<i>Python</i> darsi', url: 'https://x.uz/p', note: 'Yaxshi', added_by: 'Vali', created_at: '2026-11-20T09:00:00.000Z', mine: false, votes: 2, voted: false }, { id: 2, title: 'Mening havolam', url: 'javascript:alert(1)', note: null, added_by: 'Sam Test', created_at: '2026-11-21T09:00:00.000Z', mine: true, votes: 0, voted: false }];
+            if (method === 'GET') r = { body: { resources: res } };
+            else if (method === 'POST' && /\/vote$/.test(p)) { const x = res.find((q) => '/teams/1/resources/' + q.id + '/vote' === p); x.voted = true; x.votes++; r = { body: { voted: true } }; }
+            else if (method === 'POST') { res.push({ id: 3, title: body.title, url: body.url, note: body.note, added_by: 'Sam Test', created_at: '2026-11-22T09:00:00.000Z', mine: true, votes: 0, voted: false }); r = { status: 201, body: { id: 3 } }; }
+            else r = { body: { message: 'Deleted' } };
+        } else if (method === 'GET' && p === '/teams/interests') r = { body: { interests: state.interests || [] } };
         else if (method === 'PUT' && p === '/teams/interests') { state.interests = body.directions; r = { body: { interests: body.directions } }; }
         else if (method === 'GET' && p === '/teams/recommended') r = { body: { needs_interests: !(state.interests || []).length, teams: (state.interests || []).length ? state.teams.filter((t) => state.interests.includes(t.direction) && t.recruiting && !t.my_status) : [] } };
         else if (method === 'GET' && p === '/teams') r = { body: { teams: state.teams, directions: DIRS } };
@@ -350,5 +356,39 @@ describe('finding teams', () => {
         expect(rows).toHaveLength(2);
         expect(rows[0]).toContain('#1 IELTS Birga'); expect(rows[0]).toContain('40 ball');
         expect(rows[1]).toContain('#2');
+    });
+});
+
+describe('resources tab', () => {
+    const member = () => { const state = makeState(); state.teams[1].my_status = 'active'; return state; };
+    test('members see links as text, unsafe links get no href, own link cannot be voted', async () => {
+        const state = member(); state.members = [];
+        const t = boot(state); t.w.GEData.ctx.teamId = 2; await t.run('team-detail'); await t.flush();
+        const rp = pane(t.c, 'resources');
+        expect(rp.querySelector('a').textContent).toBe('<i>Python</i> darsi');
+        expect(rp.querySelector('a i')).toBeNull();
+        expect(rp.querySelector('a').getAttribute('href')).toBe('https://x.uz/p');
+        expect([...rp.querySelectorAll('a')][1].hasAttribute('href')).toBe(false);
+        const votes = [...rp.querySelectorAll('button')].filter((b) => b.textContent.startsWith('▲'));
+        expect(votes[0].disabled).toBe(false); expect(votes[1].disabled).toBe(true);
+    });
+    test('voting and adding send the right requests; a bad link is stopped before sending', async () => {
+        const state = member(); state.members = [];
+        const t = boot(state); t.w.GEData.ctx.teamId = 2; await t.run('team-detail'); await t.flush();
+        const rp = pane(t.c, 'resources');
+        click([...rp.querySelectorAll('button')].find((b) => b.textContent === '▲ 2')); await t.flush();
+        expect(t.calls.some((c) => c.method === 'POST' && c.path === '/teams/2/resources/1/vote')).toBe(true);
+        setVal(t.c, 'trTitle', 'Yangi'); setVal(t.c, 'trUrl', 'ftp://x.uz');
+        submit(rp.querySelector('form')); await t.flush();
+        expect(rp.textContent).toContain('http:// yoki https://');
+        expect(t.calls.some((c) => c.method === 'POST' && c.path === '/teams/2/resources')).toBe(false);
+        setVal(t.c, 'trUrl', 'https://x.uz/yangi');
+        submit(rp.querySelector('form')); await t.flush();
+        expect(t.calls.find((c) => c.method === 'POST' && c.path === '/teams/2/resources').body).toMatchObject({ title: 'Yangi', url: 'https://x.uz/yangi' });
+        expect(rp.textContent).toContain('Yangi');
+    });
+    test('visitors who are not members have no Resurslar tab', async () => {
+        const t = boot(makeState()); t.w.GEData.ctx.teamId = 1; await t.run('team-detail'); await t.flush();
+        expect(t.c.querySelector('[data-pane="resources"]')).toBeNull();
     });
 });

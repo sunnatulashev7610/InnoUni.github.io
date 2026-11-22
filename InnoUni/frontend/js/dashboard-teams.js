@@ -52,6 +52,9 @@
         if (/No invitation/i.test(m)) return 'Taklif topilmadi.';
         if (/admin cannot leave/i.test(m)) return "Admin jamoadan chiqa olmaydi. Uni o'chirishi mumkin.";
         if (/Only the (admin|owner)/i.test(m)) return 'Bu amalni faqat admin bajara oladi.';
+        if (/Too many resources/i.test(m)) return "Bugun juda ko'p havola qo'shdingiz. Ertaga urinib ko'ring.";
+        if (/restricted from writing/i.test(m)) return "Hozir yozish cheklangan. Keyinroq urinib ko'ring.";
+        if (/own resource/i.test(m)) return "O'z havolangizga ovoz bera olmaysiz.";
         if (/not taking new people/i.test(m)) return "Hozir bu jamoa yangi a'zo qabul qilmayapti.";
         if (/not available/i.test(m)) return 'Jamoalar hozircha yopiq.';
         return "Amalni bajarib bo'lmadi. Keyinroq urinib ko'ring.";
@@ -336,7 +339,7 @@
             const isAdmin = team.is_captain;
             const isMember = isAdmin || team.my_status === 'active';
             const canInvite = isAdmin || (isMember && data.invite_mode === 'members');
-            const keys = isMember ? ['chat', 'members', 'about'].concat(isAdmin ? ['settings'] : []) : ['about', 'members'];
+            const keys = isMember ? ['chat', 'resources', 'members', 'about'].concat(isAdmin ? ['settings'] : []) : ['about', 'members'];
             if (!tab || keys.indexOf(tab) === -1) tab = isMember ? 'chat' : 'about';
 
             const pg = page(root); pg.appendChild(backButton());
@@ -383,7 +386,7 @@
             });
             pg.appendChild(facts);
 
-            const labels = { chat: 'Chat', members: "A'zolar", about: 'Haqida', settings: 'Sozlamalar' };
+            const labels = { chat: 'Chat', resources: 'Resurslar', members: "A'zolar", about: 'Haqida', settings: 'Sozlamalar' };
             const panes = {};
             keys.forEach(function (k) { const p = el('div'); p.hidden = k !== tab; p.dataset.pane = k; panes[k] = p; });
             tabs.onChange = function (k) { tab = k; };
@@ -502,6 +505,65 @@
                 mem.appendChild(row);
             });
             mp.appendChild(mem);
+
+            // ---- Resources: links members share, best-voted first
+            if (isMember) {
+                const rp = panes.resources; rp.style.cssText = 'display:grid;gap:18px';
+                const rform = el('form', 'pg-card'); rform.noValidate = true; rform.appendChild(el('h3', 'pg-h3', "Foydali havola qo'shish"));
+                const rTitle = el('input', 'pg-input'); rTitle.type = 'text'; rTitle.maxLength = 150; rTitle.placeholder = 'Masalan: Python darslari';
+                const rUrl = el('input', 'pg-input'); rUrl.type = 'url'; rUrl.maxLength = 500; rUrl.placeholder = 'https://...';
+                const rNote = el('textarea', 'pg-input'); rNote.rows = 2; rNote.maxLength = 500; rNote.placeholder = 'Nima uchun foydali? (ixtiyoriy)';
+                rform.appendChild(field('Sarlavha', rTitle, 'trTitle')); rform.appendChild(field('Havola', rUrl, 'trUrl')); rform.appendChild(field('Izoh', rNote, 'trNote'));
+                const rMsg = note(); rform.appendChild(rMsg);
+                const rAdd = el('button', 'pg-btn', "Qo'shish"); rAdd.type = 'submit'; rform.appendChild(rAdd);
+                const rList = el('div', 'pg-card'); rList.appendChild(el('h3', 'pg-h3', 'Jamoa resurslari'));
+                const rBody = el('div');
+                async function rDraw() {
+                    rBody.textContent = '';
+                    let r;
+                    try { r = await get('/teams/' + id + '/resources', session); } catch (err) { rBody.appendChild(empty(problem(err))); return; }
+                    if (!r.resources.length) { rBody.appendChild(empty("Hali havola yo'q. Birinchi foydali havolani siz qo'shing.")); return; }
+                    r.resources.forEach(function (x) {
+                        const row = el('div', 'pg-row'); row.style.cssText = 'align-items:flex-start;gap:12px';
+                        const vote = el('button', 'pg-btn' + (x.voted ? '' : ' ghost'), '▲ ' + x.votes); vote.type = 'button'; small(vote);
+                        vote.setAttribute('aria-label', 'Ovoz berish'); vote.setAttribute('aria-pressed', String(x.voted)); vote.disabled = x.mine;
+                        vote.addEventListener('click', async function () {
+                            vote.disabled = true;
+                            try { await send('POST', '/teams/' + id + '/resources/' + x.id + '/vote', session); await rDraw(); }
+                            catch (err) { G.toast(problem(err)); vote.disabled = false; }
+                        });
+                        const mid = el('div'); mid.style.cssText = 'flex:1;min-width:0';
+                        const a = el('a', '', x.title); a.rel = 'noopener noreferrer nofollow'; a.target = '_blank';
+                        if (/^https?:\/\//i.test(x.url)) a.href = x.url;
+                        a.style.cssText = 'font-weight:700;word-break:break-word';
+                        mid.appendChild(a);
+                        if (x.note) { const n = el('p', 'pg-muted', x.note); n.style.margin = '4px 0 0'; mid.appendChild(n); }
+                        const by = el('p', 'pg-muted', "Qo'shgan: " + (x.added_by || '–') + ' · ' + dateText(x.created_at)); by.style.cssText = 'margin:4px 0 0;font-size:.85rem'; mid.appendChild(by);
+                        row.appendChild(vote); row.appendChild(mid);
+                        if (x.mine || isAdmin) {
+                            const del = el('button', 'pg-btn ghost', "O'chirish"); del.type = 'button'; small(del);
+                            twice(del, 'Aniqmi?', async function () {
+                                try { await send('DELETE', '/teams/' + id + '/resources/' + x.id, session); await rDraw(); } catch (err) { G.toast(problem(err)); }
+                            });
+                            row.appendChild(del);
+                        }
+                        rBody.appendChild(row);
+                    });
+                }
+                rform.addEventListener('submit', async function (e) {
+                    e.preventDefault(); rMsg.textContent = '';
+                    if (!rTitle.value.trim()) { rMsg.textContent = 'Sarlavhani kiriting.'; return; }
+                    if (!/^https?:\/\/\S+$/i.test(rUrl.value.trim())) { rMsg.textContent = "Havola http:// yoki https:// bilan boshlansin."; return; }
+                    rAdd.disabled = true;
+                    try {
+                        await send('POST', '/teams/' + id + '/resources', session, { title: rTitle.value, url: rUrl.value, note: rNote.value });
+                        rTitle.value = ''; rUrl.value = ''; rNote.value = ''; G.toast("Havola qo'shildi"); await rDraw();
+                    } catch (err) { rMsg.textContent = problem(err); }
+                    rAdd.disabled = false;
+                });
+                rList.appendChild(rBody); rp.appendChild(rform); rp.appendChild(rList);
+                await rDraw();
+            }
 
             // ---- About
             const ap = panes.about; ap.style.cssText = 'display:grid;gap:18px';
