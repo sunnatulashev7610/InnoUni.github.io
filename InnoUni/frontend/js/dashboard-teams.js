@@ -171,14 +171,14 @@
             const names = [['all', 'Barcha jamoalar'], ['foryou', 'Siz uchun'], ['top', 'Reyting'], ['mine', 'Mening jamoalarim'], ['create', 'Jamoa ochish']];
             const panes = {};
             tabs.onChange = function (k) { tab = k; };
-            pg.appendChild(tabs(names, tab, panes));
+            const nav = tabs(names, tab, panes); nav.classList.add('pg-tabs-wrap'); pg.appendChild(nav);
 
             // --- all teams, with direction filter
             const all = el('div'); all.hidden = tab !== 'all'; all.dataset.pane = 'all'; panes.all = all;
             const chips = el('div', 'pg-chips'); const grid = el('div', 'pg-grid');
-            const tools = el('div'); tools.style.cssText = 'display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px';
-            const search = el('input', 'pg-input'); search.type = 'search'; search.placeholder = 'Jamoa qidirish'; search.maxLength = 100; search.value = query; search.setAttribute('aria-label', 'Jamoa qidirish'); search.style.cssText = 'flex:1;min-width:180px';
-            const sortSel = el('select', 'pg-input'); sortSel.setAttribute('aria-label', 'Saralash'); sortSel.style.width = 'auto';
+            const tools = el('div', 'pg-tools');
+            const search = el('input', 'pg-input'); search.type = 'search'; search.placeholder = 'Jamoa qidirish'; search.maxLength = 100; search.value = query; search.setAttribute('aria-label', 'Jamoa qidirish');
+            const sortSel = el('select', 'pg-input'); sortSel.setAttribute('aria-label', 'Saralash');
             [['rating', 'Reyting bo\'yicha'], ['new', 'Yangilari'], ['members', "A'zolar soni"]].forEach(function (x) { const o = el('option', '', x[1]); o.value = x[0]; sortSel.appendChild(o); });
             sortSel.value = sortBy;
             const openLab = el('label', 'pg-muted'); openLab.style.cssText = 'display:inline-flex;align-items:center;gap:6px;cursor:pointer';
