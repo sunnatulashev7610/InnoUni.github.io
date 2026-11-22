@@ -31,6 +31,8 @@ const fakeDb = {
             return [Object.entries(c).map(([status, n]) => ({ status, n }))];
         }
         if (q.startsWith('SELECT COUNT(*) AS n FROM teams')) return [[{ n: s.teams.length }]];
+        if (q.startsWith('SELECT (SELECT COUNT(*) FROM courses)')) return [[{ courses: 4, unverified: 2, new_week: 1 }]];
+        if (q.startsWith('SELECT l.id, l.action')) return [[{ id: 1, action: 'block', detail: null, created_at: '2026-11-20', admin: 'Admin', target: 'Ali' }]];
         if (q.startsWith('SELECT id, full_name, email, role, blocked')) {
             let rows = s.users; let i = 0;
             if (q.includes('role = ?')) { const r = p[i++]; rows = rows.filter((u) => u.role === r); }
@@ -60,9 +62,17 @@ test('only admins may use /api/admin', async () => {
     expect((await request(app).post('/api/admin/users/2/block').set(as(3, 'teacher')).send({ blocked: true })).status).toBe(403);
 });
 
+test('the overview also counts courses, unconfirmed e-mails and new people, and the log is readable', async () => {
+    const res = await request(app).get('/api/admin/stats').set(admin);
+    expect(res.body).toMatchObject({ courses: 4, unverified: 2, new_week: 1 });
+    const log = await request(app).get('/api/admin/log').set(admin);
+    expect(log.body.log[0]).toMatchObject({ action: 'block', admin: 'Admin', target: 'Ali' });
+    expect((await request(app).get('/api/admin/log').set(as(2, 'student'))).status).toBe(403);
+});
+
 test('stats counts users, orders and teams', async () => {
     const res = await request(app).get('/api/admin/stats').set(admin);
-    expect(res.body).toEqual({ users: { student: 1, teacher: 1, admin: 1 }, orders: { pending: 2, confirmed: 1, rejected: 0 }, teams: 1 });
+    expect(res.body).toEqual({ users: { student: 1, teacher: 1, admin: 1 }, orders: { pending: 2, confirmed: 1, rejected: 0 }, teams: 1, courses: 4, unverified: 2, new_week: 1 });
 });
 
 test('lists and filters users', async () => {

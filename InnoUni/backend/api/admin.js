@@ -18,12 +18,17 @@ router.get('/stats', async (req, res) => {
         const [roles] = await req.db.execute('SELECT role, COUNT(*) AS n FROM users GROUP BY role');
         const [orders] = await req.db.execute('SELECT status, COUNT(*) AS n FROM orders GROUP BY status');
         const [teams] = await req.db.execute('SELECT COUNT(*) AS n FROM teams');
+        const [extra] = await req.db.execute(
+            'SELECT (SELECT COUNT(*) FROM courses) AS courses, (SELECT COUNT(*) FROM users WHERE email_verified = 0) AS unverified, (SELECT COUNT(*) FROM users WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)) AS new_week');
         const by = (rows, key) => Object.fromEntries(rows.map((r) => [r[key], Number(r.n)]));
         const users = by(roles, 'role');
         res.json({
             users: { student: 0, teacher: 0, admin: 0, ...users },
             orders: { pending: 0, confirmed: 0, rejected: 0, ...by(orders, 'status') },
-            teams: Number(teams[0]?.n || 0)
+            teams: Number(teams[0]?.n || 0),
+            courses: Number(extra[0]?.courses || 0),
+            unverified: Number(extra[0]?.unverified || 0),
+            new_week: Number(extra[0]?.new_week || 0)
         });
     } catch (e) { fail(res, e); }
 });
@@ -42,7 +47,7 @@ router.get('/users', async (req, res) => {
     }
     try {
         const [users] = await req.db.execute(
-            `SELECT id, full_name, email, role, blocked, created_at FROM users${where.length ? ' WHERE ' + where.join(' AND ') : ''} ORDER BY id DESC LIMIT 200`, params);
+            `SELECT id, full_name, email, role, blocked, email_verified, created_at FROM users${where.length ? ' WHERE ' + where.join(' AND ') : ''} ORDER BY id DESC LIMIT 200`, params);
         res.json({ users });
     } catch (e) { fail(res, e); }
 });
@@ -74,6 +79,15 @@ router.post('/users/:id/block', async (req, res) => {
         invalidateUserCache(id);
         await log(req.db, req.user.userId, req.body.blocked ? 'block' : 'unblock', id, null);
         res.json({ id, blocked: req.body.blocked });
+    } catch (e) { fail(res, e); }
+});
+
+// The latest admin actions (who did what to whom)
+router.get('/log', async (req, res) => {
+    try {
+        const [rows] = await req.db.execute(
+            'SELECT l.id, l.action, l.detail, l.created_at, a.full_name AS admin, t.full_name AS target FROM admin_log l LEFT JOIN users a ON a.id = l.admin_id LEFT JOIN users t ON t.id = l.target_user_id ORDER BY l.id DESC LIMIT 15');
+        res.json({ log: rows });
     } catch (e) { fail(res, e); }
 });
 
