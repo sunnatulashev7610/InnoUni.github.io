@@ -48,3 +48,25 @@ test('chat migration: the messages table and one change per ALTER', () => {
         expect(x).not.toMatch(/,/);
     });
 });
+
+test('a change already made by hand is skipped; other errors still stop the start', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mig-'));
+    fs.writeFileSync(path.join(dir, '001_a.sql'), 'ALTER TABLE t ADD COLUMN c INT;\nCREATE TABLE a (id INT);');
+    const done = []; const ran = [];
+    const make = (fail) => ({
+        query: async (sql, p) => {
+            if (sql.startsWith('SELECT name')) return [done.map((name) => ({ name }))];
+            if (sql.startsWith('INSERT INTO schema_migrations')) { done.push(p[0]); return [[]]; }
+            if (sql.startsWith('ALTER')) throw Object.assign(new Error('x'), fail);
+            if (sql.startsWith('CREATE TABLE a')) ran.push(sql);
+            return [[]];
+        }
+    });
+    const log = jest.spyOn(console, 'log').mockImplementation(() => {});
+    expect(await runMigrations(make({ code: 'ER_DUP_FIELDNAME', errno: 1060 }), dir)).toEqual(['001_a.sql']);
+    expect(ran).toHaveLength(1);
+    log.mockRestore();
+    done.length = 0;
+    await expect(runMigrations(make({ code: 'ER_PARSE_ERROR', errno: 1064 }), dir)).rejects.toThrow('x');
+    expect(done).toEqual([]);
+});
