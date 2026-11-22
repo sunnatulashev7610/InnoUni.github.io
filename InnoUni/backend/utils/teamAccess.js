@@ -2,7 +2,7 @@
 // (NOW()), so a restriction ends on time whatever the time zones of the server and the database are.
 
 async function getTeam(db, teamId) {
-    const [rows] = await db.execute('SELECT id, name, captain_id, invite_mode FROM teams WHERE id = ?', [teamId]);
+    const [rows] = await db.execute('SELECT id, name, captain_id, invite_mode, recruiting FROM teams WHERE id = ?', [teamId]);
     return rows[0] || null;
 }
 

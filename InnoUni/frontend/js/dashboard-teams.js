@@ -52,6 +52,7 @@
         if (/No invitation/i.test(m)) return 'Taklif topilmadi.';
         if (/admin cannot leave/i.test(m)) return "Admin jamoadan chiqa olmaydi. Uni o'chirishi mumkin.";
         if (/Only the (admin|owner)/i.test(m)) return 'Bu amalni faqat admin bajara oladi.';
+        if (/not taking new people/i.test(m)) return "Hozir bu jamoa yangi a'zo qabul qilmayapti.";
         if (/not available/i.test(m)) return 'Jamoalar hozircha yopiq.';
         return "Amalni bajarib bo'lmadi. Keyinroq urinib ko'ring.";
     }
@@ -118,6 +119,8 @@
         const pills = el('div'); pills.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px';
         pills.appendChild(el('span', 'pg-pill', team.direction || 'Boshqa'));
         const st = statusPill(team); if (st) pills.appendChild(st);
+        if (team.rank) pills.appendChild(el('span', 'pg-pill sun', '#' + team.rank + ' reyting'));
+        pills.appendChild(el('span', 'pg-pill' + (team.recruiting ? '' : ' sun'), team.recruiting ? 'Qabul qilmoqda' : 'Yopiq'));
         if (team.is_captain && team.pending_requests > 0) pills.appendChild(el('span', 'pg-pill sun', team.pending_requests + " ta yangi so'rov"));
         c.appendChild(pills);
         const h = el('h3', '', team.name); h.style.marginTop = '10px'; c.appendChild(h);
@@ -125,7 +128,7 @@
         const first = goalLines(team.goals)[0];
         if (first) { const g = el('p', 'pg-muted', 'Maqsad: ' + (first.length > 120 ? first.slice(0, 117) + '...' : first)); g.style.margin = '6px 0 0'; c.appendChild(g); }
         const meta = el('div', 'pg-meta'); meta.style.cssText = 'justify-content:flex-start;gap:4px 16px';
-        [[team.members + " a'zo"], ['Ochgan: ' + (team.captain_name || '–')], ['Sana: ' + dateText(team.created_at)]].forEach(function (x) { meta.appendChild(el('span', '', x[0])); });
+        [[team.members + " a'zo"], ['Bu hafta: ' + ((team.activity && team.activity.writers) || 0) + ' faol'], ['Ball: ' + (team.rating || 0)], ['Ochgan: ' + (team.captain_name || '–')], ['Sana: ' + dateText(team.created_at)]].forEach(function (x) { meta.appendChild(el('span', '', x[0])); });
         c.appendChild(meta);
         const act = el('div'); act.style.cssText = 'margin-top:16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center';
         const member = team.is_captain || team.my_status === 'active';
@@ -137,7 +140,10 @@
             act.appendChild(inv.accept); act.appendChild(inv.decline); act.appendChild(open);
         } else {
             act.appendChild(open);
-            if (!team.my_status && !team.is_captain) { const j = joinControls(team, session, redraw); act.appendChild(j.button); hide = j.label; }
+            if (!team.my_status && !team.is_captain) {
+                if (team.recruiting) { const j = joinControls(team, session, redraw); act.appendChild(j.button); hide = j.label; }
+                else act.appendChild(el('span', 'pg-muted', "Hozir a'zo qabul qilinmaydi"));
+            }
         }
         c.appendChild(act);
         if (hide) { hide.style.marginTop = '10px'; c.appendChild(hide); }
@@ -147,7 +153,7 @@
     // ---------------- Teams list, my teams, open a team ----------------
     G.register('jamoalar', async function (root, session) {
         let tab = G.ctx.teamsTab || 'all'; G.ctx.teamsTab = null;
-        let filter = 'all';
+        let filter = 'all', query = '', sortBy = 'rating', onlyOpen = false;
 
         async function draw() {
             const data = await get('/teams', session);
@@ -156,7 +162,7 @@
             const pg = page(root);
             pg.appendChild(head('Jamoalar', "Birga o'rganing, chatda fikr almashing, bir-biringizga yordam bering. Jamoa ochish va qatnashish tekin."));
 
-            const names = [['all', 'Barcha jamoalar'], ['mine', 'Mening jamoalarim'], ['create', 'Jamoa ochish']];
+            const names = [['all', 'Barcha jamoalar'], ['foryou', 'Siz uchun'], ['top', 'Reyting'], ['mine', 'Mening jamoalarim'], ['create', 'Jamoa ochish']];
             const panes = {};
             tabs.onChange = function (k) { tab = k; };
             pg.appendChild(tabs(names, tab, panes));
@@ -164,10 +170,28 @@
             // --- all teams, with direction filter
             const all = el('div'); all.hidden = tab !== 'all'; all.dataset.pane = 'all'; panes.all = all;
             const chips = el('div', 'pg-chips'); const grid = el('div', 'pg-grid');
+            const tools = el('div'); tools.style.cssText = 'display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px';
+            const search = el('input', 'pg-input'); search.type = 'search'; search.placeholder = 'Jamoa qidirish'; search.maxLength = 100; search.value = query; search.setAttribute('aria-label', 'Jamoa qidirish'); search.style.cssText = 'flex:1;min-width:180px';
+            const sortSel = el('select', 'pg-input'); sortSel.setAttribute('aria-label', 'Saralash'); sortSel.style.width = 'auto';
+            [['rating', 'Reyting bo\'yicha'], ['new', 'Yangilari'], ['members', "A'zolar soni"]].forEach(function (x) { const o = el('option', '', x[1]); o.value = x[0]; sortSel.appendChild(o); });
+            sortSel.value = sortBy;
+            const openLab = el('label', 'pg-muted'); openLab.style.cssText = 'display:inline-flex;align-items:center;gap:6px;cursor:pointer';
+            const openCb = document.createElement('input'); openCb.type = 'checkbox'; openCb.checked = onlyOpen; openLab.appendChild(openCb); openLab.appendChild(document.createTextNode('Qabul qilayotganlar'));
+            tools.appendChild(search); tools.appendChild(sortSel); tools.appendChild(openLab);
             function fill() {
                 grid.textContent = '';
-                const list = teams.filter(function (t) { return filter === 'all' || t.direction === filter; });
-                if (!list.length) { grid.appendChild(empty(teams.length ? "Bu yo'nalishda jamoa yo'q." : 'Hali jamoa ochilmagan. Birinchi bo\'ling: "Jamoa ochish" bo\'limidan boshlang.')); return; }
+                const q = query.trim().toLowerCase();
+                const list = teams.filter(function (t) {
+                    if (filter !== 'all' && t.direction !== filter) return false;
+                    if (onlyOpen && !t.recruiting) return false;
+                    return !q || [t.name, t.description, t.sphere, t.goals].some(function (v) { return String(v || '').toLowerCase().indexOf(q) !== -1; });
+                });
+                list.sort(function (a, b) {
+                    if (sortBy === 'new') return String(b.created_at).localeCompare(String(a.created_at));
+                    if (sortBy === 'members') return b.members - a.members;
+                    return (b.rating || 0) - (a.rating || 0) || b.members - a.members;
+                });
+                if (!list.length) { grid.appendChild(empty(teams.length ? 'Hech narsa topilmadi.' : 'Hali jamoa ochilmagan. Birinchi bo\'ling: "Jamoa ochish" bo\'limidan boshlang.')); return; }
                 list.forEach(function (t) { grid.appendChild(teamCard(t, session, draw)); });
             }
             [['all', 'Hammasi']].concat(directions.map(function (d) { return [d, d]; })).forEach(function (d) {
@@ -177,8 +201,66 @@
                 });
                 chips.appendChild(c);
             });
-            all.appendChild(chips); all.appendChild(grid); fill(); pg.appendChild(all);
+            search.addEventListener('input', function () { query = search.value; fill(); });
+            sortSel.addEventListener('change', function () { sortBy = sortSel.value; fill(); });
+            openCb.addEventListener('change', function () { onlyOpen = openCb.checked; fill(); });
+            all.appendChild(tools); all.appendChild(chips); all.appendChild(grid); fill(); pg.appendChild(all);
             all.appendChild(el('p', 'pg-muted', "Jamoaga qo'shilish uchun so'rov yuboriladi. Jamoa admini uni qabul qiladi yoki rad etadi."));
+
+            // --- for you: pick interests, see matching teams that take people
+            const fy = el('div'); fy.hidden = tab !== 'foryou'; fy.dataset.pane = 'foryou'; panes.foryou = fy;
+            const fyBox = card("Qiziqishlaringiz"); fyBox.appendChild(el('p', 'pg-muted', "Yo'nalishlarni tanlang. Sizga mos, a'zo qabul qilayotgan jamoalarni ko'rsatamiz."));
+            const fyChips = el('div', 'pg-chips'); const fyMsg = note(); const fyGrid = el('div', 'pg-grid'); fyGrid.style.marginTop = '14px';
+            let mineDirs = [];
+            async function fyFill() {
+                fyGrid.textContent = '';
+                try {
+                    const r = await get('/teams/recommended', session);
+                    if (r.needs_interests) { fyGrid.appendChild(empty("Yuqoridan kamida bitta yo'nalishni tanlang.")); return; }
+                    if (!r.teams.length) { fyGrid.appendChild(empty("Hozircha mos jamoa yo'q. Boshqa yo'nalish tanlang yoki o'zingiz jamoa oching.")); return; }
+                    r.teams.forEach(function (t) {
+                        const c = teamCard(t, session, draw);
+                        c.appendChild(el('p', 'pg-muted', "Siz tanlagan yo'nalish: " + t.direction));
+                        fyGrid.appendChild(c);
+                    });
+                } catch (err) { fyMsg.textContent = problem(err); }
+            }
+            directions.forEach(function (d) {
+                const c = el('button', 'pg-chip', d); c.type = 'button'; c.dataset.dir = d; c.setAttribute('aria-pressed', 'false');
+                c.addEventListener('click', async function () {
+                    const next = mineDirs.indexOf(d) === -1 ? mineDirs.concat(d) : mineDirs.filter(function (x) { return x !== d; });
+                    fyMsg.textContent = '';
+                    try {
+                        const r = await send('PUT', '/teams/interests', session, { directions: next });
+                        mineDirs = r.interests || next;
+                        fyChips.querySelectorAll('.pg-chip').forEach(function (x) { const on = mineDirs.indexOf(x.dataset.dir) !== -1; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); });
+                        await fyFill();
+                    } catch (err) { fyMsg.textContent = problem(err); }
+                });
+                fyChips.appendChild(c);
+            });
+            fyBox.appendChild(fyChips); fyBox.appendChild(fyMsg); fy.appendChild(fyBox); fy.appendChild(fyGrid); pg.appendChild(fy);
+            try {
+                mineDirs = (await get('/teams/interests', session)).interests || [];
+                fyChips.querySelectorAll('.pg-chip').forEach(function (x) { const on = mineDirs.indexOf(x.dataset.dir) !== -1; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); });
+            } catch (err) { fyMsg.textContent = problem(err); }
+            await fyFill();
+
+            // --- leaderboard: last 7 days of real chat activity
+            const top = el('div'); top.hidden = tab !== 'top'; top.dataset.pane = 'top'; panes.top = top;
+            const board = card('Haftalik reyting');
+            board.appendChild(el('p', 'pg-muted', "Oxirgi 7 kun: chatda yozgan har bir a'zo 5 ball, xabarlar esa har kishidan ko'pi bilan 20 ta hisoblanadi."));
+            const ranked = teams.filter(function (t) { return t.rank; }).sort(function (a, b) { return a.rank - b.rank; }).slice(0, 20);
+            if (!ranked.length) board.appendChild(empty("Bu hafta hali faollik yo'q. Chatda yozing, jamoangiz reytingga chiqadi."));
+            ranked.forEach(function (t) {
+                const row = el('div', 'pg-row'); row.style.cursor = 'pointer';
+                if (t.is_captain || t.my_status === 'active') row.style.fontWeight = '700';
+                const left = el('div'); left.appendChild(el('b', '', '#' + t.rank + ' ' + t.name)); left.appendChild(el('span', 'pg-muted', ' ' + (t.direction || '') + ' · ' + t.members + " a'zo · " + ((t.activity && t.activity.writers) || 0) + ' faol'));
+                row.appendChild(left); row.appendChild(el('b', '', t.rating + ' ball'));
+                row.addEventListener('click', function () { openTeam(t); });
+                board.appendChild(row);
+            });
+            top.appendChild(board); pg.appendChild(top);
 
             // --- my teams (invitations first)
             const mine = el('div'); mine.hidden = tab !== 'mine'; mine.dataset.pane = 'mine'; panes.mine = mine;
@@ -296,7 +378,7 @@
             }
 
             const facts = el('div', 'pg-grid'); facts.style.cssText = 'grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:18px';
-            [['Ochgan', team.captain_name || '–'], ['Ochilgan sana', dateText(team.created_at)], ["A'zolar soni", team.members + ' / ' + limits.maxMembers], ['Soha', team.sphere || '–']].forEach(function (f) {
+            [['Ochgan', team.captain_name || '–'], ['Ochilgan sana', dateText(team.created_at)], ["A'zolar soni", team.members + ' / ' + limits.maxMembers], ['Soha', team.sphere || '–'], ['Haftalik ball', String(team.rating || 0) + (team.rank ? ' (#' + team.rank + ')' : '')], ['Holat', team.recruiting ? 'A\'zo qabul qilmoqda' : 'Yopiq']].forEach(function (f) {
                 const c = el('div', 'pg-card'); c.appendChild(el('div', 'pg-muted', f[0])); const v = el('b', '', f[1]); v.style.fontSize = '1.05rem'; c.appendChild(v); facts.appendChild(c);
             });
             pg.appendChild(facts);
@@ -469,6 +551,10 @@
                 form.appendChild(field('Jamoa maqsadlari', sGoals, 'tsGoals'));
                 form.appendChild(field('Jamoa haqida', sDesc, 'tsDesc'));
                 form.appendChild(field("A'zolarni kim taklif qila oladi", sInvite, 'tsInvite'));
+                const sRec = el('input'); sRec.type = 'checkbox'; sRec.id = 'tsRecruiting'; sRec.checked = !!team.recruiting;
+                const recLab = el('label', 'pg-muted'); recLab.htmlFor = 'tsRecruiting'; recLab.style.cssText = 'display:flex;align-items:center;gap:8px;cursor:pointer;margin:12px 0';
+                recLab.appendChild(sRec); recLab.appendChild(document.createTextNode("Yangi a'zolarni qabul qilish (o'chirsangiz, so'rov yuborib bo'lmaydi)"));
+                form.appendChild(recLab);
                 const msg = note(); form.appendChild(msg);
                 const save = el('button', 'pg-btn', 'Saqlash'); save.type = 'submit'; form.appendChild(save);
                 form.addEventListener('submit', async function (e) {
@@ -478,7 +564,7 @@
                     if (!sGoals.value.trim()) { msg.textContent = 'Jamoa maqsadlarini yozing.'; return; }
                     save.disabled = true; save.textContent = 'Saqlanmoqda...';
                     try {
-                        await send('PUT', '/teams/' + id, session, { name: sName.value, direction: sDir.value, sphere: sSphere.value, goals: sGoals.value, description: sDesc.value, invite_mode: sInvite.value });
+                        await send('PUT', '/teams/' + id, session, { name: sName.value, direction: sDir.value, sphere: sSphere.value, goals: sGoals.value, description: sDesc.value, invite_mode: sInvite.value, recruiting: sRec.checked });
                         G.toast('Sozlamalar saqlandi'); tab = 'settings'; await draw();
                     } catch (err) { msg.textContent = problem(err); save.disabled = false; save.textContent = 'Saqlash'; }
                 });

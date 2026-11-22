@@ -8,7 +8,7 @@ const chatSrc = fs.readFileSync(path.join(root, 'frontend/js/dashboard-team-chat
 const teamsSrc = fs.readFileSync(path.join(root, 'frontend/js/dashboard-teams.js'), 'utf8');
 
 const DIRS = ['Dasturlash', 'Dizayn', 'Til', 'Fan', 'Biznes', 'Boshqa'];
-const base = { description: null, captain_id: 5, captain_name: 'Sardor Aliyev', created_at: '2026-11-10T09:00:00.000Z', members: 3, my_status: null, is_captain: false, pending_requests: 0 };
+const base = { description: null, captain_id: 5, captain_name: 'Sardor Aliyev', created_at: '2026-11-10T09:00:00.000Z', members: 3, my_status: null, is_captain: false, pending_requests: 0, recruiting: true, rating: 0, rank: null, activity: { writers: 0, messages: 0 } };
 const makeState = () => ({
     teams: [
         { ...base, id: 1, name: '<b>Python</b> Sprint', direction: 'Dasturlash', sphere: 'Veb dasturlash', goals: 'Loyiha qilish\nOlimpiadaga tayyorlanish', description: 'Hamma uchun' },
@@ -32,7 +32,10 @@ function boot(state) {
         const body = opts.body ? JSON.parse(opts.body) : undefined;
         calls.push({ path: p, method, body });
         let r = { body: { message: 'ok' } };
-        if (method === 'GET' && p === '/teams') r = { body: { teams: state.teams, directions: DIRS } };
+        if (method === 'GET' && p === '/teams/interests') r = { body: { interests: state.interests || [] } };
+        else if (method === 'PUT' && p === '/teams/interests') { state.interests = body.directions; r = { body: { interests: body.directions } }; }
+        else if (method === 'GET' && p === '/teams/recommended') r = { body: { needs_interests: !(state.interests || []).length, teams: (state.interests || []).length ? state.teams.filter((t) => state.interests.includes(t.direction) && t.recruiting && !t.my_status) : [] } };
+        else if (method === 'GET' && p === '/teams') r = { body: { teams: state.teams, directions: DIRS } };
         else if (method === 'GET' && /^\/teams\/\d+$/.test(p)) {
             const t = state.teams.find((x) => '/teams/' + x.id === p);
             r = t ? { body: { team: t } } : { ok: false, status: 404, body: { error: 'Team not found' } };
@@ -94,7 +97,7 @@ describe('teams list', () => {
         expect(left[0].textContent).toContain('IELTS Birga');
         click(btn(pane(c, 'all'), 'Fan'));
         click(btn(pane(c, 'all'), 'Dizayn'));
-        expect(pane(c, 'all').textContent).toContain("Bu yo'nalishda jamoa yo'q");
+        expect(pane(c, 'all').textContent).toContain("Hech narsa topilmadi");
     });
 
     test('"Mening jamoalarim" lists only my teams', async () => {
@@ -303,5 +306,49 @@ describe('wiring', () => {
 
     test('the page script never writes user text through innerHTML', () => {
         expect(teamsSrc).not.toMatch(/innerHTML|insertAdjacentHTML|document\.write/);
+    });
+});
+
+describe('finding teams', () => {
+    test('closed team shows "Yopiq" and no join button; search, open-only filter and sort work', async () => {
+        const state = makeState();
+        state.teams[0].recruiting = false;
+        state.teams.push({ ...base, id: 4, name: 'Dizayn Lab', direction: 'Dizayn', sphere: 'Figma', goals: 'UI', members: 9, rating: 30, rank: 1, activity: { writers: 4, messages: 10 } });
+        const t = boot(state); await t.run('jamoalar'); await t.flush();
+        const all = pane(t.c, 'all');
+        const cardOf = (name) => [...all.querySelectorAll('article')].find((a) => a.textContent.includes(name));
+        expect(cardOf('Python').textContent).toContain('Yopiq');
+        expect(cardOf('Python').textContent).toContain("Hozir a'zo qabul qilinmaydi");
+        expect(btn(cardOf('Python'), "So'rov yuborish")).toBeUndefined();
+        expect(cardOf('Dizayn Lab').textContent).toContain('#1 reyting');
+        expect(all.querySelector('article h3').textContent).toBe('Dizayn Lab');
+        const search = all.querySelector('input[type=search]');
+        search.value = 'figma'; search.dispatchEvent(new t.w.Event('input', { bubbles: true }));
+        expect([...all.querySelectorAll('article h3')].map((h) => h.textContent)).toEqual(['Dizayn Lab']);
+        search.value = ''; search.dispatchEvent(new t.w.Event('input', { bubbles: true }));
+        const cb = all.querySelector('input[type=checkbox]'); cb.checked = true; cb.dispatchEvent(new t.w.Event('change', { bubbles: true }));
+        expect([...all.querySelectorAll('article h3')].some((h) => h.textContent.includes('Python'))).toBe(false);
+    });
+    test('"Siz uchun" asks for interests, saves them and lists matching teams', async () => {
+        const state = makeState();
+        const t = boot(state); await t.run('jamoalar'); await t.flush();
+        const fy = pane(t.c, 'foryou');
+        expect(fy.textContent).toContain("kamida bitta yo'nalishni");
+        click(fy.querySelector('[data-dir="Dasturlash"]')); await t.flush();
+        expect(t.calls.some((c) => c.method === 'PUT' && c.path === '/teams/interests' && c.body.directions[0] === 'Dasturlash')).toBe(true);
+        expect(fy.querySelector('[data-dir="Dasturlash"]').classList.contains('on')).toBe(true);
+        expect(fy.textContent).toContain("Siz tanlagan yo'nalish: Dasturlash");
+        click(fy.querySelector('[data-dir="Dasturlash"]')); await t.flush();
+        expect(fy.textContent).toContain("kamida bitta yo'nalishni");
+    });
+    test('leaderboard lists ranked teams only, best first, with points', async () => {
+        const state = makeState();
+        state.teams[0].rank = 2; state.teams[0].rating = 15;
+        state.teams[1].rank = 1; state.teams[1].rating = 40;
+        const t = boot(state); await t.run('jamoalar'); await t.flush();
+        const rows = [...pane(t.c, 'top').querySelectorAll('.pg-row')].map((r) => r.textContent);
+        expect(rows).toHaveLength(2);
+        expect(rows[0]).toContain('#1 IELTS Birga'); expect(rows[0]).toContain('40 ball');
+        expect(rows[1]).toContain('#2');
     });
 });

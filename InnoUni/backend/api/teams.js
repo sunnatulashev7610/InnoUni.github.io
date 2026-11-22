@@ -13,8 +13,24 @@ router.use(authenticateToken);
 // Chat: /api/teams/:id/messages
 router.use('/:id/messages', chatRouter);
 
-// Rating: topics x2 + achievements x10
-const rating = (t) => t.topics_done * 2 + t.achievements * 10;
+// Rating = what the team really did in the last 7 days: every member who wrote counts 5, plus the messages
+// (at most 20 from one person, so a single spammer cannot lift the team). Deleted messages do not count.
+const WEEK_PER_PERSON_CAP = 20;
+const PER_WRITER = 5;
+const rating = (activity) => (activity ? activity.messages + PER_WRITER * activity.writers : 0);
+
+async function weeklyActivity(db) {
+    const [rows] = await db.execute(
+        'SELECT team_id, user_id, COUNT(*) AS n FROM team_messages WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND deleted_at IS NULL GROUP BY team_id, user_id');
+    const map = new Map();
+    for (const r of rows) {
+        const a = map.get(r.team_id) || { writers: 0, messages: 0 };
+        a.writers += 1;
+        a.messages += Math.min(Number(r.n), WEEK_PER_PERSON_CAP);
+        map.set(r.team_id, a);
+    }
+    return map;
+}
 
 // Directions a team can be opened in (also sent to the page, so the form and the API never disagree)
 const DIRECTIONS = ['Dasturlash', 'Dizayn', 'Til', 'Fan', 'Biznes', 'Boshqa'];
@@ -22,7 +38,7 @@ const DIRECTIONS = ['Dasturlash', 'Dizayn', 'Til', 'Fan', 'Biznes', 'Boshqa'];
 // One team row with the automatic facts: who opened it (the admin), when, how many active members,
 // the viewer's own status (and whether it is an invitation), and (admin only) how many requests are waiting.
 const TEAM_SELECT =
-    'SELECT t.id, t.name, t.description, t.direction, t.sphere, t.goals, t.captain_id, t.invite_mode, t.topics_done, t.achievements, t.created_at, ' +
+    'SELECT t.id, t.name, t.description, t.direction, t.sphere, t.goals, t.captain_id, t.invite_mode, t.recruiting, t.created_at, ' +
     'c.full_name AS captain_name, ' +
     '(SELECT COUNT(*) FROM team_members m WHERE m.team_id = t.id AND m.status = \'active\') AS members, ' +
     '(SELECT m.status FROM team_members m WHERE m.team_id = t.id AND m.user_id = ?) AS my_status, ' +
@@ -30,7 +46,7 @@ const TEAM_SELECT =
     '(SELECT COUNT(*) FROM team_members m WHERE m.team_id = t.id AND m.status = \'pending\' AND m.invited_by IS NULL AND t.captain_id = ?) AS pending_requests ' +
     'FROM teams t JOIN users c ON c.id = t.captain_id';
 
-const shape = (t, userId) => ({
+const shape = (t, userId, act) => ({
     id: t.id,
     name: t.name,
     description: t.description,
@@ -40,6 +56,7 @@ const shape = (t, userId) => ({
     captain_id: t.captain_id,
     captain_name: t.captain_name,
     invite_mode: t.invite_mode || 'admin',
+    recruiting: t.recruiting === undefined || t.recruiting === null ? true : Number(t.recruiting) === 1,
     created_at: t.created_at,
     members: Number(t.members),
     max_members: LIMITS.maxMembers,
@@ -47,9 +64,8 @@ const shape = (t, userId) => ({
     invited: t.my_status === 'pending' && t.my_invited_by !== null && t.my_invited_by !== undefined,
     is_captain: t.captain_id === userId,
     pending_requests: Number(t.pending_requests) || 0,
-    topics_done: t.topics_done,
-    achievements: t.achievements,
-    rating: rating(t)
+    activity: { writers: act ? act.writers : 0, messages: act ? act.messages : 0 },
+    rating: rating(act)
 });
 
 const serverError = (res, e) => {
@@ -62,8 +78,56 @@ router.get('/', async (req, res) => {
     try {
         const uid = req.user.userId;
         const [rows] = await req.db.execute(TEAM_SELECT + ' ORDER BY t.id DESC', [uid, uid, uid]);
-        const teams = rows.map((t) => shape(t, uid)).sort((a, b) => b.rating - a.rating);
+        const act = await weeklyActivity(req.db);
+        const teams = rows.map((t) => shape(t, uid, act.get(t.id))).sort((a, b) => b.rating - a.rating);
+        // place in the ranking (teams without any activity this week are not ranked)
+        teams.forEach((t, i) => { t.rank = t.rating > 0 ? i + 1 : null; });
         res.json({ teams, directions: DIRECTIONS, limits: LIMITS });
+    } catch (e) {
+        serverError(res, e);
+    }
+});
+
+// The directions a person is interested in
+router.get('/interests', async (req, res) => {
+    try {
+        const [rows] = await req.db.execute('SELECT direction FROM user_interests WHERE user_id = ?', [req.user.userId]);
+        res.json({ interests: rows.map((r) => r.direction).filter((d) => DIRECTIONS.includes(d)), directions: DIRECTIONS });
+    } catch (e) {
+        serverError(res, e);
+    }
+});
+
+// Replace the list of interests (up to all directions)
+router.put('/interests', async (req, res) => {
+    const list = req.body && req.body.directions;
+    if (!Array.isArray(list) || list.length > DIRECTIONS.length || !list.every((d) => DIRECTIONS.includes(d))) {
+        return res.status(400).json({ error: 'directions must be a list of: ' + DIRECTIONS.join(', ') });
+    }
+    const unique = [...new Set(list)];
+    try {
+        await req.db.execute('DELETE FROM user_interests WHERE user_id = ?', [req.user.userId]);
+        for (const d of unique) await req.db.execute('INSERT INTO user_interests (user_id, direction) VALUES (?, ?)', [req.user.userId, d]);
+        res.json({ interests: unique });
+    } catch (e) {
+        serverError(res, e);
+    }
+});
+
+// Teams for me: in a direction I chose, taking new people, not full, not mine yet; the most active first
+router.get('/recommended', async (req, res) => {
+    try {
+        const uid = req.user.userId;
+        const [mine] = await req.db.execute('SELECT direction FROM user_interests WHERE user_id = ?', [uid]);
+        const wanted = mine.map((r) => r.direction).filter((d) => DIRECTIONS.includes(d));
+        if (!wanted.length) return res.json({ teams: [], interests: [], needs_interests: true, directions: DIRECTIONS });
+        const [rows] = await req.db.execute(TEAM_SELECT + ' ORDER BY t.id DESC', [uid, uid, uid]);
+        const act = await weeklyActivity(req.db);
+        const teams = rows.map((t) => shape(t, uid, act.get(t.id)))
+            .filter((t) => wanted.includes(t.direction) && t.recruiting && !t.my_status && !t.is_captain && t.members < LIMITS.maxMembers)
+            .sort((a, b) => b.rating - a.rating || b.members - a.members)
+            .slice(0, 12);
+        res.json({ teams, interests: wanted, needs_interests: false, directions: DIRECTIONS });
     } catch (e) {
         serverError(res, e);
     }
@@ -77,7 +141,8 @@ router.get('/:id', async (req, res) => {
         const uid = req.user.userId;
         const [rows] = await req.db.execute(TEAM_SELECT + ' WHERE t.id = ?', [uid, uid, uid, teamId]);
         if (!rows.length) return res.status(404).json({ error: 'Team not found' });
-        res.json({ team: shape(rows[0], uid), directions: DIRECTIONS, limits: LIMITS });
+        const act = await weeklyActivity(req.db);
+        res.json({ team: shape(rows[0], uid, act.get(teamId)), directions: DIRECTIONS, limits: LIMITS });
     } catch (e) {
         serverError(res, e);
     }
@@ -145,6 +210,10 @@ router.put('/:id', async (req, res) => {
         if (!INVITE_MODES.includes(b.invite_mode)) return res.status(400).json({ error: 'invite_mode must be one of: ' + INVITE_MODES.join(', ') });
         updates.invite_mode = b.invite_mode;
     }
+    if (b.recruiting !== undefined) {
+        if (typeof b.recruiting !== 'boolean') return res.status(400).json({ error: 'recruiting must be true or false' });
+        updates.recruiting = b.recruiting ? 1 : 0;
+    }
     const columns = Object.keys(updates);
     if (!columns.length) return res.status(400).json({ error: 'Nothing to update' });
     try {
@@ -155,7 +224,8 @@ router.put('/:id', async (req, res) => {
         await req.db.execute(`UPDATE teams SET ${columns.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`, [...columns.map((c) => updates[c]), teamId]);
         const uid = req.user.userId;
         const [rows] = await req.db.execute(TEAM_SELECT + ' WHERE t.id = ?', [uid, uid, uid, teamId]);
-        res.json({ team: shape(rows[0], uid) });
+        const act = await weeklyActivity(req.db);
+        res.json({ team: shape(rows[0], uid, act.get(teamId)) });
     } catch (e) {
         if (e.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'Team name already taken' });
         serverError(res, e);
@@ -185,8 +255,11 @@ router.post('/:id/join', async (req, res) => {
         const team = await getTeam(req.db, teamId);
         if (!team) return res.status(404).json({ error: 'Team not found' });
         if (await getMember(req.db, teamId, req.user.userId)) return res.status(409).json({ error: 'Already requested or a member' });
+        if (team.recruiting !== undefined && Number(team.recruiting) === 0) return res.status(409).json({ error: 'This team is not taking new people now', code: 'NOT_RECRUITING' });
         if (await countActive(req.db, teamId) >= LIMITS.maxMembers) return res.status(400).json({ error: 'Team is full' });
         await req.db.execute('INSERT INTO team_members (team_id, user_id, status, anonymous) VALUES (?, ?, \'pending\', ?)', [teamId, req.user.userId, req.body.anonymous ? 1 : 0]);
+        // The admin hears about it at once; the name stays out of the text when the person asked to stay anonymous
+        await notify(req.db, team.captain_id, { kind: 'team', title: 'Jamoangizga yangi so\'rov', body: (req.body.anonymous ? 'Anonim' : 'Yangi a\'zo nomzodi') + ' — ' + team.name, page: 'jamoalar', refId: teamId });
         res.status(201).json({ message: 'Request sent' });
     } catch (e) {
         serverError(res, e);
