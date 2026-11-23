@@ -400,7 +400,7 @@
             const pg = page(root);
             pg.appendChild(head('Jamoalar', "Birga o'rganing, chatda fikr almashing, bir-biringizga yordam bering. Jamoa ochish va qatnashish tekin."));
 
-            const names = [['all', 'Barcha jamoalar'], ['foryou', 'Siz uchun'], ['top', 'Reyting'], ['battle', 'Battlelar'], ['mine', 'Mening jamoalarim'], ['create', 'Jamoa ochish']];
+            const names = [['all', 'Barcha jamoalar'], ['foryou', 'Siz uchun'], ['top', 'Reyting'], ['mine', 'Mening jamoalarim'], ['create', 'Jamoa ochish']];
             const panes = {};
             tabs.onChange = function (k) { tab = k; };
             const nav = tabs(names, tab, panes); nav.classList.add('pg-tabs-wrap'); pg.appendChild(nav);
@@ -500,10 +500,6 @@
             });
             top.appendChild(board); pg.appendChild(top);
 
-            // --- battles
-            const bt = el('div'); bt.hidden = tab !== 'battle'; bt.dataset.pane = 'battle'; panes.battle = bt;
-            bt.appendChild(await battlesPane(session, teams, draw)); pg.appendChild(bt);
-
             // --- my teams (invitations first)
             const mine = el('div'); mine.hidden = tab !== 'mine'; mine.dataset.pane = 'mine'; panes.mine = mine;
             const myList = teams.filter(function (t) { return t.is_captain || t.my_status; }).sort(function (a, b) { return Number(b.invited) - Number(a.invited); });
@@ -557,6 +553,32 @@
     });
 
     // ---------------- One team: chat, members, about, settings ----------------
+    // ---- Competitions: its own section of the dashboard (battles now; seasonal tournaments are announced here)
+    G.register('musobaqalar', async function (root, session) {
+        let tab = G.ctx.compTab || 'battle'; G.ctx.compTab = null;
+        async function draw() {
+            const data = await get('/teams', session);
+            const pg = page(root);
+            pg.appendChild(head('Musobaqalar', "Jamoalar o'rtasida battle o'tkazing, reyting va kubok yuting."));
+            const panes = {};
+            tabs.onChange = function (k) { tab = k; };
+            const nav = tabs([['battle', 'Battlelar'], ['season', 'Mavsumiy turnirlar']], tab, panes); nav.classList.add('pg-tabs-wrap'); pg.appendChild(nav);
+
+            const bt = el('div'); bt.hidden = tab !== 'battle'; bt.dataset.pane = 'battle'; panes.battle = bt;
+            bt.appendChild(await battlesPane(session, data.teams, draw)); pg.appendChild(bt);
+
+            const se = el('div'); se.hidden = tab !== 'season'; se.dataset.pane = 'season'; panes.season = se;
+            const c = card('Mavsumiy turnirlar: tez orada');
+            c.appendChild(el('p', 'pg-muted', "Platforma o'zi o'tkazadigan katta musobaqa. Futbol jahon chempionati kabi saralanib boriladi."));
+            [['1', "Jamoalar ro'yxatdan o'tadi"], ['2', "4 tadan guruhlarga bo'linadi"], ['3', "Har guruhdan eng yaxshi 2 jamoa o'tadi"], ['4', 'Yakuniy bosqich: yutgan davom etadi, chempion kubok oladi']].forEach(function (x) {
+                const r = el('div'); r.style.cssText = 'display:flex;gap:10px;align-items:center;padding:6px 0'; r.appendChild(el('span', 'pg-pill', x[0])); r.appendChild(el('span', '', x[1])); c.appendChild(r);
+            });
+            c.appendChild(el('p', 'pg-muted', "Hozircha battlelarda reyting to'plang: u turnirga saralashda hisobga olinadi."));
+            se.appendChild(c); pg.appendChild(se);
+        }
+        await draw();
+    });
+
     G.register('team-detail', async function (root, session) {
         const id = G.ctx.teamId;
         let tab = G.ctx.teamTab || null; G.ctx.teamTab = null;

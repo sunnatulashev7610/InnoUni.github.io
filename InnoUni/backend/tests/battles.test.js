@@ -34,7 +34,7 @@ describe('challenge', () => {
     test('the admin challenges; the other admin is told; both sides see it', async () => {
         const res = await post('', 1, good());
         expect(res.status).toBe(201);
-        expect(fake.s.notices.at(-1)).toMatchObject({ user_id: 2, kind: 'battle', page: 'jamoalar', ref_id: res.body.id });
+        expect(fake.s.notices.at(-1)).toMatchObject({ user_id: 2, kind: 'battle', page: 'musobaqalar', ref_id: res.body.id });
         const mine = (await get('', 1)).body.battles;
         expect(mine).toHaveLength(1);
         expect(mine[0]).toMatchObject({ status: 'invited', is_host_admin: true, can_respond: false });
