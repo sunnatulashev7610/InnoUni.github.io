@@ -473,7 +473,7 @@ describe('team workspace layout', () => {
 
 describe('battle rating', () => {
     test('the leaderboard and the team record show numbers and names as text only', async () => {
-        const t = boot(makeState()); await t.run('jamoalar'); await t.flush();
+        const t = boot(makeState()); await t.run('musobaqalar'); await t.flush();
         const bp = pane(t.c, 'battle');
         expect(bp.textContent).toContain('Battle reytingi');
         expect(bp.textContent).toContain('<i>Alfa</i>'); expect(bp.querySelector('td i')).toBeNull();
@@ -495,7 +495,7 @@ describe('project battle', () => {
         teams: [{ team_id: 3, name: 'Host jamoa', state: 'host', submitted: true, submission: { link: 'https://github.com/a/b', note: 'eski' } }, { team_id: 1, name: 'Python Klub', state: 'accepted', submitted: false }] };
     test('the admin hands in a link and a note; the form shows what was handed in before', async () => {
         const state = makeState(); state.battles = [proj];
-        const t = boot(state); await t.run('jamoalar'); await t.flush();
+        const t = boot(state); await t.run('musobaqalar'); await t.flush();
         const bp = pane(t.c, 'battle');
         expect(bp.textContent).toContain('Host jamoa · Chorlovchi · topshirdi');
         expect(bp.textContent).toContain('Python Klub · Qabul qildi · hali topshirmagan');
@@ -508,7 +508,7 @@ describe('project battle', () => {
     });
     test('a refused link shows a short Uzbek message', async () => {
         const state = makeState(); state.battles = [proj]; state.submitFails = true;
-        const t = boot(state); await t.run('jamoalar'); await t.flush();
+        const t = boot(state); await t.run('musobaqalar'); await t.flush();
         const form = [...pane(t.c, 'battle').querySelectorAll('form')].find((f) => f.textContent.includes('Loyihani topshirish'));
         form.querySelector('input').value = 'http://x.uz';
         form.dispatchEvent(new t.w.Event('submit', { bubbles: true, cancelable: true })); await t.flush();
@@ -518,7 +518,7 @@ describe('project battle', () => {
         const state = makeState();
         state.battles = [Object.assign({}, proj, { id: 9, can_submit: false, status: 'judging' }),
             Object.assign({}, proj, { id: 10, can_submit: false, status: 'finished', teams: [{ team_id: 3, name: 'Host jamoa', state: 'host', result: { score: 90, correct_total: 90, participants: 1, place: 1 }, submission: { link: 'https://github.com/a/b' } }, { team_id: 1, name: 'Python Klub', state: 'accepted', result: { score: 0, correct_total: 0, participants: 0, place: 2 }, submission: { link: 'javascript:alert(1)' } }] })];
-        const t = boot(state); await t.run('jamoalar'); await t.flush();
+        const t = boot(state); await t.run('musobaqalar'); await t.flush();
         const bp = pane(t.c, 'battle');
         expect(bp.textContent).toContain('Hakam baholamoqda');
         expect(bp.textContent).not.toContain('Loyihani topshirish');
@@ -532,7 +532,7 @@ describe('battle quiz', () => {
     const live = { id: 5, title: 'Jonli', topic: 'T', kind: 'quiz', status: 'active', ends_at: new Date(Date.now() + 86400000).toISOString(), duration_days: 1, host_team_id: 3, my_team_id: 3, teams: [{ team_id: 3, name: 'Host jamoa', state: 'host' }, { team_id: 1, name: 'Python Klub', state: 'accepted' }], is_host_admin: false, can_respond: false };
     test('a player opens the quiz, answers once, and the answer is saved without grading; text is never HTML', async () => {
         const state = makeState(); state.battles = [live];
-        const t = boot(state); await t.run('jamoalar'); await t.flush();
+        const t = boot(state); await t.run('musobaqalar'); await t.flush();
         const bp = pane(t.c, 'battle');
         click(btn(bp, 'Viktorinaga kirish')); await t.flush();
         expect(bp.textContent).toContain('<i>2+2</i> nechchi?');
@@ -545,7 +545,7 @@ describe('battle quiz', () => {
     });
     test('a refused answer shows a short Uzbek message', async () => {
         const state = makeState(); state.battles = [live]; state.answerFails = true;
-        const t = boot(state); await t.run('jamoalar'); await t.flush();
+        const t = boot(state); await t.run('musobaqalar'); await t.flush();
         const bp = pane(t.c, 'battle');
         click(btn(bp, 'Viktorinaga kirish')); await t.flush();
         click(btn(bp, 'A. 3')); await t.flush();
@@ -554,7 +554,7 @@ describe('battle quiz', () => {
     test('a finished battle shows the place table and the right answers', async () => {
         const state = makeState(); state.quizFinished = true;
         state.battles = [Object.assign({}, live, { status: 'finished', teams: [{ team_id: 3, name: 'Host jamoa', state: 'host', result: { score: 6.67, correct_total: 20, participants: 3, place: 1 } }, { team_id: 1, name: 'Python Klub', state: 'accepted', result: { score: 3.33, correct_total: 10, participants: 2, place: 2 } }] })];
-        const t = boot(state); await t.run('jamoalar'); await t.flush();
+        const t = boot(state); await t.run('musobaqalar'); await t.flush();
         const bp = pane(t.c, 'battle');
         expect(bp.textContent).toContain('Tugagan');
         const rows = Array.from(bp.querySelectorAll('tr')).map((r) => r.textContent);
@@ -565,14 +565,14 @@ describe('battle quiz', () => {
     });
     test('people not playing get no quiz button', async () => {
         const state = makeState(); state.battles = [Object.assign({}, live, { my_team_id: null })];
-        const t = boot(state); await t.run('jamoalar'); await t.flush();
+        const t = boot(state); await t.run('musobaqalar'); await t.flush();
         expect(Array.from(pane(t.c, 'battle').querySelectorAll('button')).some((b) => /Viktorinaga/.test(b.textContent))).toBe(false);
     });
 });
 
 describe('battles tab', () => {
     test('shows the invitation as text and answering sends accept', async () => {
-        const t = boot(makeState()); await t.run('jamoalar'); await t.flush();
+        const t = boot(makeState()); await t.run('musobaqalar'); await t.flush();
         const bp = pane(t.c, 'battle');
         expect(bp.textContent).toContain('<b>Python</b> battle');
         expect(bp.querySelector('b b')).toBeNull();
@@ -583,7 +583,7 @@ describe('battles tab', () => {
     });
     test('only team admins get the challenge form; it needs a name, a topic and an opponent', async () => {
         const state = makeState();
-        const t = boot(state); await t.run('jamoalar'); await t.flush();
+        const t = boot(state); await t.run('musobaqalar'); await t.flush();
         const bp = pane(t.c, 'battle');
         const admin = state.teams.some((x) => x.is_captain);
         expect(!!bp.querySelector('form')).toBe(admin);
@@ -600,5 +600,21 @@ describe('battles tab', () => {
         const sent = t.calls.find((c) => c.method === 'POST' && c.path === '/battles').body;
         expect(sent).toMatchObject({ title: 'Bellashuv', topic: 'JS', kind: 'quiz', duration_days: 2 });
         expect(sent.opponent_team_ids).toHaveLength(1);
+    });
+});
+
+
+describe('competitions section', () => {
+    test('has its own page with the battles tab and an honest "coming soon" for seasonal tournaments', async () => {
+        const t = boot(makeState()); await t.run('musobaqalar'); await t.flush();
+        expect(t.c.querySelector('h1').textContent).toBe('Musobaqalar');
+        expect(pane(t.c, 'battle').textContent).toContain('Battlelarim');
+        expect(pane(t.c, 'season').textContent).toContain('tez orada');
+        expect(pane(t.c, 'season').hidden).toBe(true);
+    });
+    test('the teams page no longer carries a battles tab', async () => {
+        const t = boot(makeState()); await t.run('jamoalar'); await t.flush();
+        expect([...t.c.querySelectorAll('.pg-tabs button')].map((b) => b.textContent)).not.toContain('Battlelar');
+        expect(pane(t.c, 'battle')).toBeFalsy();
     });
 });

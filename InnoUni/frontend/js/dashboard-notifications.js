@@ -62,7 +62,7 @@
                     it.addEventListener('click', function () {
                         if (!n.read) { n.read = true; state.unread = Math.max(0, state.unread - 1); paintBadge(); mark('/notifications/' + n.id + '/read'); }
                         close();
-                        if (n.page) { if (n.ref_id && /course/.test(n.page)) G.ctx.courseId = n.ref_id; G.open(n.page, NAV[n.page] || n.page); }
+                        if (n.page) { if (n.ref_id && /course/.test(n.page)) G.ctx.courseId = n.ref_id; const target = n.kind === 'battle' ? 'musobaqalar' : n.page; G.open(target, NAV[target] || target); }
                     });
                     list.appendChild(it);
                 });

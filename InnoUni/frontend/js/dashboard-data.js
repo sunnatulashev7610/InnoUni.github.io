@@ -318,7 +318,7 @@
             hero.appendChild(reportBox(c.id, null, session));
         }
         const askAi = el('button', 'pg-btn', 'AI ustozdan so\'rash'); askAi.type = 'button'; askAi.style.marginTop = '12px';
-        askAi.addEventListener('click', function () { window.GEData.ctx.aiCourseId = c.id; window.GEData.open('ai', 'ai'); });
+        askAi.addEventListener('click', function () { window.GEData.ctx.aiCourseId = c.id; window.GEData.ctx.aiTab = 'ai'; window.GEData.open('ai-hub', 'ai-hub'); });
         // "Davom ettirish": back to where the student stopped (the last opened item; for an AI course the first lesson not passed yet)
         let resumeId = data.resume || null;
         const resumeBtn = el('button', 'pg-btn sun'); resumeBtn.type = 'button'; resumeBtn.hidden = true; resumeBtn.style.cssText = 'margin:12px 10px 0 0';

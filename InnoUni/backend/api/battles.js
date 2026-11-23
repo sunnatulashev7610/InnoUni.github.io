@@ -96,7 +96,7 @@ async function closeBattle(db, id, table, from) {
     await updateRatings(db, table);
     const [b] = await db.execute('SELECT id, status, host_team_id, title, duration_days, kind, topic FROM battles WHERE id = ?', [id]);
     const people = await playingMembers(db, id, 0);
-    await Promise.all(people.map((p) => notify(db, p.user_id, { kind: 'battle', title: 'Battle tugadi: natija tayyor', body: b[0] ? b[0].title : '', page: 'jamoalar', refId: id })));
+    await Promise.all(people.map((p) => notify(db, p.user_id, { kind: 'battle', title: 'Battle tugadi: natija tayyor', body: b[0] ? b[0].title : '', page: 'musobaqalar', refId: id })));
     return true;
 }
 
@@ -122,7 +122,7 @@ async function finalizeDue(db, ids) {
         const [x] = await db.execute("UPDATE battles SET status = 'judging' WHERE id = ? AND status = 'active'", [d.id]);
         if (!x.affectedRows) continue;
         const people = await playingMembers(db, d.id, 0);
-        await Promise.all(people.map((p) => notify(db, p.user_id, { kind: 'battle', title: 'Vaqt tugadi: hakam baholaydi', body: '', page: 'jamoalar', refId: d.id })));
+        await Promise.all(people.map((p) => notify(db, p.user_id, { kind: 'battle', title: 'Vaqt tugadi: hakam baholaydi', body: '', page: 'musobaqalar', refId: d.id })));
     }
 }
 
@@ -211,7 +211,7 @@ router.post('/', async (req, res) => {
         await req.db.execute("INSERT INTO battle_teams (battle_id, team_id, state) VALUES (?, ?, 'host')", [made.insertId, hostId]);
         for (const t of rivals) {
             await req.db.execute("INSERT INTO battle_teams (battle_id, team_id, state) VALUES (?, ?, 'invited')", [made.insertId, t.id]);
-            await notify(req.db, t.captain_id, { kind: 'battle', title: 'Yangi battle chaqirig\'i', body: `${host.name}: ${title.value}`, page: 'jamoalar', refId: made.insertId });
+            await notify(req.db, t.captain_id, { kind: 'battle', title: 'Yangi battle chaqirig\'i', body: `${host.name}: ${title.value}`, page: 'musobaqalar', refId: made.insertId });
         }
         res.status(201).json({ id: made.insertId });
     } catch (e) { serverError(res, e); }
@@ -244,7 +244,7 @@ router.post('/:id/respond', async (req, res) => {
         const alive = states.some((s) => s.state === 'invited' || s.state === 'accepted');
         if (!alive) await req.db.execute("UPDATE battles SET status = 'cancelled' WHERE id = ?", [id]);
         const host = await getTeam(req.db, battle.host_team_id);
-        if (host) await notify(req.db, host.captain_id, { kind: 'battle', title: accept ? 'Battle chaqirig\'i qabul qilindi' : 'Battle chaqirig\'i rad etildi', body: `${team.name}: ${battle.title}`, page: 'jamoalar', refId: id });
+        if (host) await notify(req.db, host.captain_id, { kind: 'battle', title: accept ? 'Battle chaqirig\'i qabul qilindi' : 'Battle chaqirig\'i rad etildi', body: `${team.name}: ${battle.title}`, page: 'musobaqalar', refId: id });
         res.json({ state: accept ? 'accepted' : 'declined', cancelled: !alive });
     } catch (e) { serverError(res, e); }
 });
@@ -287,7 +287,7 @@ router.post('/:id/start', async (req, res) => {
         }
         await req.db.execute("UPDATE battles SET status = 'active', starts_at = UTC_TIMESTAMP(), ends_at = DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? DAY) WHERE id = ? AND status = 'invited'", [battle.duration_days, battle.id]);
         const people = await playingMembers(req.db, battle.id, req.user.userId);
-        await Promise.all(people.map((p) => notify(req.db, p.user_id, { kind: 'battle', title: 'Battle boshlandi', body: battle.title, page: 'jamoalar', refId: battle.id })));
+        await Promise.all(people.map((p) => notify(req.db, p.user_id, { kind: 'battle', title: 'Battle boshlandi', body: battle.title, page: 'musobaqalar', refId: battle.id })));
         res.json({ status: 'active' });
     } catch (e) { serverError(res, e); }
 });
@@ -298,7 +298,7 @@ router.post('/:id/cancel', async (req, res) => {
         if (!battle) return;
         await req.db.execute("UPDATE battles SET status = 'cancelled' WHERE id = ? AND status = 'invited'", [battle.id]);
         const [asked] = await req.db.execute("SELECT t.captain_id FROM battle_teams bt JOIN teams t ON t.id = bt.team_id WHERE bt.battle_id = ? AND bt.state IN ('invited', 'accepted')", [battle.id]);
-        await Promise.all(asked.map((a) => notify(req.db, a.captain_id, { kind: 'battle', title: 'Battle bekor qilindi', body: battle.title, page: 'jamoalar', refId: battle.id })));
+        await Promise.all(asked.map((a) => notify(req.db, a.captain_id, { kind: 'battle', title: 'Battle bekor qilindi', body: battle.title, page: 'musobaqalar', refId: battle.id })));
         res.json({ status: 'cancelled' });
     } catch (e) { serverError(res, e); }
 });

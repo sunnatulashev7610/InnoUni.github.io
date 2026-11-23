@@ -81,17 +81,13 @@
 				Jonli dars
 				<span class="nav-badge">LIVE</span>
 			</button>
-			<button class="nav-item" onclick="loadPage('ai', this)">
+			<button class="nav-item" data-feature="teams" hidden onclick="loadPage('musobaqalar', this)">
+				<i class="fas fa-trophy"></i>
+				Musobaqalar
+			</button>
+			<button class="nav-item" onclick="loadPage('ai-hub', this)">
 				<i class="fas fa-wand-magic-sparkles"></i>
-				AI yordamchi
-			</button>
-			<button class="nav-item" onclick="loadPage('ai-courses', this)">
-				<i class="fas fa-graduation-cap"></i>
-				AI kurs yaratuvchi
-			</button>
-			<button class="nav-item" onclick="loadPage('ai-materials', this)">
-				<i class="fas fa-file-pen"></i>
-				AI material yaratuvchi
+				AI vositalari
 			</button>
 			<button class="nav-item" onclick="loadPage('results', this)">
 				<i class="fas fa-chart-line"></i>
@@ -175,17 +171,9 @@
 				<i class="fas fa-circle-plus"></i>
 				Kurs yaratish
 			</button>
-			<button class="nav-item" onclick="loadPage('ai-courses', this)">
-				<i class="fas fa-graduation-cap"></i>
-				AI kurs yaratuvchi
-			</button>
-			<button class="nav-item" onclick="loadPage('ai-materials', this)">
-				<i class="fas fa-file-pen"></i>
-				AI material yaratuvchi
-			</button>
-			<button class="nav-item" onclick="loadPage('ai', this)">
+			<button class="nav-item" onclick="loadPage('ai-hub', this)">
 				<i class="fas fa-wand-magic-sparkles"></i>
-				AI ustoz
+				AI vositalari
 			</button>
 			<button class="nav-item" onclick="loadPage('t-analytics', this)">
 				<i class="fas fa-chart-column"></i>
@@ -298,6 +286,7 @@
 	<script src="../../frontend/js/dashboard-orders.js"></script>
 	<script src="../../frontend/js/dashboard-stats.js"></script>
 	<script src="../../frontend/js/dashboard-ai.js"></script>
+	<script src="../../frontend/js/dashboard-ai-hub.js"></script>
 	<script src="../../frontend/js/dashboard-ai-lesson.js"></script>
 	<script src="../../frontend/js/dashboard-team-chat.js"></script>
 	<script src="../../frontend/js/dashboard-teams.js"></script>
@@ -305,7 +294,9 @@
 		// Enhanced loadPage function with loading states
 		// Built but switched off for now. To bring a feature back, set it to true (and show its menu item).
 		var FEATURES = { teams: true, library: false };
-		var PAGE_FEATURE = { jamoalar: 'teams', 'team-detail': 'teams', library: 'library' };
+		var PAGE_FEATURE = { jamoalar: 'teams', 'team-detail': 'teams', musobaqalar: 'teams', library: 'library' };
+		// The three AI tools live in one section; old links to them open the matching tab there
+		var AI_TABS = { ai: 'ai', 'ai-courses': 'ai-courses', 'ai-materials': 'ai-materials' };
 		document.querySelectorAll('[data-feature]').forEach(function (n) { n.hidden = !FEATURES[n.dataset.feature]; });
 		// Demo visitors (no sign-in) only look from the outside: no course or group interior, no real orders.
 		var DEMO_LOCKED = { 'course-detail': 1, 'group-detail': 1, 'ai-lesson': 1 };
@@ -355,6 +346,10 @@
 			contentArea.hidden = false;
 		}
 		function loadPage(page, element) {
+			if (AI_TABS[page]) {
+				if (window.GEData) window.GEData.ctx.aiTab = AI_TABS[page];
+				page = 'ai-hub'; element = navFor(page) || element;
+			}
 			if (DEMO_LOCKED[page] && !session) {
 				demoNotice("Demo rejimida kurs va guruh ichiga kirib bo'lmaydi. Ro'yxatdan o'ting yoki hisobingizga kiring.");
 				return;
