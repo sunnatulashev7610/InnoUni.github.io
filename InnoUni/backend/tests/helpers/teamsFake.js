@@ -7,7 +7,7 @@ function createTeamsFake() {
         users: { 1: 'Captain', 2: 'Ali', 3: 'Vali', 4: 'Dilnoza' },
         emails: { 1: 'captain@x.uz', 2: 'ali@x.uz', 3: 'vali@x.uz', 4: 'dilnoza@x.uz' },
         blocked: {}, interests: {}, notices: [],
-        teams: [], members: [], messages: [], resources: [], votes: [], id: 1, mid: 1, memberId: 1, rid: 1, events: [], going: [], eid: 1, battles: [], bteams: [], bid: 1, questions: [], qid: 1, answers: [], results: [], stats: {}
+        teams: [], members: [], messages: [], resources: [], votes: [], id: 1, mid: 1, memberId: 1, rid: 1, events: [], going: [], eid: 1, battles: [], bteams: [], bid: 1, questions: [], qid: 1, answers: [], results: [], stats: {}, subs: [], scores: []
     };
     const now = () => Date.now();
     const find = (t, u) => s.members.find((m) => m.team_id === t && m.user_id === u);
@@ -175,7 +175,8 @@ function createTeamsFake() {
             return [s.bteams.filter((b) => b.battle_id === p[0] && mine.includes(b.team_id) && ['host', 'accepted'].includes(b.state)).map((b) => ({ team_id: b.team_id }))];
         }
         if (q.startsWith("SELECT id FROM battles WHERE id IN (")) {
-            return [s.battles.filter((b) => p.includes(b.id) && b.status === 'active' && b.kind === 'quiz' && b.ends_at <= new Date()).map((b) => ({ id: b.id }))];
+            const kind = q.includes("kind = 'project'") ? 'project' : 'quiz';
+            return [s.battles.filter((b) => p.includes(b.id) && b.status === 'active' && b.kind === kind && b.ends_at <= new Date()).map((b) => ({ id: b.id }))];
         }
         if (q.startsWith("SELECT team_id, state FROM battle_teams WHERE battle_id = ? AND state IN ('host', 'accepted')")) return [s.bteams.filter((b) => b.battle_id === p[0] && ['host', 'accepted'].includes(b.state)).map((b) => ({ team_id: b.team_id, state: b.state }))];
         if (q.startsWith('SELECT user_id, team_id, SUM(correct) AS ok, COUNT(*) AS n FROM battle_answers')) {
@@ -183,7 +184,19 @@ function createTeamsFake() {
             s.answers.filter((a) => a.battle_id === p[0]).forEach((a) => { const k = a.user_id; out[k] = out[k] || { user_id: a.user_id, team_id: a.team_id, ok: 0, n: 0 }; out[k].ok += a.correct; out[k].n += 1; });
             return [Object.values(out)];
         }
-        if (q === "UPDATE battles SET status = 'finished' WHERE id = ? AND status = 'active'") { const b = s.battles.find((x) => x.id === p[0] && x.status === 'active'); if (b) b.status = 'finished'; return [{ affectedRows: b ? 1 : 0 }]; }
+        if (q === "UPDATE battles SET status = 'finished' WHERE id = ? AND status = ?") { const b = s.battles.find((x) => x.id === p[0] && x.status === p[1]); if (b) b.status = 'finished'; return [{ affectedRows: b ? 1 : 0 }]; }
+        if (q === "UPDATE battles SET status = 'judging' WHERE id = ? AND status = 'active'") { const b = s.battles.find((x) => x.id === p[0] && x.status === 'active'); if (b) b.status = 'judging'; return [{ affectedRows: b ? 1 : 0 }]; }
+        if (q === "SELECT id FROM battles WHERE id = ? AND status = 'active' AND ends_at > UTC_TIMESTAMP()") return [s.battles.filter((b) => b.id === p[0] && b.status === 'active' && b.ends_at > new Date()).map((b) => ({ id: b.id }))];
+        if (q.startsWith("SELECT bt.team_id FROM battle_teams bt JOIN teams t ON t.id = bt.team_id WHERE bt.battle_id = ? AND bt.state IN ('host', 'accepted') AND t.captain_id = ?")) return [s.bteams.filter((b) => b.battle_id === p[0] && ['host', 'accepted'].includes(b.state) && (s.teams.find((t) => t.id === b.team_id) || {}).captain_id === p[1]).map((b) => ({ team_id: b.team_id }))];
+        if (q.startsWith('INSERT INTO battle_submissions')) { const x = s.subs.find((r) => r.battle_id === p[0] && r.team_id === p[1]); if (x) Object.assign(x, { link: p[2], note: p[3] }); else s.subs.push({ battle_id: p[0], team_id: p[1], link: p[2], note: p[3] }); return [{}]; }
+        if (q.startsWith('SELECT battle_id, team_id, link, note FROM battle_submissions WHERE battle_id IN (')) return [s.subs.filter((r) => p.includes(r.battle_id))];
+        if (q.startsWith('SELECT battle_id, team_id, score, comment FROM battle_scores WHERE battle_id IN (')) return [s.scores.filter((r) => p.includes(r.battle_id))];
+        if (q === 'SELECT team_id FROM battle_submissions WHERE battle_id = ? AND team_id = ?') return [s.subs.filter((r) => r.battle_id === p[0] && r.team_id === p[1]).map((r) => ({ team_id: r.team_id }))];
+        if (q.startsWith('INSERT INTO battle_scores')) { const x = s.scores.find((r) => r.battle_id === p[0] && r.team_id === p[1]); if (x) Object.assign(x, { score: p[2], comment: p[3] }); else s.scores.push({ battle_id: p[0], team_id: p[1], score: p[2], comment: p[3] }); return [{}]; }
+        if (q === "SELECT id FROM battles WHERE kind = 'project' AND status = 'active'") return [s.battles.filter((b) => b.kind === 'project' && b.status === 'active').map((b) => ({ id: b.id }))];
+        if (q.startsWith("SELECT id, title, topic, host_team_id, ends_at FROM battles WHERE kind = 'project' AND status = 'judging'")) return [s.battles.filter((b) => b.kind === 'project' && b.status === 'judging')];
+        if (q.startsWith("SELECT bt.battle_id, bt.team_id, t.name FROM battle_teams bt JOIN teams t ON t.id = bt.team_id WHERE bt.state IN ('host', 'accepted')")) return [s.bteams.filter((b) => p.includes(b.battle_id) && ['host', 'accepted'].includes(b.state)).map((b) => ({ battle_id: b.battle_id, team_id: b.team_id, name: (s.teams.find((t) => t.id === b.team_id) || {}).name }))];
+        if (q === 'SELECT id, status, kind FROM battles WHERE id = ?') return [s.battles.filter((b) => b.id === p[0]).map((b) => ({ id: b.id, status: b.status, kind: b.kind }))];
         if (q.startsWith('SELECT team_id, rating FROM team_battle_stats WHERE team_id IN (')) return [p.filter((id) => s.stats[id]).map((id) => ({ team_id: id, rating: s.stats[id].rating }))];
         if (q.startsWith('INSERT INTO team_battle_stats')) {
             const [id, rating, win, change, win2] = [p[0], p[1], p[2], p[3], p[4]];

@@ -40,6 +40,8 @@ function boot(state) {
             const fin = state.quizFinished; r = { body: { status: fin ? 'finished' : 'active', team_id: 3, total: 2, answered: 0, questions: [
                 Object.assign({ id: 11, position: 1, question: '<i>2+2</i> nechchi?', options: ['3', '4', '5', '6'], my_choice: fin ? 1 : null }, fin ? { correct: 1, explanation: 'Ikki va ikki' } : {}),
                 Object.assign({ id: 12, position: 2, question: 'Ikkinchi?', options: ['a', 'b', 'c', 'd'], my_choice: null }, fin ? { correct: 0, explanation: 'x' } : {}) ] } };
+        } else if (/^\/battles\/\d+\/submit/.test(p)) {
+            r = state.submitFails ? { ok: false, status: 400, body: { error: 'Link must be a valid https address' } } : { body: { saved: true } };
         } else if (/^\/battles\/\d+\/answer/.test(p)) {
             r = state.answerFails ? { ok: false, status: 409, body: { error: 'Already answered' } } : { body: { saved: true, answered: 1 } };
         } else if (/^\/battles/.test(p)) {
@@ -485,6 +487,44 @@ describe('battle rating', () => {
         expect(rc.textContent).toContain('1216 ball'); expect(rc.textContent).toContain('Oltin liga');
         expect(rc.textContent).toContain("Birinchi g'alaba"); expect(rc.textContent).toContain('<b>Kubok</b> battle');
         expect(rc.querySelector('b b')).toBeNull();
+    });
+});
+
+describe('project battle', () => {
+    const proj = { id: 8, title: 'Sayt', topic: 'Portfolio', kind: 'project', status: 'active', ends_at: new Date(Date.now() + 86400000).toISOString(), duration_days: 1, host_team_id: 3, my_team_id: 3, can_submit: true, is_host_admin: true, can_respond: false,
+        teams: [{ team_id: 3, name: 'Host jamoa', state: 'host', submitted: true, submission: { link: 'https://github.com/a/b', note: 'eski' } }, { team_id: 1, name: 'Python Klub', state: 'accepted', submitted: false }] };
+    test('the admin hands in a link and a note; the form shows what was handed in before', async () => {
+        const state = makeState(); state.battles = [proj];
+        const t = boot(state); await t.run('jamoalar'); await t.flush();
+        const bp = pane(t.c, 'battle');
+        expect(bp.textContent).toContain('Host jamoa · Chorlovchi · topshirdi');
+        expect(bp.textContent).toContain('Python Klub · Qabul qildi · hali topshirmagan');
+        const form = [...bp.querySelectorAll('form')].find((f) => f.textContent.includes('Loyihani topshirish'));
+        const [link, nt] = [form.querySelector('input'), form.querySelector('textarea')];
+        expect(link.value).toBe('https://github.com/a/b'); expect(nt.value).toBe('eski');
+        link.value = 'https://github.com/a/yangi'; nt.value = 'yangi izoh';
+        form.dispatchEvent(new t.w.Event('submit', { bubbles: true, cancelable: true })); await t.flush();
+        expect(t.calls.find((c) => c.path === '/battles/8/submit').body).toEqual({ link: 'https://github.com/a/yangi', note: 'yangi izoh' });
+    });
+    test('a refused link shows a short Uzbek message', async () => {
+        const state = makeState(); state.battles = [proj]; state.submitFails = true;
+        const t = boot(state); await t.run('jamoalar'); await t.flush();
+        const form = [...pane(t.c, 'battle').querySelectorAll('form')].find((f) => f.textContent.includes('Loyihani topshirish'));
+        form.querySelector('input').value = 'http://x.uz';
+        form.dispatchEvent(new t.w.Event('submit', { bubbles: true, cancelable: true })); await t.flush();
+        expect(form.textContent).toContain('https:// bilan boshlanishi');
+    });
+    test('members who cannot hand in see no form; waiting for the judge and finished battles show status and safe links', async () => {
+        const state = makeState();
+        state.battles = [Object.assign({}, proj, { id: 9, can_submit: false, status: 'judging' }),
+            Object.assign({}, proj, { id: 10, can_submit: false, status: 'finished', teams: [{ team_id: 3, name: 'Host jamoa', state: 'host', result: { score: 90, correct_total: 90, participants: 1, place: 1 }, submission: { link: 'https://github.com/a/b' } }, { team_id: 1, name: 'Python Klub', state: 'accepted', result: { score: 0, correct_total: 0, participants: 0, place: 2 }, submission: { link: 'javascript:alert(1)' } }] })];
+        const t = boot(state); await t.run('jamoalar'); await t.flush();
+        const bp = pane(t.c, 'battle');
+        expect(bp.textContent).toContain('Hakam baholamoqda');
+        expect(bp.textContent).not.toContain('Loyihani topshirish');
+        const anchors = [...bp.querySelectorAll('a')];
+        expect(anchors.map((a) => a.href)).toEqual(['https://github.com/a/b']);
+        expect(bp.textContent).toContain('javascript:alert(1)');
     });
 });
 

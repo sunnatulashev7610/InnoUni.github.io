@@ -2,6 +2,9 @@ const express = require('express');
 const { authenticateToken, adminOnly, invalidateUserCache } = require('../middleware/roleBased');
 const { parseId, validateText } = require('../utils/validation');
 
+const battles = require('./battles');
+const { BATTLE_LIMITS } = require('../utils/battleLimits');
+
 const router = express.Router();
 router.use(authenticateToken, adminOnly);
 
@@ -129,6 +132,82 @@ router.post('/orders/:id/decision', async (req, res) => {
         if (!r.affectedRows) return res.status(404).json({ error: 'No pending tariff order with this id' });
         await log(req.db, req.user.userId, 'order_' + req.body.status, null, 'order #' + id);
         res.json({ id, status: req.body.status });
+    } catch (e) { fail(res, e); }
+});
+
+// ---- Project battles: the platform judge scores what the teams handed in ----
+const holes = (list) => list.map(() => '?').join(', ');
+
+router.get('/battles', async (req, res) => {
+    try {
+        // Project battles whose time is up move to "judging" the first time someone looks
+        const [open] = await req.db.execute("SELECT id FROM battles WHERE kind = 'project' AND status = 'active'", []);
+        await battles.finalizeDue(req.db, open.map((b) => b.id));
+        const [list] = await req.db.execute("SELECT id, title, topic, host_team_id, ends_at FROM battles WHERE kind = 'project' AND status = 'judging' ORDER BY id", []);
+        if (!list.length) return res.json({ battles: [], max_score: BATTLE_LIMITS.maxJudgeScore });
+        const ids = list.map((b) => b.id);
+        const [teams] = await req.db.execute(`SELECT bt.battle_id, bt.team_id, t.name FROM battle_teams bt JOIN teams t ON t.id = bt.team_id WHERE bt.state IN ('host', 'accepted') AND bt.battle_id IN (${holes(ids)})`, ids);
+        const [subs] = await req.db.execute(`SELECT battle_id, team_id, link, note FROM battle_submissions WHERE battle_id IN (${holes(ids)})`, ids);
+        const [scores] = await req.db.execute(`SELECT battle_id, team_id, score, comment FROM battle_scores WHERE battle_id IN (${holes(ids)})`, ids);
+        res.json({
+            max_score: BATTLE_LIMITS.maxJudgeScore,
+            battles: list.map((b) => ({
+                id: b.id, title: b.title, topic: b.topic, ends_at: b.ends_at,
+                teams: teams.filter((t) => t.battle_id === b.id).map((t) => {
+                    const sub = subs.find((x) => x.battle_id === b.id && x.team_id === t.team_id);
+                    const sc = scores.find((x) => x.battle_id === b.id && x.team_id === t.team_id);
+                    return { team_id: t.team_id, name: t.name, submission: sub ? { link: sub.link, note: sub.note } : null, score: sc ? sc.score : null, comment: sc ? sc.comment : null };
+                })
+            }))
+        });
+    } catch (e) { fail(res, e); }
+});
+
+async function judgingBattle(req, res) {
+    const id = parseId(req.params.id);
+    if (!id) { res.status(400).json({ error: 'Invalid battle id' }); return null; }
+    const [rows] = await req.db.execute('SELECT id, status, kind FROM battles WHERE id = ?', [id]);
+    if (!rows[0] || rows[0].kind !== 'project') { res.status(404).json({ error: 'Battle not found' }); return null; }
+    if (rows[0].status !== 'judging') { res.status(409).json({ error: 'This battle is not waiting for the judge' }); return null; }
+    return rows[0];
+}
+
+router.post('/battles/:id/score', async (req, res) => {
+    try {
+        const battle = await judgingBattle(req, res);
+        if (!battle) return;
+        const teamId = parseId(req.body && req.body.team_id);
+        const score = req.body && req.body.score;
+        if (!teamId) return res.status(400).json({ error: 'Choose a team' });
+        if (!Number.isInteger(score) || score < 0 || score > BATTLE_LIMITS.maxJudgeScore) return res.status(400).json({ error: `Score must be a whole number from 0 to ${BATTLE_LIMITS.maxJudgeScore}` });
+        const comment = validateText(req.body.comment, { field: 'Comment', required: false, maxLength: 300 });
+        if (comment.error) return res.status(400).json({ error: comment.error });
+        const [has] = await req.db.execute('SELECT team_id FROM battle_submissions WHERE battle_id = ? AND team_id = ?', [battle.id, teamId]);
+        if (!has.length) return res.status(404).json({ error: 'This team has not handed in a project' });
+        await req.db.execute('INSERT INTO battle_scores (battle_id, team_id, score, comment, judge_id) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE score = VALUES(score), comment = VALUES(comment), judge_id = VALUES(judge_id)',
+            [battle.id, teamId, score, comment.value || null, req.user.userId]);
+        res.json({ saved: true });
+    } catch (e) { fail(res, e); }
+});
+
+// Closing needs a score for every team that handed in; teams that handed in nothing get 0
+router.post('/battles/:id/finish', async (req, res) => {
+    try {
+        const battle = await judgingBattle(req, res);
+        if (!battle) return;
+        const [playing] = await req.db.execute("SELECT team_id, state FROM battle_teams WHERE battle_id = ? AND state IN ('host', 'accepted')", [battle.id]);
+        const [subs] = await req.db.execute(`SELECT battle_id, team_id, link, note FROM battle_submissions WHERE battle_id IN (${holes([battle.id])})`, [battle.id]);
+        const [scores] = await req.db.execute(`SELECT battle_id, team_id, score, comment FROM battle_scores WHERE battle_id IN (${holes([battle.id])})`, [battle.id]);
+        const table = [];
+        for (const t of playing) {
+            const handed = subs.some((x) => x.team_id === t.team_id);
+            const sc = scores.find((x) => x.team_id === t.team_id);
+            if (handed && !sc) return res.status(400).json({ error: 'Score every team that handed in a project first' });
+            const score = handed ? Number(sc.score) : 0;
+            table.push({ team_id: t.team_id, score, total: score, people: handed ? 1 : 0 });
+        }
+        await battles.closeBattle(req.db, battle.id, battles.rankTable(table), 'judging');
+        res.json({ status: 'finished' });
     } catch (e) { fail(res, e); }
 });
 

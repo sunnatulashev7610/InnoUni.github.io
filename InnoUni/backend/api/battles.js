@@ -31,6 +31,7 @@ async function loadBattles(db, ids, userId) {
         `SELECT bt.battle_id, bt.team_id, bt.state, t.name, t.captain_id FROM battle_teams bt JOIN teams t ON t.id = bt.team_id WHERE bt.battle_id IN (${holes(ids)})`, ids);
     const [results] = await db.execute(
         `SELECT battle_id, team_id, score, correct_total, participants, place FROM battle_results WHERE battle_id IN (${holes(ids)})`, ids);
+    const [subs] = await db.execute(`SELECT battle_id, team_id, link, note FROM battle_submissions WHERE battle_id IN (${holes(ids)})`, ids);
     const [playing] = await db.execute(
         `SELECT bt.battle_id, bt.team_id FROM battle_teams bt JOIN team_members m ON m.team_id = bt.team_id WHERE m.user_id = ? AND m.status = 'active' AND bt.state IN ('host', 'accepted') AND bt.battle_id IN (${holes(ids)})`, [userId, ...ids]);
     return battles.sort((a, b) => b.id - a.id).map((b) => {
@@ -42,8 +43,14 @@ async function loadBattles(db, ids, userId) {
             id: b.id, title: b.title, topic: b.topic, kind: b.kind, status: b.status, duration_days: b.duration_days,
             starts_at: b.starts_at, ends_at: b.ends_at, host_team_id: b.host_team_id,
             my_team_id: myPlay ? myPlay.team_id : null,
-            teams: list.map((t) => ({ team_id: t.team_id, name: t.name, state: t.state, result: res(t.team_id) })),
+            // Others' work stays hidden until the battle is finished; everyone sees only who has handed in
+            teams: list.map((t) => {
+                const sub = subs.find((x) => x.battle_id === b.id && x.team_id === t.team_id);
+                const shown = sub && (b.status === 'finished' || (myPlay && myPlay.team_id === t.team_id));
+                return Object.assign({ team_id: t.team_id, name: t.name, state: t.state, result: res(t.team_id) }, b.kind === 'project' ? { submitted: Boolean(sub) } : {}, shown ? { submission: { link: sub.link, note: sub.note } } : {});
+            }),
             is_host_admin: mineAdmin.some((t) => t.team_id === b.host_team_id),
+            can_submit: b.kind === 'project' && b.status === 'active' && mineAdmin.some((t) => t.state === 'host' || t.state === 'accepted'),
             can_respond: b.status === 'invited' && mineAdmin.some((t) => t.state === 'invited')
         };
     });
@@ -72,6 +79,27 @@ async function updateRatings(db, table) {
     }
 }
 
+// Places: best score first, equal results share a place
+function rankTable(table) {
+    table.sort((a, b) => b.score - a.score || b.total - a.total);
+    table.forEach((r) => { r.place = table.findIndex((x) => x.score === r.score && x.total === r.total) + 1; });
+    return table;
+}
+
+// Writes the results and closes the battle once (the status guard makes a second caller do nothing), then updates ratings and tells the players
+async function closeBattle(db, id, table, from) {
+    const [done] = await db.execute("UPDATE battles SET status = 'finished' WHERE id = ? AND status = ?", [id, from]);
+    if (!done.affectedRows) return false;   // another request closed it first
+    for (const r of table) {
+        await db.execute('INSERT INTO battle_results (battle_id, team_id, score, correct_total, participants, place) VALUES (?, ?, ?, ?, ?, ?)', [id, r.team_id, r.score, r.total, r.people, r.place]);
+    }
+    await updateRatings(db, table);
+    const [b] = await db.execute('SELECT id, status, host_team_id, title, duration_days, kind, topic FROM battles WHERE id = ?', [id]);
+    const people = await playingMembers(db, id, 0);
+    await Promise.all(people.map((p) => notify(db, p.user_id, { kind: 'battle', title: 'Battle tugadi: natija tayyor', body: b[0] ? b[0].title : '', page: 'jamoalar', refId: id })));
+    return true;
+}
+
 async function finalize(db, id) {
     const [bt] = await db.execute("SELECT team_id, state FROM battle_teams WHERE battle_id = ? AND state IN ('host', 'accepted')", [id]);
     const [rows] = await db.execute('SELECT user_id, team_id, SUM(correct) AS ok, COUNT(*) AS n FROM battle_answers WHERE battle_id = ? GROUP BY user_id, team_id', [id]);
@@ -80,23 +108,22 @@ async function finalize(db, id) {
         const total = mine.reduce((a, r) => a + Number(r.ok), 0);
         const people = mine.length;
         return { team_id: t.team_id, total, people, score: Math.round((total / Math.max(people, BATTLE_LIMITS.minActiveMembers)) * 100) / 100 };
-    }).sort((a, b) => b.score - a.score || b.total - a.total);
-    table.forEach((r) => { r.place = table.findIndex((x) => x.score === r.score && x.total === r.total) + 1; });   // equal results share a place
-    const [done] = await db.execute("UPDATE battles SET status = 'finished' WHERE id = ? AND status = 'active'", [id]);
-    if (!done.affectedRows) return;   // another request closed it first
-    for (const r of table) {
-        await db.execute('INSERT INTO battle_results (battle_id, team_id, score, correct_total, participants, place) VALUES (?, ?, ?, ?, ?, ?)', [id, r.team_id, r.score, r.total, r.people, r.place]);
-    }
-    await updateRatings(db, table);
-    const [b] = await db.execute('SELECT id, status, host_team_id, title, duration_days, kind, topic FROM battles WHERE id = ?', [id]);
-    const people = await playingMembers(db, id, 0);
-    await Promise.all(people.map((p) => notify(db, p.user_id, { kind: 'battle', title: 'Battle tugadi: natija tayyor', body: b[0] ? b[0].title : '', page: 'jamoalar', refId: id })));
+    });
+    await closeBattle(db, id, rankTable(table), 'active');
 }
 
 async function finalizeDue(db, ids) {
     if (!ids.length) return;
     const [due] = await db.execute(`SELECT id FROM battles WHERE id IN (${holes(ids)}) AND status = 'active' AND kind = 'quiz' AND ends_at <= UTC_TIMESTAMP()`, ids);
     for (const d of due) await finalize(db, d.id);
+    // A project battle whose time is up waits for the platform judge
+    const [proj] = await db.execute(`SELECT id FROM battles WHERE id IN (${holes(ids)}) AND status = 'active' AND kind = 'project' AND ends_at <= UTC_TIMESTAMP()`, ids);
+    for (const d of proj) {
+        const [x] = await db.execute("UPDATE battles SET status = 'judging' WHERE id = ? AND status = 'active'", [d.id]);
+        if (!x.affectedRows) continue;
+        const people = await playingMembers(db, d.id, 0);
+        await Promise.all(people.map((p) => notify(db, p.user_id, { kind: 'battle', title: 'Vaqt tugadi: hakam baholaydi', body: '', page: 'jamoalar', refId: d.id })));
+    }
 }
 
 router.get('/', async (req, res) => {
@@ -276,6 +303,30 @@ router.post('/:id/cancel', async (req, res) => {
     } catch (e) { serverError(res, e); }
 });
 
+// ---- Project battles: the admin of a playing team hands in a link until the time is up ----
+router.post('/:id/submit', async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: 'Invalid battle id' });
+    const b = req.body || {};
+    let link;
+    try { const u = new URL(String(b.link || '').trim()); if (u.protocol !== 'https:') throw new Error('no'); link = u.toString(); } catch (e) { return res.status(400).json({ error: 'Link must be a valid https address' }); }
+    if (link.length > BATTLE_LIMITS.maxLinkLength) return res.status(400).json({ error: 'Link is too long' });
+    const note = validateText(b.note, { field: 'Note', required: false, maxLength: BATTLE_LIMITS.maxNoteLength });
+    if (note.error) return res.status(400).json({ error: note.error });
+    try {
+        const [rows] = await req.db.execute('SELECT id, status, host_team_id, title, duration_days, kind, topic FROM battles WHERE id = ?', [id]);
+        const battle = rows[0];
+        if (!battle || battle.kind !== 'project') return res.status(404).json({ error: 'Battle not found' });
+        const [mine] = await req.db.execute("SELECT bt.team_id FROM battle_teams bt JOIN teams t ON t.id = bt.team_id WHERE bt.battle_id = ? AND bt.state IN ('host', 'accepted') AND t.captain_id = ?", [id, req.user.userId]);
+        if (!mine.length) return res.status(403).json({ error: 'Only the admin of a playing team can hand in the project' });
+        const [due] = await req.db.execute("SELECT id FROM battles WHERE id = ? AND status = 'active' AND ends_at > UTC_TIMESTAMP()", [id]);
+        if (!due.length) return res.status(409).json({ error: 'The battle is not active any more' });
+        await req.db.execute('INSERT INTO battle_submissions (battle_id, team_id, link, note, submitted_by) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE link = VALUES(link), note = VALUES(note), submitted_by = VALUES(submitted_by)',
+            [id, mine[0].team_id, link, note.value || null, req.user.userId]);
+        res.json({ saved: true });
+    } catch (e) { serverError(res, e); }
+});
+
 // ---- Playing a quiz battle ----
 // The person's playing team in this battle (active member of a team that is in, not one that declined), or null
 async function myPlayingTeam(db, battleId, userId) {
@@ -339,3 +390,6 @@ router.post('/:id/answer', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.closeBattle = closeBattle;
+module.exports.finalizeDue = finalizeDue;
+module.exports.rankTable = rankTable;
