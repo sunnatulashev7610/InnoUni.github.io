@@ -32,7 +32,12 @@ function boot(state) {
         const body = opts.body ? JSON.parse(opts.body) : undefined;
         calls.push({ path: p, method, body });
         let r = { body: { message: 'ok' } };
-        if (/\/events/.test(p)) {
+        if (/^\/battles/.test(p)) {
+            const list = state.battles = state.battles || [{ id: 1, title: '<b>Python</b> battle', topic: 'Python asoslari', kind: 'quiz', status: 'invited', duration_days: 2, starts_at: null, ends_at: null, host_team_id: 3, teams: [{ team_id: 3, name: 'Host jamoa', state: 'host' }, { team_id: 1, name: 'Python Klub', state: 'invited' }], is_host_admin: false, can_respond: true }];
+            if (method === 'GET') r = { body: { battles: list } };
+            else if (method === 'POST' && p === '/battles') { list.push({ id: 2, title: body.title, topic: body.topic, kind: body.kind, status: 'invited', duration_days: body.duration_days, host_team_id: body.host_team_id, teams: [], is_host_admin: true, can_respond: false }); r = { status: 201, body: { id: 2 } }; }
+            else { const x = list.find((q) => p.startsWith('/battles/' + q.id + '/')); if (p.endsWith('/respond')) { x.can_respond = false; x.teams[1].state = body.accept ? 'accepted' : 'declined'; } r = { body: {} }; }
+        } else if (/\/events/.test(p)) {
             const evs = state.events = state.events || [{ id: 1, title: '<b>Haftalik</b> uchrashuv', place: 'Kutubxona', note: null, starts_at: new Date(Date.now() + 2 * 86400000).toISOString(), going: 1, i_go: false }];
             if (method === 'GET') r = { body: { events: evs } };
             else if (method === 'POST' && /\/going$/.test(p)) { evs[0].i_go = true; evs[0].going++; r = { body: { i_go: true } }; }
@@ -451,5 +456,38 @@ describe('team workspace layout', () => {
         const t = boot(makeState()); t.w.GEData.ctx.teamId = 1; await t.run('team-detail'); await t.flush();
         expect(t.c.querySelector('.tt-grid')).toBeNull();
         expect(t.c.textContent).toContain('Ochilgan sana');
+    });
+});
+
+describe('battles tab', () => {
+    test('shows the invitation as text and answering sends accept', async () => {
+        const t = boot(makeState()); await t.run('jamoalar'); await t.flush();
+        const bp = pane(t.c, 'battle');
+        expect(bp.textContent).toContain('<b>Python</b> battle');
+        expect(bp.querySelector('b b')).toBeNull();
+        expect(bp.textContent).toContain('Javob kutilmoqda');
+        click(btn(bp, 'Qabul qilish')); await t.flush();
+        expect(t.calls.find((c) => c.path === '/battles/1/respond').body).toEqual({ accept: true });
+        expect(bp.textContent).toContain('Qabul qildi');
+    });
+    test('only team admins get the challenge form; it needs a name, a topic and an opponent', async () => {
+        const state = makeState();
+        const t = boot(state); await t.run('jamoalar'); await t.flush();
+        const bp = pane(t.c, 'battle');
+        const admin = state.teams.some((x) => x.is_captain);
+        expect(!!bp.querySelector('form')).toBe(admin);
+        if (!admin) return;
+        const form = bp.querySelector('form');
+        submit(form); await t.flush();
+        expect(bp.textContent).toContain('Nom va mavzuni');
+        setVal(t.c, 'tbTitle', 'Bellashuv'); setVal(t.c, 'tbTopic', 'JS');
+        submit(form); await t.flush();
+        expect(bp.textContent).toContain('raqib jamoani tanlang');
+        expect(t.calls.some((c) => c.method === 'POST' && c.path === '/battles')).toBe(false);
+        const cb = form.querySelector('input[type=checkbox]'); cb.checked = true; cb.dispatchEvent(new t.w.Event('change', { bubbles: true }));
+        submit(form); await t.flush();
+        const sent = t.calls.find((c) => c.method === 'POST' && c.path === '/battles').body;
+        expect(sent).toMatchObject({ title: 'Bellashuv', topic: 'JS', kind: 'quiz', duration_days: 2 });
+        expect(sent.opponent_team_ids).toHaveLength(1);
     });
 });

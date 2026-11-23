@@ -51,6 +51,18 @@
         if (/Invalid email/i.test(m)) return "Email noto'g'ri.";
         if (/No invitation/i.test(m)) return 'Taklif topilmadi.';
         if (/admin cannot leave/i.test(m)) return "Admin jamoadan chiqa olmaydi. Uni o'chirishi mumkin.";
+        if (/Only the team admin can start a battle/i.test(m)) return "Battle'ni faqat jamoa admini boshlay oladi.";
+        if (/needs at least \d+ active members/i.test(m)) return 'Jamoada kamida ' + ((m.match(/\d+/) || ['3'])[0]) + " ta faol a'zo bo'lishi kerak.";
+        if (/fewer than \d+ active members/i.test(m)) return 'Raqib jamoada faol a\'zolar yetarli emas (kamida ' + ((m.match(/than (\d+)/) || [0, '3'])[1]) + ').';
+        if (/battle each other at most/i.test(m)) return "Bu ikki jamoa haftasiga ko'pi bilan 2 marta battle o'tkaza oladi.";
+        if (/open battles per team/i.test(m)) return "Jamoada bir vaqtda ko'pi bilan 3 ta ochiq battle bo'lishi mumkin.";
+        if (/Choose (your team|at least one|1 to)/i.test(m)) return "Jamoangizni va 1–5 ta raqib jamoani tanlang.";
+        if (/cannot challenge itself/i.test(m)) return "Jamoa o'zini chorlay olmaydi.";
+        if (/Duration must be/i.test(m)) return 'Davomiylik 1–7 kun bo\'lsin.';
+        if (/no longer waiting/i.test(m)) return "Bu battle endi javob kutmayapti.";
+        if (/have not answered/i.test(m)) return "Ba'zi jamoalar hali javob bermagan.";
+        if (/At least one team must accept/i.test(m)) return "Kamida bitta jamoa qabul qilishi kerak.";
+        if (/No invitation to answer/i.test(m)) return "Sizning jamoalaringizga javob kutayotgan chaqiriq yo'q.";
         if (/Only the (admin|owner)/i.test(m)) return 'Bu amalni faqat admin bajara oladi.';
         if (/must be in the future/i.test(m)) return "Uchrashuv vaqti kelajakda bo'lsin.";
         if (/too far ahead/i.test(m)) return "Uchrashuvni 1 yildan ortiq oldin rejalab bo'lmaydi.";
@@ -61,6 +73,110 @@
         if (/not taking new people/i.test(m)) return "Hozir bu jamoa yangi a'zo qabul qilmayapti.";
         if (/not available/i.test(m)) return 'Jamoalar hozircha yopiq.';
         return "Amalni bajarib bo'lmadi. Keyinroq urinib ko'ring.";
+    }
+
+    // ---- Battles: a team admin challenges other teams; invited admins accept or decline; the host starts it
+    const KIND_TEXT = { quiz: 'Viktorina', project: 'Loyiha' };
+    const STATE_TEXT = { host: 'Chorlovchi', invited: 'Javob kutilmoqda', accepted: 'Qabul qildi', declined: 'Rad etdi' };
+    function battleStatus(b) {
+        if (b.status === 'cancelled') return ['Bekor qilingan', ''];
+        if (b.status === 'active') return new Date(b.ends_at).getTime() < Date.now() ? ['Vaqt tugadi, natija kutilmoqda', 'sun'] : ['Davom etmoqda', ''];
+        return ['Javoblar kutilmoqda', 'sun'];
+    }
+    async function battlesPane(session, teams, refresh) {
+        const box = el('div'); box.style.cssText = 'display:grid;gap:18px';
+        const mineAdmin = teams.filter(function (t) { return t.is_captain; });
+
+        // The list of battles (also the place to answer, start and cancel)
+        const listCard = card('Battlelarim'); const listBody = el('div'); listCard.appendChild(listBody);
+        async function drawList() {
+            listBody.textContent = '';
+            let r;
+            try { r = await get('/battles', session); } catch (err) { listBody.appendChild(empty(problem(err))); return; }
+            const all = r.battles || [];
+            if (!all.length) { listBody.appendChild(empty("Hali battle yo'q. Jamoa admini boshqa jamoani chorlashi mumkin.")); return; }
+            all.forEach(function (b) {
+                const row = el('div', 'pg-card'); row.style.marginBottom = '12px';
+                const head = el('div'); head.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;align-items:center';
+                head.appendChild(el('b', '', b.title));
+                head.appendChild(el('span', 'pg-pill', KIND_TEXT[b.kind] || b.kind));
+                const st = battleStatus(b); head.appendChild(el('span', 'pg-pill ' + st[1], st[0]));
+                row.appendChild(head);
+                row.appendChild(el('p', 'pg-muted', 'Mavzu: ' + b.topic));
+                const parts = el('div'); parts.style.cssText = 'display:grid;gap:4px;margin:8px 0';
+                b.teams.forEach(function (t) { parts.appendChild(el('div', 'pg-muted', t.name + ' · ' + (STATE_TEXT[t.state] || t.state))); });
+                row.appendChild(parts);
+                row.appendChild(el('p', 'pg-muted', b.status === 'active' ? 'Tugaydi: ' + new Date(b.ends_at).toLocaleString('uz-UZ') : 'Davomiyligi: ' + b.duration_days + ' kun'));
+                const msg = note(); const acts = el('div'); acts.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px';
+                async function call(path, body, okText) {
+                    msg.textContent = '';
+                    try { await send('POST', '/battles/' + b.id + '/' + path, session, body); if (okText) G.toast(okText); await drawList(); } catch (err) { msg.textContent = problem(err); }
+                }
+                if (b.can_respond) {
+                    const yes = small(el('button', 'pg-btn', 'Qabul qilish')); yes.type = 'button';
+                    const no = small(el('button', 'pg-btn danger', 'Rad etish')); no.type = 'button';
+                    yes.addEventListener('click', function () { call('respond', { accept: true }, 'Chaqiriq qabul qilindi'); });
+                    twice(no, 'Aniqmi?', function () { return call('respond', { accept: false }, 'Chaqiriq rad etildi'); });
+                    acts.appendChild(yes); acts.appendChild(no);
+                }
+                if (b.is_host_admin && b.status === 'invited') {
+                    const go = small(el('button', 'pg-btn', 'Boshlash')); go.type = 'button';
+                    go.addEventListener('click', function () { call('start', {}, "Battle boshlandi. A'zolarga xabar yuborildi"); });
+                    const stop = small(el('button', 'pg-btn ghost', 'Bekor qilish')); stop.type = 'button';
+                    twice(stop, 'Aniqmi?', function () { return call('cancel', {}, 'Battle bekor qilindi'); });
+                    acts.appendChild(go); acts.appendChild(stop);
+                }
+                row.appendChild(acts); row.appendChild(msg); listBody.appendChild(row);
+            });
+        }
+
+        // The challenge form: only for admins
+        if (mineAdmin.length) {
+            const form = el('form', 'pg-card'); form.noValidate = true; form.appendChild(el('h3', 'pg-h3', 'Battlega chorlash'));
+            const host = el('select', 'pg-input'); mineAdmin.forEach(function (t) { const o = el('option', '', t.name); o.value = t.id; host.appendChild(o); });
+            const title = el('input', 'pg-input'); title.type = 'text'; title.maxLength = 100; title.placeholder = 'Masalan: Python bellashuvi';
+            const topic = el('input', 'pg-input'); topic.type = 'text'; topic.maxLength = 200; topic.placeholder = 'Masalan: Python asoslari';
+            const kind = el('select', 'pg-input'); Object.keys(KIND_TEXT).forEach(function (k) { const o = el('option', '', KIND_TEXT[k]); o.value = k; kind.appendChild(o); });
+            const days = el('select', 'pg-input'); for (let d = 1; d <= 7; d++) { const o = el('option', '', d + ' kun'); o.value = String(d); days.appendChild(o); }
+            days.value = '2';
+            form.appendChild(field('Sizning jamoangiz', host, 'tbHost')); form.appendChild(field('Nomi', title, 'tbTitle')); form.appendChild(field('Mavzu', topic, 'tbTopic'));
+            form.appendChild(field('Turi', kind, 'tbKind')); form.appendChild(field('Davomiyligi', days, 'tbDays'));
+            const oppBox = el('div'); oppBox.style.cssText = 'display:grid;gap:6px;max-height:220px;overflow-y:auto;padding:4px 0';
+            const picked = new Set();
+            function drawOpp() {
+                oppBox.textContent = '';
+                teams.filter(function (t) { return String(t.id) !== host.value; }).forEach(function (t) {
+                    const lab = el('label', 'pg-muted'); lab.style.cssText = 'display:flex;align-items:center;gap:8px;cursor:pointer';
+                    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.value = t.id; cb.checked = picked.has(t.id);
+                    cb.addEventListener('change', function () { if (cb.checked) picked.add(t.id); else picked.delete(t.id); });
+                    lab.appendChild(cb); lab.appendChild(document.createTextNode(t.name + ' (' + t.members + " a'zo)")); oppBox.appendChild(lab);
+                });
+                if (!oppBox.children.length) oppBox.appendChild(empty("Boshqa jamoa yo'q."));
+            }
+            host.addEventListener('change', function () { picked.delete(Number(host.value)); drawOpp(); });
+            drawOpp();
+            const oppField = el('div'); oppField.appendChild(el('div', 'pg-muted', 'Raqib jamoalar (1–5 ta)')); oppField.appendChild(oppBox); form.appendChild(oppField);
+            form.appendChild(el('p', 'pg-muted', "Har bir jamoada kamida 3 ta faol a'zo bo'lishi kerak. Savollarni raqib emas, tizim tayyorlaydi."));
+            const msg = note(); form.appendChild(msg);
+            const go = el('button', 'pg-btn', 'Chorlash'); go.type = 'submit'; form.appendChild(go);
+            form.addEventListener('submit', async function (e) {
+                e.preventDefault(); msg.textContent = '';
+                if (!title.value.trim() || !topic.value.trim()) { msg.textContent = "Nom va mavzuni kiriting."; return; }
+                if (!picked.size) { msg.textContent = 'Kamida bitta raqib jamoani tanlang.'; return; }
+                go.disabled = true;
+                try {
+                    await send('POST', '/battles', session, { host_team_id: Number(host.value), title: title.value, topic: topic.value, kind: kind.value, duration_days: Number(days.value), opponent_team_ids: Array.from(picked) });
+                    title.value = ''; topic.value = ''; picked.clear(); drawOpp(); G.toast('Chaqiriq yuborildi'); await drawList();
+                } catch (err) { msg.textContent = problem(err); }
+                go.disabled = false;
+            });
+            box.appendChild(form);
+        } else {
+            box.appendChild(empty("Battlega chorlash uchun jamoa admini bo'lishingiz kerak. Javob berish uchun esa jamoangiz chaqirilishi kutiladi."));
+        }
+        box.appendChild(listCard);
+        await drawList();
+        return box;
     }
 
     // Tabs: panes are all built, only the chosen one is shown
@@ -168,7 +284,7 @@
             const pg = page(root);
             pg.appendChild(head('Jamoalar', "Birga o'rganing, chatda fikr almashing, bir-biringizga yordam bering. Jamoa ochish va qatnashish tekin."));
 
-            const names = [['all', 'Barcha jamoalar'], ['foryou', 'Siz uchun'], ['top', 'Reyting'], ['mine', 'Mening jamoalarim'], ['create', 'Jamoa ochish']];
+            const names = [['all', 'Barcha jamoalar'], ['foryou', 'Siz uchun'], ['top', 'Reyting'], ['battle', 'Battlelar'], ['mine', 'Mening jamoalarim'], ['create', 'Jamoa ochish']];
             const panes = {};
             tabs.onChange = function (k) { tab = k; };
             const nav = tabs(names, tab, panes); nav.classList.add('pg-tabs-wrap'); pg.appendChild(nav);
@@ -267,6 +383,10 @@
                 board.appendChild(row);
             });
             top.appendChild(board); pg.appendChild(top);
+
+            // --- battles
+            const bt = el('div'); bt.hidden = tab !== 'battle'; bt.dataset.pane = 'battle'; panes.battle = bt;
+            bt.appendChild(await battlesPane(session, teams, draw)); pg.appendChild(bt);
 
             // --- my teams (invitations first)
             const mine = el('div'); mine.hidden = tab !== 'mine'; mine.dataset.pane = 'mine'; panes.mine = mine;
