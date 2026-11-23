@@ -62,6 +62,10 @@
         if (/AI is not connected|not available right now/i.test(m)) return "Savollar tayyorlanmadi: sun'iy intellekt hozir ulanmagan. Keyinroq urinib ko'ring.";
         if (/Could not (make|generate|prepare)/i.test(m)) return "Savollarni tayyorlab bo'lmadi. Yana bir marta bosing.";
         if (/Already answered/i.test(m)) return 'Bu savolga javob allaqachon berilgan.';
+        if (/valid https/i.test(m)) return "Havola https:// bilan boshlanishi va to'g'ri bo'lishi kerak.";
+        if (/Link is too long/i.test(m)) return 'Havola juda uzun.';
+        if (/Only the admin of a playing team/i.test(m)) return "Loyihani faqat o'ynayotgan jamoaning admini topshira oladi.";
+        if (/not active any more/i.test(m)) return 'Battle vaqti tugagan. Loyiha qabul qilinmaydi.';
         if (/not active|already finished|has ended/i.test(m)) return 'Battle vaqti tugagan. Javob qabul qilinmaydi.';
         if (/no longer waiting/i.test(m)) return "Bu battle endi javob kutmayapti.";
         if (/have not answered/i.test(m)) return "Ba'zi jamoalar hali javob bermagan.";
@@ -85,8 +89,14 @@
     function battleStatus(b) {
         if (b.status === 'cancelled') return ['Bekor qilingan', ''];
         if (b.status === 'finished') return ['Tugagan', ''];
+        if (b.status === 'judging') return ['Hakam baholamoqda', 'sun'];
         if (b.status === 'active') return new Date(b.ends_at).getTime() < Date.now() ? ['Vaqt tugadi, natija kutilmoqda', 'sun'] : ['Davom etmoqda', ''];
         return ['Javoblar kutilmoqda', 'sun'];
+    }
+    // A link is clickable only when it is https; its text is always the plain address
+    function linkNode(url) {
+        if (!/^https:\/\//i.test(String(url))) return el('span', '', String(url));
+        const a = el('a', '', String(url)); a.href = String(url); a.target = '_blank'; a.rel = 'noopener noreferrer'; return a;
     }
     // Results table: place, team, score, how many played (text only)
     function resultTable(b) {
@@ -178,7 +188,11 @@
                 row.appendChild(head);
                 row.appendChild(el('p', 'pg-muted', 'Mavzu: ' + b.topic));
                 const parts = el('div'); parts.style.cssText = 'display:grid;gap:4px;margin:8px 0';
-                b.teams.forEach(function (t) { parts.appendChild(el('div', 'pg-muted', t.name + ' · ' + (STATE_TEXT[t.state] || t.state))); });
+                b.teams.forEach(function (t) {
+                    const line = el('div', 'pg-muted', t.name + ' · ' + (STATE_TEXT[t.state] || t.state) + (b.kind === 'project' && (t.state === 'host' || t.state === 'accepted') && b.status !== 'invited' ? ' · ' + (t.submitted ? 'topshirdi' : 'hali topshirmagan') : ''));
+                    if (t.submission && b.status === 'finished') { line.appendChild(document.createTextNode(' · ')); line.appendChild(linkNode(t.submission.link)); }
+                    parts.appendChild(line);
+                });
                 row.appendChild(parts);
                 row.appendChild(el('p', 'pg-muted', b.status === 'active' ? 'Tugaydi: ' + new Date(b.ends_at).toLocaleString('uz-UZ') : 'Davomiyligi: ' + b.duration_days + ' kun'));
                 const msg = note(); const acts = el('div'); acts.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px';
@@ -204,6 +218,21 @@
                     acts.appendChild(go); acts.appendChild(stop);
                 }
                 if (b.status === 'finished' && b.teams.some(function (x) { return x.result; })) row.appendChild(resultTable(b));
+                if (b.can_submit) {
+                    const mine = b.teams.find(function (t) { return t.team_id === b.my_team_id; });
+                    const f = el('form', 'pg-card'); f.noValidate = true; f.appendChild(el('h4', 'pg-h3', 'Loyihani topshirish'));
+                    const link = el('input', 'pg-input'); link.type = 'url'; link.maxLength = 300; link.placeholder = 'https://github.com/jamoa/loyiha'; link.setAttribute('aria-label', 'Loyiha havolasi');
+                    const nt = el('textarea', 'pg-input'); nt.maxLength = 500; nt.rows = 2; nt.placeholder = 'Qisqa izoh (ixtiyoriy)'; nt.setAttribute('aria-label', 'Izoh');
+                    if (mine && mine.submission) { link.value = mine.submission.link; nt.value = mine.submission.note || ''; }
+                    const sm = note(); const sb = small(el('button', 'pg-btn', mine && mine.submission ? 'Yangilash' : 'Topshirish')); sb.type = 'submit';
+                    f.appendChild(link); f.appendChild(nt); f.appendChild(sb); f.appendChild(sm);
+                    f.appendChild(el('p', 'pg-muted', "Vaqt tugaguncha havolani almashtirish mumkin. Raqiblar ishingizni battle tugamaguncha ko'rmaydi."));
+                    f.addEventListener('submit', async function (e) {
+                        e.preventDefault(); sm.textContent = ''; sb.disabled = true;
+                        try { await send('POST', '/battles/' + b.id + '/submit', session, { link: link.value, note: nt.value }); G.toast('Loyiha topshirildi'); await drawList(); } catch (err) { sm.textContent = problem(err); sb.disabled = false; }
+                    });
+                    row.appendChild(f);
+                }
                 if (b.kind === 'quiz' && b.my_team_id && (b.status === 'active' || b.status === 'finished')) {
                     const slot = el('div'); const open = small(el('button', 'pg-btn', b.status === 'finished' ? "Javoblarni ko'rish" : 'Viktorinaga kirish')); open.type = 'button';
                     open.addEventListener('click', async function () {

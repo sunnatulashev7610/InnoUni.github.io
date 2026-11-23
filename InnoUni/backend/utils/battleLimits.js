@@ -6,7 +6,10 @@ const BATTLE_LIMITS = {
     maxOpenPerTeam: 3,     // waiting or running battles per team
     maxPerPairPerWeek: 2,  // the same two teams cannot farm each other
     maxTitleLength: 100,
-    maxTopicLength: 200
+    maxTopicLength: 200,
+    maxLinkLength: 300,
+    maxNoteLength: 500,
+    maxJudgeScore: 100
 };
 const BATTLE_KINDS = ['quiz', 'project'];
 
