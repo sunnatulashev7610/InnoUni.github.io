@@ -32,7 +32,13 @@ function boot(state) {
         const body = opts.body ? JSON.parse(opts.body) : undefined;
         calls.push({ path: p, method, body });
         let r = { body: { message: 'ok' } };
-        if (/^\/battles/.test(p)) {
+        if (/^\/battles\/\d+\/quiz/.test(p)) {
+            const fin = state.quizFinished; r = { body: { status: fin ? 'finished' : 'active', team_id: 3, total: 2, answered: 0, questions: [
+                Object.assign({ id: 11, position: 1, question: '<i>2+2</i> nechchi?', options: ['3', '4', '5', '6'], my_choice: fin ? 1 : null }, fin ? { correct: 1, explanation: 'Ikki va ikki' } : {}),
+                Object.assign({ id: 12, position: 2, question: 'Ikkinchi?', options: ['a', 'b', 'c', 'd'], my_choice: null }, fin ? { correct: 0, explanation: 'x' } : {}) ] } };
+        } else if (/^\/battles\/\d+\/answer/.test(p)) {
+            r = state.answerFails ? { ok: false, status: 409, body: { error: 'Already answered' } } : { body: { saved: true, answered: 1 } };
+        } else if (/^\/battles/.test(p)) {
             const list = state.battles = state.battles || [{ id: 1, title: '<b>Python</b> battle', topic: 'Python asoslari', kind: 'quiz', status: 'invited', duration_days: 2, starts_at: null, ends_at: null, host_team_id: 3, teams: [{ team_id: 3, name: 'Host jamoa', state: 'host' }, { team_id: 1, name: 'Python Klub', state: 'invited' }], is_host_admin: false, can_respond: true }];
             if (method === 'GET') r = { body: { battles: list } };
             else if (method === 'POST' && p === '/battles') { list.push({ id: 2, title: body.title, topic: body.topic, kind: body.kind, status: 'invited', duration_days: body.duration_days, host_team_id: body.host_team_id, teams: [], is_host_admin: true, can_respond: false }); r = { status: 201, body: { id: 2 } }; }
@@ -456,6 +462,48 @@ describe('team workspace layout', () => {
         const t = boot(makeState()); t.w.GEData.ctx.teamId = 1; await t.run('team-detail'); await t.flush();
         expect(t.c.querySelector('.tt-grid')).toBeNull();
         expect(t.c.textContent).toContain('Ochilgan sana');
+    });
+});
+
+describe('battle quiz', () => {
+    const live = { id: 5, title: 'Jonli', topic: 'T', kind: 'quiz', status: 'active', ends_at: new Date(Date.now() + 86400000).toISOString(), duration_days: 1, host_team_id: 3, my_team_id: 3, teams: [{ team_id: 3, name: 'Host jamoa', state: 'host' }, { team_id: 1, name: 'Python Klub', state: 'accepted' }], is_host_admin: false, can_respond: false };
+    test('a player opens the quiz, answers once, and the answer is saved without grading; text is never HTML', async () => {
+        const state = makeState(); state.battles = [live];
+        const t = boot(state); await t.run('jamoalar'); await t.flush();
+        const bp = pane(t.c, 'battle');
+        click(btn(bp, 'Viktorinaga kirish')); await t.flush();
+        expect(bp.textContent).toContain('<i>2+2</i> nechchi?');
+        expect(bp.querySelector('i')).toBeNull();
+        click(btn(bp, 'B. 4')); await t.flush();
+        expect(t.calls.find((c) => c.path === '/battles/5/answer').body).toEqual({ question_id: 11, choice: 1 });
+        expect(bp.textContent).toContain('(tanlandi)');
+        expect(bp.textContent).not.toMatch(/to'g'ri|noto'g'ri|✓/);
+        expect([...bp.querySelectorAll('button')].find((b) => b.textContent.startsWith('B. 4')).disabled).toBe(true);
+    });
+    test('a refused answer shows a short Uzbek message', async () => {
+        const state = makeState(); state.battles = [live]; state.answerFails = true;
+        const t = boot(state); await t.run('jamoalar'); await t.flush();
+        const bp = pane(t.c, 'battle');
+        click(btn(bp, 'Viktorinaga kirish')); await t.flush();
+        click(btn(bp, 'A. 3')); await t.flush();
+        expect(bp.textContent).toContain('allaqachon berilgan');
+    });
+    test('a finished battle shows the place table and the right answers', async () => {
+        const state = makeState(); state.quizFinished = true;
+        state.battles = [Object.assign({}, live, { status: 'finished', teams: [{ team_id: 3, name: 'Host jamoa', state: 'host', result: { score: 6.67, correct_total: 20, participants: 3, place: 1 } }, { team_id: 1, name: 'Python Klub', state: 'accepted', result: { score: 3.33, correct_total: 10, participants: 2, place: 2 } }] })];
+        const t = boot(state); await t.run('jamoalar'); await t.flush();
+        const bp = pane(t.c, 'battle');
+        expect(bp.textContent).toContain('Tugagan');
+        const rows = Array.from(bp.querySelectorAll('tr')).map((r) => r.textContent);
+        expect(rows[1]).toContain('Host jamoa'); expect(rows[1]).toContain('6.67'); expect(rows[2]).toContain('Python Klub');
+        click(btn(bp, "Javoblarni ko'rish")); await t.flush();
+        expect(bp.textContent).toContain('Izoh: Ikki va ikki');
+        expect(bp.textContent).toContain('✓ sizniki');
+    });
+    test('people not playing get no quiz button', async () => {
+        const state = makeState(); state.battles = [Object.assign({}, live, { my_team_id: null })];
+        const t = boot(state); await t.run('jamoalar'); await t.flush();
+        expect(Array.from(pane(t.c, 'battle').querySelectorAll('button')).some((b) => /Viktorinaga/.test(b.textContent))).toBe(false);
     });
 });
 

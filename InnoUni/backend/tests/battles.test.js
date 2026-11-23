@@ -1,5 +1,7 @@
 // Team battles, step 1: challenge, answer, start, cancel. Fake database, no MySQL.
 process.env.JWT_SECRET = 'test-secret-test-secret-123';
+jest.mock('../utils/aiProvider', () => ({ ...jest.requireActual('../utils/aiProvider'), isLive: jest.fn(() => true), battleQuiz: jest.fn() }));
+const ai = require('../utils/aiProvider');
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const app = require('../server');
@@ -19,6 +21,8 @@ async function team(name, captain) {
 }
 
 beforeEach(async () => {
+    ai.isLive.mockReturnValue(true);
+    ai.battleQuiz.mockResolvedValue({ questions: Array.from({ length: 10 }, (_, i) => ({ q: 'Savol ' + (i + 1), options: ['a', 'b', 'c', 'd'], answer: i % 4, explanation: 'izoh' })), provider: 'test' });
     fake = createTeamsFake(); app.setDb(fake.db);
     [1, 2, 3, 4, 5].forEach((i) => { fake.s.users[i + 10] = fake.s.users[i + 10] || 'U'; });
     for (let u = 21; u <= 52; u++) fake.s.users[u] = 'M' + u;

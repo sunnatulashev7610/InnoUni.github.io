@@ -7,7 +7,7 @@ function createTeamsFake() {
         users: { 1: 'Captain', 2: 'Ali', 3: 'Vali', 4: 'Dilnoza' },
         emails: { 1: 'captain@x.uz', 2: 'ali@x.uz', 3: 'vali@x.uz', 4: 'dilnoza@x.uz' },
         blocked: {}, interests: {}, notices: [],
-        teams: [], members: [], messages: [], resources: [], votes: [], id: 1, mid: 1, memberId: 1, rid: 1, events: [], going: [], eid: 1, battles: [], bteams: [], bid: 1
+        teams: [], members: [], messages: [], resources: [], votes: [], id: 1, mid: 1, memberId: 1, rid: 1, events: [], going: [], eid: 1, battles: [], bteams: [], bid: 1, questions: [], qid: 1, answers: [], results: []
     };
     const now = () => Date.now();
     const find = (t, u) => s.members.find((m) => m.team_id === t && m.user_id === u);
@@ -146,7 +146,7 @@ function createTeamsFake() {
         }
         if (q.startsWith('INSERT INTO battles (')) { const b = { id: s.bid++, title: p[0], topic: p[1], kind: p[2], status: 'invited', duration_days: p[3], host_team_id: p[4], created_by: p[5], starts_at: null, ends_at: null }; s.battles.push(b); return [{ insertId: b.id }]; }
         if (q.startsWith('INSERT INTO battle_teams (battle_id, team_id, state)')) { s.bteams.push({ battle_id: p[0], team_id: p[1], state: q.includes("'host'") ? 'host' : 'invited' }); return [{}]; }
-        if (q === 'SELECT id, status, host_team_id, title, duration_days FROM battles WHERE id = ?') return [s.battles.filter((b) => b.id === p[0])];
+        if (q === 'SELECT id, status, host_team_id, title, duration_days, kind, topic FROM battles WHERE id = ?') return [s.battles.filter((b) => b.id === p[0])];
         if (q.startsWith('SELECT bt.team_id, t.name FROM battle_teams bt JOIN teams t ON t.id = bt.team_id WHERE bt.battle_id = ? AND t.captain_id = ?')) {
             return [s.bteams.filter((b) => b.battle_id === p[0] && b.state === 'invited').map((b) => ({ team_id: b.team_id, t: s.teams.find((x) => x.id === b.team_id) })).filter((x) => x.t.captain_id === p[1]).map((x) => ({ team_id: x.team_id, name: x.t.name }))];
         }
@@ -162,6 +162,37 @@ function createTeamsFake() {
         if (q.startsWith("SELECT t.captain_id FROM battle_teams bt JOIN teams t ON t.id = bt.team_id WHERE bt.battle_id = ? AND bt.state IN ('invited', 'accepted')")) {
             return [s.bteams.filter((b) => b.battle_id === p[0] && ['invited', 'accepted'].includes(b.state)).map((b) => ({ captain_id: s.teams.find((x) => x.id === b.team_id).captain_id }))];
         }
+
+        // ---- quiz battles
+        if (q.startsWith('INSERT INTO battle_questions')) { s.questions.push({ id: s.qid++, battle_id: p[0], position: p[1], question: p[2], options: p[3], correct: p[4], explanation: p[5] }); return [{}]; }
+        if (q.startsWith('SELECT battle_id, team_id, score, correct_total, participants, place FROM battle_results')) return [s.results.filter((r) => p.includes(r.battle_id))];
+        if (q.startsWith("SELECT bt.battle_id, bt.team_id FROM battle_teams bt JOIN team_members m")) {
+            const mine = s.members.filter((m) => m.user_id === p[0] && m.status === 'active').map((m) => m.team_id);
+            return [s.bteams.filter((b) => mine.includes(b.team_id) && ['host', 'accepted'].includes(b.state) && p.slice(1).includes(b.battle_id))];
+        }
+        if (q.startsWith("SELECT bt.team_id FROM battle_teams bt JOIN team_members m")) {
+            const mine = s.members.filter((m) => m.user_id === p[1] && m.status === 'active').map((m) => m.team_id);
+            return [s.bteams.filter((b) => b.battle_id === p[0] && mine.includes(b.team_id) && ['host', 'accepted'].includes(b.state)).map((b) => ({ team_id: b.team_id }))];
+        }
+        if (q.startsWith("SELECT id FROM battles WHERE id IN (")) {
+            return [s.battles.filter((b) => p.includes(b.id) && b.status === 'active' && b.kind === 'quiz' && b.ends_at <= new Date()).map((b) => ({ id: b.id }))];
+        }
+        if (q.startsWith("SELECT team_id, state FROM battle_teams WHERE battle_id = ? AND state IN ('host', 'accepted')")) return [s.bteams.filter((b) => b.battle_id === p[0] && ['host', 'accepted'].includes(b.state)).map((b) => ({ team_id: b.team_id, state: b.state }))];
+        if (q.startsWith('SELECT user_id, team_id, SUM(correct) AS ok, COUNT(*) AS n FROM battle_answers')) {
+            const out = {};
+            s.answers.filter((a) => a.battle_id === p[0]).forEach((a) => { const k = a.user_id; out[k] = out[k] || { user_id: a.user_id, team_id: a.team_id, ok: 0, n: 0 }; out[k].ok += a.correct; out[k].n += 1; });
+            return [Object.values(out)];
+        }
+        if (q === "UPDATE battles SET status = 'finished' WHERE id = ? AND status = 'active'") { const b = s.battles.find((x) => x.id === p[0] && x.status === 'active'); if (b) b.status = 'finished'; return [{ affectedRows: b ? 1 : 0 }]; }
+        if (q.startsWith('INSERT INTO battle_results')) { s.results.push({ battle_id: p[0], team_id: p[1], score: p[2], correct_total: p[3], participants: p[4], place: p[5] }); return [{}]; }
+        if (q.startsWith('SELECT id, position, question, options, correct, explanation FROM battle_questions')) return [s.questions.filter((x) => x.battle_id === p[0]).sort((a, b) => a.position - b.position)];
+        if (q === 'SELECT question_id, choice, correct FROM battle_answers WHERE battle_id = ? AND user_id = ?') return [s.answers.filter((a) => a.battle_id === p[0] && a.user_id === p[1])];
+        if (q === 'SELECT id, correct FROM battle_questions WHERE id = ? AND battle_id = ?') return [s.questions.filter((x) => x.id === p[0] && x.battle_id === p[1])];
+        if (q.startsWith('INSERT INTO battle_answers')) {
+            if (s.answers.some((a) => a.question_id === p[0] && a.user_id === p[1])) throw Object.assign(new Error('dup'), { code: 'ER_DUP_ENTRY' });
+            s.answers.push({ question_id: p[0], user_id: p[1], battle_id: p[2], team_id: p[3], choice: p[4], correct: p[5] }); return [{}];
+        }
+        if (q === 'SELECT COUNT(*) AS n FROM battle_answers WHERE battle_id = ? AND user_id = ?') return [[{ n: s.answers.filter((a) => a.battle_id === p[0] && a.user_id === p[1]).length }]];
 
         // ---- meetups (starts_at is kept as a Date)
         if (q.startsWith("SELECT id, title, place, note, DATE_FORMAT(starts_at, '%Y-%m-%dT%H:%i:%sZ') AS starts_at FROM team_events")) {
