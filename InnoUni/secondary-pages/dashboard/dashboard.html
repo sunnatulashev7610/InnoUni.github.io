@@ -316,6 +316,32 @@
 			document.body.appendChild(t); setTimeout(function () { t.remove(); }, 4000);
 		}
 		var loadSeq = 0;
+
+		// Browser/phone Back button: every page opened inside the dashboard is a history step, so Back returns to
+		// the previous page here instead of leaving the dashboard (and landing on the login page).
+		var historyFirst = true; var historyPop = false; var historyLast = '';
+		function navPageOf(el) { var m = el && el.getAttribute && /loadPage\('([^']+)'/.exec(el.getAttribute('onclick') || ''); return m ? m[1] : null; }
+		function ctxSnapshot() { try { return JSON.parse(JSON.stringify((window.GEData && window.GEData.ctx) || {})); } catch (e) { return {}; } }
+		function recordHistory(page, element) {
+			if (historyPop || !window.history || !history.pushState) return;
+			var state = { ge: 1, page: page, nav: navPageOf(element), ctx: ctxSnapshot() };
+			var key = page + JSON.stringify(state.ctx);
+			try {
+				if (historyFirst) { history.replaceState(state, ''); historyFirst = false; }
+				else if (key !== historyLast) history.pushState(state, '');
+			} catch (e) { /* history may be blocked */ }
+			historyLast = key;
+		}
+		window.addEventListener('popstate', function (e) {
+			var s = e.state;
+			if (!s || !s.ge) return;
+			var ctx = window.GEData && window.GEData.ctx;
+			if (ctx) { Object.keys(ctx).forEach(function (k) { delete ctx[k]; }); Object.assign(ctx, s.ctx || {}); }
+			historyLast = s.page + JSON.stringify(s.ctx || {});
+			historyPop = true;
+			try { loadPage(s.page, (s.nav && document.querySelector('.nav-item[onclick*="\'' + s.nav + '\'"]')) || navFor(s.page) || document.querySelector('.nav-item.active')); }
+			finally { historyPop = false; }
+		});
 		function showSkeleton(contentArea) {
 			hideSkeleton(contentArea);
 			var sk = window.GEData.skeleton();
@@ -343,6 +369,8 @@
 				page = currentRole === 'teacher' ? 't-home' : 'main.dashboard';
 				element = navFor(page) || element;
 			}
+			recordHistory(page, element);
+
 			// Update active state
 			document.querySelectorAll(".nav-item")
 				.forEach(btn => btn.classList.remove("active"));
@@ -373,7 +401,7 @@
 					window.GEData.badges(session);
 					window.GEData.hydrate(page, contentArea, session, function () {
 						['token', 'user', 'userRole'].forEach(function (k) { try { localStorage.removeItem(k); } catch (x) { /* ignore */ } });
-						location.href = '../login/login.html';
+						location.replace('../login/login.html');
 					}, function (err) {
 						console.error('Data load error:', err);
 						var bar = document.createElement('p');
@@ -488,7 +516,7 @@
 			document.addEventListener('click', function (e) {
 				if (!e.target.closest('[data-logout]')) return;
 				['token', 'user', 'userRole'].forEach(function (k) { try { localStorage.removeItem(k); } catch (x) { /* ignore */ } });
-				location.href = '../login/login.html';
+				location.replace('../login/login.html');
 			});
 		}
 		function navFor(page) {

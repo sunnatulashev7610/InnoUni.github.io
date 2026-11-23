@@ -56,14 +56,26 @@
 	<script src="../../frontend/js/admin-panel.js"></script>
 	<script>
 		var content = document.getElementById('content');
+		// Back button: each admin page is a history step, so Back returns to the previous page, not to the login page
+		var historyFirst = true; var historyPop = false;
+		function recordHistory(page) {
+			if (historyPop || !history.pushState) return;
+			try { if (historyFirst) { history.replaceState({ ge: 1, page: page }, ''); historyFirst = false; } else history.pushState({ ge: 1, page: page }, ''); } catch (e) { /* ignore */ }
+		}
+		window.addEventListener('popstate', function (e) {
+			if (!e.state || !e.state.ge) return;
+			historyPop = true;
+			try { loadPage(e.state.page, document.querySelector('.nav-item[onclick*="\'' + e.state.page + '\'"]')); } finally { historyPop = false; }
+		});
 		function loadPage(page, el) {
+			if (!historyPop && !historyFirst && el && el.classList.contains('active') && history.state && history.state.page === page) { /* same page again */ } else recordHistory(page);
 			document.querySelectorAll('.nav-item').forEach(function (b) { b.classList.remove('active'); });
 			if (el) el.classList.add('active');
 			fetch('pages/' + page + '.html').then(function (r) { if (!r.ok) throw 0; return r.text(); })
 				.then(function (h) {
 					content.innerHTML = h;
 					var tk = null; try { tk = localStorage.getItem('token'); } catch (e) {}
-					var out = function () { location.href = 'admin-login.html'; };
+					var out = function () { location.replace('admin-login.html'); };
 					if (page === 'a-orders' && tk && window.AdminOrders) window.AdminOrders.render(content, tk, out, toast);
 					if (page === 'a-home' && tk && window.AdminPanel) window.AdminPanel.home(content, tk, out, toast);
 					if (page === 'a-users' && tk && window.AdminPanel) {
@@ -80,7 +92,7 @@
 		try { var u = JSON.parse(localStorage.getItem('user') || '{}'); if (u.full_name) document.getElementById('adminName').textContent = u.full_name; } catch (e) {}
 		document.getElementById('logoutBtn').addEventListener('click', function () {
 			['token', 'user', 'userRole'].forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
-			location.href = 'admin-login.html';
+			location.replace('admin-login.html');
 		});
 		content.addEventListener('click', function (e) {
 			var aa = e.target.closest('[data-admin-act]');

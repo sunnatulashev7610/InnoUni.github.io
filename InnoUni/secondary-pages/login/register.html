@@ -222,7 +222,7 @@
                                 localStorage.setItem('userRole', loginData.user.role);
 
                                 // Redirect based on role
-                                window.location.href = siteUrl(loginData.user.role === 'admin' ? 'secondary-pages/admin/admin.html' : 'secondary-pages/dashboard/dashboard.html');
+                                window.location.replace(siteUrl(loginData.user.role === 'admin' ? 'secondary-pages/admin/admin.html' : 'secondary-pages/dashboard/dashboard.html'));
                             } else {
                                 showError('Avto-login xatolik. Iltimos, qo\'lda kirish.');
                             }
