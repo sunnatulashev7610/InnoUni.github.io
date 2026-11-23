@@ -618,3 +618,51 @@ describe('competitions section', () => {
         expect(pane(t.c, 'battle')).toBeFalsy();
     });
 });
+
+describe('competitions: the list of teams', () => {
+    const btnOf = (c, id) => c.querySelector(`[data-team="${id}"] button`);
+    test('lists every team as plain text with its rating, strongest first', async () => {
+        const state = makeState(); state.teams[1].rating = 50; state.teams[0].rating = 10;
+        const t = boot(state); await t.run('musobaqalar'); await t.flush();
+        const tp = pane(t.c, 'teams');
+        expect(tp.hidden).toBe(true);
+        expect(tp.querySelectorAll('[data-team]')).toHaveLength(3);
+        expect(tp.textContent).toContain('<b>Python</b> Sprint'); expect(tp.querySelector('h3 b')).toBeNull();
+        expect([...tp.querySelectorAll('[data-team] h3')][0].textContent).toBe('IELTS Birga');
+    });
+    test('choosing a team opens the battles tab with that team already picked as the opponent', async () => {
+        const state = makeState();
+        const t = boot(state); await t.run('musobaqalar'); await t.flush();
+        const tp = pane(t.c, 'teams'); const bp = pane(t.c, 'battle');
+        btnOf(tp, 1).dispatchEvent(new t.w.Event('click', { bubbles: true })); await t.flush();
+        expect(bp.hidden).toBe(false); expect(tp.hidden).toBe(true);
+        const form = bp.querySelector('form');
+        expect([...form.querySelectorAll('input[type=checkbox]')].filter((c) => c.checked).map((c) => c.value)).toEqual(['1']);
+        setVal(t.c, 'tbTitle', 'Bellashuv'); setVal(t.c, 'tbTopic', 'JS');
+        submit(form); await t.flush();
+        expect(t.calls.find((c) => c.method === 'POST' && c.path === '/battles').body).toMatchObject({ host_team_id: 3, opponent_team_ids: [1], title: 'Bellashuv' });
+    });
+    test('your own team and teams with too few members cannot be chosen, and say why', async () => {
+        const state = makeState(); state.teams[1].members = 2;
+        const t = boot(state); await t.run('musobaqalar'); await t.flush();
+        const tp = pane(t.c, 'teams');
+        expect(btnOf(tp, 3).disabled).toBe(true); expect(tp.querySelector('[data-team="3"]').textContent).toContain('sizning jamoangiz');
+        expect(btnOf(tp, 2).disabled).toBe(true); expect(tp.querySelector('[data-team="2"]').textContent).toContain('kamida 3');
+        expect(btnOf(tp, 1).disabled).toBe(false);
+    });
+    test('people who are not team admins see the list but cannot send a request', async () => {
+        const state = makeState(); state.teams.forEach((x) => { x.is_captain = false; });
+        const t = boot(state); await t.run('musobaqalar'); await t.flush();
+        const tp = pane(t.c, 'teams');
+        expect(tp.textContent).toContain("jamoa admini bo'lishingiz kerak");
+        expect([...tp.querySelectorAll('[data-team] button')].every((b) => b.disabled)).toBe(true);
+    });
+    test('search narrows the list by name', async () => {
+        const t = boot(makeState()); await t.run('musobaqalar'); await t.flush();
+        const tp = pane(t.c, 'teams'); const q = tp.querySelector('input[type=search]');
+        q.value = 'ielts'; q.dispatchEvent(new t.w.Event('input', { bubbles: true }));
+        expect(tp.querySelectorAll('[data-team]')).toHaveLength(1);
+        q.value = 'zzz'; q.dispatchEvent(new t.w.Event('input', { bubbles: true }));
+        expect(tp.textContent).toContain('Hech narsa topilmadi');
+    });
+});

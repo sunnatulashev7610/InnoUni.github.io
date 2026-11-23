@@ -84,6 +84,7 @@
     }
 
     // ---- Battles: a team admin challenges other teams; invited admins accept or decline; the host starts it
+    const BATTLE_MIN_MEMBERS = 3;
     const KIND_TEXT = { quiz: 'Viktorina', project: 'Loyiha' };
     const STATE_TEXT = { host: 'Chorlovchi', invited: 'Javob kutilmoqda', accepted: 'Qabul qildi', declined: 'Rad etdi' };
     function battleStatus(b) {
@@ -286,6 +287,14 @@
                 go.disabled = false;
             });
             box.appendChild(form);
+            // Used by the teams list: picks this team as the only opponent and brings the form into view
+            box.challenge = function (teamId) {
+                const mine = mineAdmin.find(function (t) { return t.id !== teamId; });
+                if (!mine) return;
+                host.value = String(mine.id); picked.clear(); picked.add(teamId); drawOpp();
+                if (form.scrollIntoView) form.scrollIntoView({ block: 'start', behavior: 'smooth' });
+                title.focus();
+            };
         } else {
             box.appendChild(empty("Battlega chorlash uchun jamoa admini bo'lishingiz kerak. Javob berish uchun esa jamoangiz chaqirilishi kutiladi."));
         }
@@ -553,6 +562,40 @@
     });
 
     // ---------------- One team: chat, members, about, settings ----------------
+    // The list of teams inside Competitions: pick one and send a battle request
+    function rivalsPane(teams, canChallenge, challenge) {
+        const wrap = el('div'); wrap.style.cssText = 'display:grid;gap:14px';
+        const search = el('input', 'pg-input'); search.type = 'search'; search.maxLength = 100; search.placeholder = 'Jamoa qidirish'; search.setAttribute('aria-label', 'Jamoa qidirish');
+        wrap.appendChild(search);
+        if (!canChallenge.length) wrap.appendChild(el('p', 'pg-muted', "Battlega chorlash uchun jamoa admini bo'lishingiz kerak. Jamoalarni bu yerda ko'rishingiz mumkin."));
+        const grid = el('div', 'pg-grid'); wrap.appendChild(grid);
+        function draw() {
+            grid.textContent = '';
+            const q = search.value.trim().toLowerCase();
+            const list = teams.filter(function (t) { return !q || t.name.toLowerCase().indexOf(q) !== -1 || String(t.direction || '').toLowerCase().indexOf(q) !== -1; })
+                .sort(function (a, b) { return (b.rating || 0) - (a.rating || 0) || b.members - a.members; });
+            if (!list.length) { grid.appendChild(empty(teams.length ? 'Hech narsa topilmadi.' : "Hozircha jamoa yo'q.")); return; }
+            list.forEach(function (t) {
+                const c = el('div', 'pg-card'); c.dataset.team = String(t.id);
+                c.appendChild(el('h3', 'pg-h3', t.name));
+                c.appendChild(el('p', 'pg-muted', (t.direction || 'Boshqa') + ' · ' + t.members + " a'zo · " + (t.rating || 0) + ' ball'));
+                const own = !canChallenge.some(function (m) { return m.id !== t.id; });
+                const few = t.members < BATTLE_MIN_MEMBERS;
+                const b = small(el('button', 'pg-btn', 'Battlega chorlash')); b.type = 'button';
+                let why = '';
+                if (!canChallenge.length) why = '';
+                else if (own) why = 'Bu sizning jamoangiz';
+                else if (few) why = "Faol a'zolar yetarli emas (kamida " + BATTLE_MIN_MEMBERS + ')';
+                if (!canChallenge.length || why) { b.disabled = true; b.style.opacity = '.45'; b.style.cursor = 'not-allowed'; }
+                else b.addEventListener('click', function () { challenge(t.id); });
+                c.appendChild(b); if (why) c.appendChild(el('p', 'pg-muted', why));
+                grid.appendChild(c);
+            });
+        }
+        search.addEventListener('input', draw); draw();
+        return wrap;
+    }
+
     // ---- Competitions: its own section of the dashboard (battles now; seasonal tournaments are announced here)
     G.register('musobaqalar', async function (root, session) {
         let tab = G.ctx.compTab || 'battle'; G.ctx.compTab = null;
@@ -562,10 +605,15 @@
             pg.appendChild(head('Musobaqalar', "Jamoalar o'rtasida battle o'tkazing, reyting va kubok yuting."));
             const panes = {};
             tabs.onChange = function (k) { tab = k; };
-            const nav = tabs([['battle', 'Battlelar'], ['season', 'Mavsumiy turnirlar']], tab, panes); nav.classList.add('pg-tabs-wrap'); pg.appendChild(nav);
+            const nav = tabs([['battle', 'Battlelar'], ['teams', 'Jamoalar'], ['season', 'Mavsumiy turnirlar']], tab, panes); nav.classList.add('pg-tabs-wrap'); pg.appendChild(nav);
 
             const bt = el('div'); bt.hidden = tab !== 'battle'; bt.dataset.pane = 'battle'; panes.battle = bt;
-            bt.appendChild(await battlesPane(session, data.teams, draw)); pg.appendChild(bt);
+            const battles = await battlesPane(session, data.teams, draw); bt.appendChild(battles); pg.appendChild(bt);
+
+            const tm = el('div'); tm.hidden = tab !== 'teams'; tm.dataset.pane = 'teams'; panes.teams = tm;
+            const adminOf = data.teams.filter(function (t) { return t.is_captain; });
+            tm.appendChild(rivalsPane(data.teams, adminOf, function (id) { nav.querySelector('[data-tab="battle"]').click(); battles.challenge(id); }));
+            pg.appendChild(tm);
 
             const se = el('div'); se.hidden = tab !== 'season'; se.dataset.pane = 'season'; panes.season = se;
             const c = card('Mavsumiy turnirlar: tez orada');
