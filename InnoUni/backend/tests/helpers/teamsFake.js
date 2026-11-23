@@ -7,7 +7,7 @@ function createTeamsFake() {
         users: { 1: 'Captain', 2: 'Ali', 3: 'Vali', 4: 'Dilnoza' },
         emails: { 1: 'captain@x.uz', 2: 'ali@x.uz', 3: 'vali@x.uz', 4: 'dilnoza@x.uz' },
         blocked: {}, interests: {}, notices: [],
-        teams: [], members: [], messages: [], resources: [], votes: [], id: 1, mid: 1, memberId: 1, rid: 1, events: [], going: [], eid: 1
+        teams: [], members: [], messages: [], resources: [], votes: [], id: 1, mid: 1, memberId: 1, rid: 1, events: [], going: [], eid: 1, battles: [], bteams: [], bid: 1
     };
     const now = () => Date.now();
     const find = (t, u) => s.members.find((m) => m.team_id === t && m.user_id === u);
@@ -124,6 +124,44 @@ function createTeamsFake() {
         if (q.startsWith('INSERT INTO team_resource_votes')) { s.votes.push({ resource_id: p[0], user_id: p[1], team_id: p[2] }); return [{}]; }
         if (q === 'DELETE FROM team_resource_votes WHERE resource_id = ?') { s.votes = s.votes.filter((v) => v.resource_id !== p[0]); return [{}]; }
         if (q === 'DELETE FROM team_resources WHERE id = ? AND team_id = ?') { s.resources = s.resources.filter((r) => !(r.id === p[0] && r.team_id === p[1])); return [{}]; }
+
+        // ---- battles
+        if (q.startsWith('SELECT DISTINCT bt.battle_id FROM battle_teams bt JOIN team_members m')) {
+            const mine = s.members.filter((m) => m.user_id === p[0] && m.status === 'active').map((m) => m.team_id);
+            return [[...new Set(s.bteams.filter((b) => mine.includes(b.team_id)).map((b) => b.battle_id))].map((battle_id) => ({ battle_id }))];
+        }
+        if (q.startsWith('SELECT id, title, topic, kind, status, duration_days, host_team_id, DATE_FORMAT(starts_at')) {
+            const iso = (d) => (d ? d.toISOString().slice(0, 19) + 'Z' : null);
+            return [s.battles.filter((b) => p.includes(b.id)).map((b) => ({ ...b, starts_at: iso(b.starts_at), ends_at: iso(b.ends_at) }))];
+        }
+        if (q.startsWith('SELECT bt.battle_id, bt.team_id, bt.state, t.name, t.captain_id FROM battle_teams bt JOIN teams t')) {
+            return [s.bteams.filter((b) => p.includes(b.battle_id)).map((b) => { const t = s.teams.find((x) => x.id === b.team_id); return { ...b, name: t.name, captain_id: t.captain_id }; })];
+        }
+        if (q.startsWith('SELECT COUNT(*) AS n FROM battle_teams a JOIN battle_teams o')) {
+            const both = (id) => s.bteams.some((b) => b.battle_id === id && b.team_id === p[0]) && s.bteams.some((b) => b.battle_id === id && b.team_id === p[1]);
+            return [[{ n: s.battles.filter((b) => b.status !== 'cancelled' && both(b.id)).length }]];
+        }
+        if (q.startsWith('SELECT COUNT(*) AS n FROM battle_teams bt JOIN battles x ON x.id = bt.battle_id WHERE bt.team_id = ?')) {
+            return [[{ n: s.bteams.filter((b) => b.team_id === p[0] && ['invited', 'active'].includes(s.battles.find((x) => x.id === b.battle_id).status)).length }]];
+        }
+        if (q.startsWith('INSERT INTO battles (')) { const b = { id: s.bid++, title: p[0], topic: p[1], kind: p[2], status: 'invited', duration_days: p[3], host_team_id: p[4], created_by: p[5], starts_at: null, ends_at: null }; s.battles.push(b); return [{ insertId: b.id }]; }
+        if (q.startsWith('INSERT INTO battle_teams (battle_id, team_id, state)')) { s.bteams.push({ battle_id: p[0], team_id: p[1], state: q.includes("'host'") ? 'host' : 'invited' }); return [{}]; }
+        if (q === 'SELECT id, status, host_team_id, title, duration_days FROM battles WHERE id = ?') return [s.battles.filter((b) => b.id === p[0])];
+        if (q.startsWith('SELECT bt.team_id, t.name FROM battle_teams bt JOIN teams t ON t.id = bt.team_id WHERE bt.battle_id = ? AND t.captain_id = ?')) {
+            return [s.bteams.filter((b) => b.battle_id === p[0] && b.state === 'invited').map((b) => ({ team_id: b.team_id, t: s.teams.find((x) => x.id === b.team_id) })).filter((x) => x.t.captain_id === p[1]).map((x) => ({ team_id: x.team_id, name: x.t.name }))];
+        }
+        if (q.startsWith('UPDATE battle_teams SET state = ?')) { const r = s.bteams.find((b) => b.battle_id === p[1] && b.team_id === p[2]); r.state = p[0]; return [{}]; }
+        if (q === 'SELECT state FROM battle_teams WHERE battle_id = ?') return [s.bteams.filter((b) => b.battle_id === p[0]).map((b) => ({ state: b.state }))];
+        if (q === 'SELECT team_id, state FROM battle_teams WHERE battle_id = ?') return [s.bteams.filter((b) => b.battle_id === p[0]).map((b) => ({ team_id: b.team_id, state: b.state }))];
+        if (q.startsWith("UPDATE battles SET status = 'cancelled'")) { const b = s.battles.find((x) => x.id === p[0]); if (b) b.status = 'cancelled'; return [{}]; }
+        if (q.startsWith("UPDATE battles SET status = 'active'")) { const b = s.battles.find((x) => x.id === p[1]); b.status = 'active'; b.starts_at = new Date(); b.ends_at = new Date(Date.now() + p[0] * 86400000); return [{}]; }
+        if (q.startsWith("SELECT DISTINCT m.user_id FROM battle_teams bt JOIN team_members m")) {
+            const playing = s.bteams.filter((b) => b.battle_id === p[0] && ['host', 'accepted'].includes(b.state)).map((b) => b.team_id);
+            return [[...new Set(s.members.filter((m) => playing.includes(m.team_id) && m.status === 'active' && m.user_id !== p[1]).map((m) => m.user_id))].map((user_id) => ({ user_id }))];
+        }
+        if (q.startsWith("SELECT t.captain_id FROM battle_teams bt JOIN teams t ON t.id = bt.team_id WHERE bt.battle_id = ? AND bt.state IN ('invited', 'accepted')")) {
+            return [s.bteams.filter((b) => b.battle_id === p[0] && ['invited', 'accepted'].includes(b.state)).map((b) => ({ captain_id: s.teams.find((x) => x.id === b.team_id).captain_id }))];
+        }
 
         // ---- meetups (starts_at is kept as a Date)
         if (q.startsWith("SELECT id, title, place, note, DATE_FORMAT(starts_at, '%Y-%m-%dT%H:%i:%sZ') AS starts_at FROM team_events")) {
