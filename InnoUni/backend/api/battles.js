@@ -8,6 +8,7 @@ const { getTeam, countActive } = require('../utils/teamAccess');
 const { notify } = require('../utils/notify');
 const ai = require('../utils/aiProvider');
 
+const { START, leagueOf, eloChanges, badgesOf } = require('../utils/battleRating');
 const router = express.Router();
 router.use(authenticateToken);
 
@@ -57,6 +58,20 @@ async function playingMembers(db, battleId, exceptUserId) {
 
 // A quiz battle whose time is up is closed the next time someone looks (no timer needed): the score of a team is the
 // average of correct answers per member, counted over at least 3 members, so a team cannot win with one star player.
+// Rating, played and wins change once per battle (finalize runs once thanks to the status guard)
+async function updateRatings(db, table) {
+    if (table.length < 2) return;
+    const ids = table.map((r) => r.team_id);
+    const [rows] = await db.execute(`SELECT team_id, rating FROM team_battle_stats WHERE team_id IN (${holes(ids)})`, ids);
+    const ratings = {}; rows.forEach((r) => { ratings[r.team_id] = r.rating; });
+    const change = eloChanges(table, ratings);
+    for (const r of table) {
+        const win = r.place === 1 && r.total > 0 ? 1 : 0;
+        await db.execute('INSERT INTO team_battle_stats (team_id, rating, played, wins) VALUES (?, ?, 1, ?) ON DUPLICATE KEY UPDATE rating = rating + ?, played = played + 1, wins = wins + ?',
+            [r.team_id, Math.max(0, (ratings[r.team_id] ?? START) + change[r.team_id]), win, change[r.team_id], win]);
+    }
+}
+
 async function finalize(db, id) {
     const [bt] = await db.execute("SELECT team_id, state FROM battle_teams WHERE battle_id = ? AND state IN ('host', 'accepted')", [id]);
     const [rows] = await db.execute('SELECT user_id, team_id, SUM(correct) AS ok, COUNT(*) AS n FROM battle_answers WHERE battle_id = ? GROUP BY user_id, team_id', [id]);
@@ -72,6 +87,7 @@ async function finalize(db, id) {
     for (const r of table) {
         await db.execute('INSERT INTO battle_results (battle_id, team_id, score, correct_total, participants, place) VALUES (?, ?, ?, ?, ?, ?)', [id, r.team_id, r.score, r.total, r.people, r.place]);
     }
+    await updateRatings(db, table);
     const [b] = await db.execute('SELECT id, status, host_team_id, title, duration_days, kind, topic FROM battles WHERE id = ?', [id]);
     const people = await playingMembers(db, id, 0);
     await Promise.all(people.map((p) => notify(db, p.user_id, { kind: 'battle', title: 'Battle tugadi: natija tayyor', body: b[0] ? b[0].title : '', page: 'jamoalar', refId: id })));
@@ -88,6 +104,30 @@ router.get('/', async (req, res) => {
         const ids = (await myBattleIds(req.db, req.user.userId)).slice(0, 50);
         await finalizeDue(req.db, ids);
         res.json({ battles: await loadBattles(req.db, ids, req.user.userId), limits: BATTLE_LIMITS, kinds: BATTLE_KINDS });
+    } catch (e) { serverError(res, e); }
+});
+
+async function recordOf(db, teamId) {
+    const [st] = await db.execute('SELECT team_id, rating, played, wins FROM team_battle_stats WHERE team_id = ?', [teamId]);
+    const stats = st[0] || { team_id: teamId, rating: START, played: 0, wins: 0 };
+    const [tr] = await db.execute('SELECT r.battle_id, b.title, b.ends_at FROM battle_results r JOIN battles b ON b.id = r.battle_id WHERE r.team_id = ? AND r.place = 1 AND r.correct_total > 0 ORDER BY b.ends_at DESC LIMIT 10', [teamId]);
+    return { rating: stats.rating, league: leagueOf(stats.rating), played: stats.played, wins: stats.wins, badges: badgesOf(stats), trophies: tr.map((t) => ({ battle_id: t.battle_id, title: t.title, ends_at: t.ends_at })) };
+}
+
+// Public team facts (like the team page itself): rating, league, badges, trophies
+router.get('/teams/:teamId/record', async (req, res) => {
+    const teamId = parseId(req.params.teamId);
+    if (!teamId) return res.status(400).json({ error: 'Invalid team id' });
+    try {
+        if (!(await getTeam(req.db, teamId))) return res.status(404).json({ error: 'Team not found' });
+        res.json(await recordOf(req.db, teamId));
+    } catch (e) { serverError(res, e); }
+});
+
+router.get('/leaderboard', async (req, res) => {
+    try {
+        const [rows] = await req.db.execute('SELECT s.team_id, s.rating, s.played, s.wins, t.name FROM team_battle_stats s JOIN teams t ON t.id = s.team_id WHERE s.played > 0 ORDER BY s.rating DESC, s.wins DESC LIMIT 20', []);
+        res.json({ teams: rows.map((r) => ({ team_id: r.team_id, name: r.name, rating: r.rating, league: leagueOf(r.rating), played: r.played, wins: r.wins })) });
     } catch (e) { serverError(res, e); }
 });
 

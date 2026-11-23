@@ -7,7 +7,7 @@ function createTeamsFake() {
         users: { 1: 'Captain', 2: 'Ali', 3: 'Vali', 4: 'Dilnoza' },
         emails: { 1: 'captain@x.uz', 2: 'ali@x.uz', 3: 'vali@x.uz', 4: 'dilnoza@x.uz' },
         blocked: {}, interests: {}, notices: [],
-        teams: [], members: [], messages: [], resources: [], votes: [], id: 1, mid: 1, memberId: 1, rid: 1, events: [], going: [], eid: 1, battles: [], bteams: [], bid: 1, questions: [], qid: 1, answers: [], results: []
+        teams: [], members: [], messages: [], resources: [], votes: [], id: 1, mid: 1, memberId: 1, rid: 1, events: [], going: [], eid: 1, battles: [], bteams: [], bid: 1, questions: [], qid: 1, answers: [], results: [], stats: {}
     };
     const now = () => Date.now();
     const find = (t, u) => s.members.find((m) => m.team_id === t && m.user_id === u);
@@ -184,6 +184,15 @@ function createTeamsFake() {
             return [Object.values(out)];
         }
         if (q === "UPDATE battles SET status = 'finished' WHERE id = ? AND status = 'active'") { const b = s.battles.find((x) => x.id === p[0] && x.status === 'active'); if (b) b.status = 'finished'; return [{ affectedRows: b ? 1 : 0 }]; }
+        if (q.startsWith('SELECT team_id, rating FROM team_battle_stats WHERE team_id IN (')) return [p.filter((id) => s.stats[id]).map((id) => ({ team_id: id, rating: s.stats[id].rating }))];
+        if (q.startsWith('INSERT INTO team_battle_stats')) {
+            const [id, rating, win, change, win2] = [p[0], p[1], p[2], p[3], p[4]];
+            if (s.stats[id]) { s.stats[id].rating += change; s.stats[id].played += 1; s.stats[id].wins += win2; } else s.stats[id] = { rating, played: 1, wins: win };
+            return [{}];
+        }
+        if (q.startsWith('SELECT team_id, rating, played, wins FROM team_battle_stats WHERE team_id = ?')) return [s.stats[p[0]] ? [{ team_id: p[0], ...s.stats[p[0]] }] : []];
+        if (q.startsWith('SELECT r.battle_id, b.title, b.ends_at FROM battle_results r JOIN battles b')) return [s.results.filter((r) => r.team_id === p[0] && r.place === 1 && r.correct_total > 0).map((r) => { const b = s.battles.find((x) => x.id === r.battle_id); return { battle_id: r.battle_id, title: b.title, ends_at: b.ends_at }; })];
+        if (q.startsWith('SELECT s.team_id, s.rating, s.played, s.wins, t.name FROM team_battle_stats s')) return [Object.keys(s.stats).filter((k) => s.stats[k].played > 0).map((k) => ({ team_id: Number(k), ...s.stats[k], name: (s.teams.find((t) => t.id === Number(k)) || {}).name })).sort((a, b) => b.rating - a.rating || b.wins - a.wins)];
         if (q.startsWith('INSERT INTO battle_results')) { s.results.push({ battle_id: p[0], team_id: p[1], score: p[2], correct_total: p[3], participants: p[4], place: p[5] }); return [{}]; }
         if (q.startsWith('SELECT id, position, question, options, correct, explanation FROM battle_questions')) return [s.questions.filter((x) => x.battle_id === p[0]).sort((a, b) => a.position - b.position)];
         if (q === 'SELECT question_id, choice, correct FROM battle_answers WHERE battle_id = ? AND user_id = ?') return [s.answers.filter((a) => a.battle_id === p[0] && a.user_id === p[1])];
