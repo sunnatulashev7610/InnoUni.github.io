@@ -132,6 +132,31 @@
         draw();
         return box;
     }
+    // Team battle record: rating, league, badges, trophies (text only)
+    async function recordCard(session, teamId) {
+        let r; try { r = await get('/battles/teams/' + teamId + '/record', session); } catch (e) { return null; }
+        if (!r || typeof r.rating !== 'number') return null;
+        const c = el('div', 'pg-card'); c.dataset.record = String(teamId);
+        c.appendChild(el('h3', 'pg-h3', 'Battle yutuqlari'));
+        const top = el('div'); top.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;align-items:center';
+        top.appendChild(el('b', '', r.rating + ' ball')); top.appendChild(el('span', 'pg-pill sun', r.league + ' liga'));
+        c.appendChild(top);
+        c.appendChild(el('p', 'pg-muted', 'O\'ynagan: ' + r.played + ' · G\'alaba: ' + r.wins));
+        if ((r.badges || []).length) { const bw = el('div'); bw.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px'; r.badges.forEach(function (x) { bw.appendChild(el('span', 'pg-pill', x.name)); }); c.appendChild(bw); }
+        if ((r.trophies || []).length) { c.appendChild(el('p', 'pg-muted', 'Kuboklar:')); r.trophies.forEach(function (x) { c.appendChild(el('div', '', '🏆 ' + x.title)); }); }
+        else c.appendChild(el('p', 'pg-muted', "Hali kubok yo'q. Birinchi g'alabangiz kubok beradi."));
+        return c;
+    }
+    async function leaderboardCard(session) {
+        let r; try { r = await get('/battles/leaderboard', session); } catch (e) { return null; }
+        if (!r || !Array.isArray(r.teams)) return null;
+        const c = card('Battle reytingi');
+        if (!r.teams.length) { c.appendChild(empty("Hali battle o'ynalmagan.")); return c; }
+        const t = el('table', 'pg-table'); const hr = el('tr');
+        ['#', 'Jamoa', 'Liga', 'Ball', "G'alaba"].forEach(function (h) { hr.appendChild(el('th', '', h)); }); t.appendChild(hr);
+        r.teams.forEach(function (x, i) { const tr = el('tr'); [i + 1, x.name, x.league, x.rating, x.wins].forEach(function (v) { tr.appendChild(el('td', '', String(v))); }); t.appendChild(tr); });
+        c.appendChild(t); return c;
+    }
     async function battlesPane(session, teams, refresh) {
         const box = el('div'); box.style.cssText = 'display:grid;gap:18px';
         const mineAdmin = teams.filter(function (t) { return t.is_captain; });
@@ -237,6 +262,7 @@
         }
         box.appendChild(listCard);
         await drawList();
+        const board = await leaderboardCard(session); if (board) box.appendChild(board);
         return box;
     }
 
@@ -585,6 +611,7 @@
             }
             const facts = factsNode(isMember ? 'tt-facts' : ''); if (!isMember) facts.style.cssText = 'grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:18px';
             side.appendChild(facts);
+            const rec = await recordCard(session, team.id); if (rec) side.appendChild(rec);
 
             const labels = { chat: 'Chat', resources: 'Resurslar', events: 'Tadbirlar', members: "A'zolar", about: 'Haqida', settings: 'Sozlamalar' };
             const panes = {};

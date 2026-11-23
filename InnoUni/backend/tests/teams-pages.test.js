@@ -32,7 +32,11 @@ function boot(state) {
         const body = opts.body ? JSON.parse(opts.body) : undefined;
         calls.push({ path: p, method, body });
         let r = { body: { message: 'ok' } };
-        if (/^\/battles\/\d+\/quiz/.test(p)) {
+        if (/^\/battles\/teams\/\d+\/record/.test(p)) {
+            r = { body: { rating: 1216, league: 'Oltin', played: 4, wins: 2, badges: [{ id: 'first_win', name: "Birinchi g'alaba" }], trophies: [{ battle_id: 1, title: '<b>Kubok</b> battle', ends_at: null }] } };
+        } else if (/^\/battles\/leaderboard/.test(p)) {
+            r = { body: { teams: [{ team_id: 3, name: '<i>Alfa</i>', rating: 1216, league: 'Oltin', played: 4, wins: 2 }] } };
+        } else if (/^\/battles\/\d+\/quiz/.test(p)) {
             const fin = state.quizFinished; r = { body: { status: fin ? 'finished' : 'active', team_id: 3, total: 2, answered: 0, questions: [
                 Object.assign({ id: 11, position: 1, question: '<i>2+2</i> nechchi?', options: ['3', '4', '5', '6'], my_choice: fin ? 1 : null }, fin ? { correct: 1, explanation: 'Ikki va ikki' } : {}),
                 Object.assign({ id: 12, position: 2, question: 'Ikkinchi?', options: ['a', 'b', 'c', 'd'], my_choice: null }, fin ? { correct: 0, explanation: 'x' } : {}) ] } };
@@ -462,6 +466,25 @@ describe('team workspace layout', () => {
         const t = boot(makeState()); t.w.GEData.ctx.teamId = 1; await t.run('team-detail'); await t.flush();
         expect(t.c.querySelector('.tt-grid')).toBeNull();
         expect(t.c.textContent).toContain('Ochilgan sana');
+    });
+});
+
+describe('battle rating', () => {
+    test('the leaderboard and the team record show numbers and names as text only', async () => {
+        const t = boot(makeState()); await t.run('jamoalar'); await t.flush();
+        const bp = pane(t.c, 'battle');
+        expect(bp.textContent).toContain('Battle reytingi');
+        expect(bp.textContent).toContain('<i>Alfa</i>'); expect(bp.querySelector('td i')).toBeNull();
+        expect(bp.textContent).toContain('Oltin');
+    });
+    test('the team page has the record card: rating, league, badge, trophy', async () => {
+        const state = makeState(); const t = boot(state); t.w.GEData.ctx.teamId = 1;
+        await t.run('team-detail'); await t.flush();
+        const rc = t.c.querySelector('[data-record]');
+        expect(rc).not.toBeNull();
+        expect(rc.textContent).toContain('1216 ball'); expect(rc.textContent).toContain('Oltin liga');
+        expect(rc.textContent).toContain("Birinchi g'alaba"); expect(rc.textContent).toContain('<b>Kubok</b> battle');
+        expect(rc.querySelector('b b')).toBeNull();
     });
 });
 
