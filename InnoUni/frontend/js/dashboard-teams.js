@@ -59,6 +59,10 @@
         if (/Choose (your team|at least one|1 to)/i.test(m)) return "Jamoangizni va 1–5 ta raqib jamoani tanlang.";
         if (/cannot challenge itself/i.test(m)) return "Jamoa o'zini chorlay olmaydi.";
         if (/Duration must be/i.test(m)) return 'Davomiylik 1–7 kun bo\'lsin.';
+        if (/AI is not connected|not available right now/i.test(m)) return "Savollar tayyorlanmadi: sun'iy intellekt hozir ulanmagan. Keyinroq urinib ko'ring.";
+        if (/Could not (make|generate|prepare)/i.test(m)) return "Savollarni tayyorlab bo'lmadi. Yana bir marta bosing.";
+        if (/Already answered/i.test(m)) return 'Bu savolga javob allaqachon berilgan.';
+        if (/not active|already finished|has ended/i.test(m)) return 'Battle vaqti tugagan. Javob qabul qilinmaydi.';
         if (/no longer waiting/i.test(m)) return "Bu battle endi javob kutmayapti.";
         if (/have not answered/i.test(m)) return "Ba'zi jamoalar hali javob bermagan.";
         if (/At least one team must accept/i.test(m)) return "Kamida bitta jamoa qabul qilishi kerak.";
@@ -80,8 +84,53 @@
     const STATE_TEXT = { host: 'Chorlovchi', invited: 'Javob kutilmoqda', accepted: 'Qabul qildi', declined: 'Rad etdi' };
     function battleStatus(b) {
         if (b.status === 'cancelled') return ['Bekor qilingan', ''];
+        if (b.status === 'finished') return ['Tugagan', ''];
         if (b.status === 'active') return new Date(b.ends_at).getTime() < Date.now() ? ['Vaqt tugadi, natija kutilmoqda', 'sun'] : ['Davom etmoqda', ''];
         return ['Javoblar kutilmoqda', 'sun'];
+    }
+    // Results table: place, team, score, how many played (text only)
+    function resultTable(b) {
+        const t = el('table', 'pg-table'); const hr = el('tr');
+        ['O\'rin', 'Jamoa', 'Ball', 'Ishtirokchi'].forEach(function (h) { hr.appendChild(el('th', '', h)); }); t.appendChild(hr);
+        b.teams.filter(function (x) { return x.result; }).sort(function (a, c) { return a.result.place - c.result.place; }).forEach(function (x) {
+            const r = el('tr'); [x.result.place, x.name, x.result.score, x.result.participants].forEach(function (v) { r.appendChild(el('td', '', String(v))); }); t.appendChild(r);
+        });
+        return t;
+    }
+    // One question at a time; answers are saved at once and not graded until the end
+    async function quizPane(session, b, onDone) {
+        const box = el('div', 'pg-card'); box.dataset.quiz = String(b.id);
+        let q;
+        try { q = await get('/battles/' + b.id + '/quiz', session); } catch (err) { box.appendChild(empty(problem(err))); return box; }
+        const qs = q.questions || []; const done = q.status === 'finished';
+        let i = Math.max(0, qs.findIndex(function (x) { return x.my_choice === null; })); if (done || i < 0) i = 0;
+        const body = el('div'); box.appendChild(body);
+        function draw() {
+            body.textContent = '';
+            const x = qs[i]; if (!x) { body.appendChild(empty('Savollar yo\'q.')); return; }
+            const answered = qs.filter(function (k) { return k.my_choice !== null; }).length;
+            body.appendChild(el('p', 'pg-muted', 'Savol ' + (i + 1) + ' / ' + qs.length + ' · Javob berilgan: ' + answered));
+            body.appendChild(el('h3', 'pg-h3', x.question));
+            const msg = note();
+            x.options.forEach(function (o, k) {
+                const bt = el('button', 'pg-btn ghost', String.fromCharCode(65 + k) + '. ' + o); bt.type = 'button'; bt.style.cssText = 'display:block;width:100%;text-align:left;margin:6px 0';
+                if (done) { if (k === x.correct) bt.classList.remove('ghost'); if (x.my_choice === k) bt.textContent += k === x.correct ? '  ✓ sizniki' : '  ✗ sizniki'; bt.disabled = true; }
+                else if (x.my_choice !== null) { bt.disabled = true; if (x.my_choice === k) { bt.classList.remove('ghost'); bt.textContent += '  (tanlandi)'; } }
+                else bt.addEventListener('click', async function () {
+                    try { await send('POST', '/battles/' + b.id + '/answer', session, { question_id: x.id, choice: k }); x.my_choice = k; draw(); } catch (err) { msg.textContent = problem(err); }
+                });
+                body.appendChild(bt);
+            });
+            if (done && x.explanation) body.appendChild(el('p', 'pg-muted', 'Izoh: ' + x.explanation));
+            body.appendChild(msg);
+            const nav = el('div'); nav.style.cssText = 'display:flex;gap:8px;margin-top:8px';
+            const prev = small(el('button', 'pg-btn ghost', 'Oldingi')); prev.type = 'button'; prev.disabled = i === 0; prev.addEventListener('click', function () { i--; draw(); });
+            const next = small(el('button', 'pg-btn', 'Keyingi')); next.type = 'button'; next.disabled = i >= qs.length - 1; next.addEventListener('click', function () { i++; draw(); });
+            const close = small(el('button', 'pg-btn ghost', 'Yopish')); close.type = 'button'; close.addEventListener('click', onDone);
+            nav.appendChild(prev); nav.appendChild(next); nav.appendChild(close); body.appendChild(nav);
+        }
+        draw();
+        return box;
     }
     async function battlesPane(session, teams, refresh) {
         const box = el('div'); box.style.cssText = 'display:grid;gap:18px';
@@ -121,10 +170,22 @@
                 }
                 if (b.is_host_admin && b.status === 'invited') {
                     const go = small(el('button', 'pg-btn', 'Boshlash')); go.type = 'button';
-                    go.addEventListener('click', function () { call('start', {}, "Battle boshlandi. A'zolarga xabar yuborildi"); });
+                    go.addEventListener('click', function () {
+                        go.disabled = true; msg.textContent = b.kind === 'quiz' ? 'Savollar tayyorlanmoqda…' : '';
+                        call('start', {}, "Battle boshlandi. A'zolarga xabar yuborildi").then(function () { go.disabled = false; });
+                    });
                     const stop = small(el('button', 'pg-btn ghost', 'Bekor qilish')); stop.type = 'button';
                     twice(stop, 'Aniqmi?', function () { return call('cancel', {}, 'Battle bekor qilindi'); });
                     acts.appendChild(go); acts.appendChild(stop);
+                }
+                if (b.status === 'finished' && b.teams.some(function (x) { return x.result; })) row.appendChild(resultTable(b));
+                if (b.kind === 'quiz' && b.my_team_id && (b.status === 'active' || b.status === 'finished')) {
+                    const slot = el('div'); const open = small(el('button', 'pg-btn', b.status === 'finished' ? "Javoblarni ko'rish" : 'Viktorinaga kirish')); open.type = 'button';
+                    open.addEventListener('click', async function () {
+                        if (slot.firstChild) { slot.textContent = ''; return; }
+                        slot.appendChild(await quizPane(session, b, function () { slot.textContent = ''; drawList(); }));
+                    });
+                    acts.appendChild(open); row.appendChild(slot);
                 }
                 row.appendChild(acts); row.appendChild(msg); listBody.appendChild(row);
             });
