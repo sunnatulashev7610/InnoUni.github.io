@@ -428,7 +428,7 @@
             try {
                 await G.api.send('DELETE', '/auth/account', session, { password: dPass.value });
                 ['token', 'user', 'userRole'].forEach(function (k) { try { localStorage.removeItem(k); } catch (x) { /* ignore */ } });
-                location.href = '../login/login.html';
+                location.replace('../login/login.html');
             } catch (err) {
                 dbtn.disabled = false; dbtn.textContent = 'Hisobni o\'chirish';
                 // 401 here means a wrong password

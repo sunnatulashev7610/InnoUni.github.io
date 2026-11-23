@@ -112,7 +112,7 @@
                     c.status = next;
                     drawGrid();
                 } catch (e) {
-                    if (e.auth) { location.href = '../login/login.html'; return; }
+                    if (e.auth) { location.replace('../login/login.html'); return; }
                     toggle.disabled = false;
                     msg.textContent = /content|item/i.test(errText(e)) ? 'Avval kamida bitta video yoki qo\'llanma qo\'shing.' : errText(e);
                 }
@@ -160,7 +160,7 @@
                 G.ctx.courseId = r.courseId;
                 G.open('t-course-edit', 't-courses');
             } catch (e) {
-                if (e.auth) { location.href = '../login/login.html'; return; }
+                if (e.auth) { location.replace('../login/login.html'); return; }
                 save.disabled = false;
                 msg.textContent = errText(e);
             }
@@ -199,7 +199,7 @@
                 await send('PUT', '/teacher/courses/' + id, session, { title: title.value, category: cat.value, description: desc.value });
                 G.toast('Saqlandi');
             } catch (e) {
-                if (e.auth) { location.href = '../login/login.html'; return; }
+                if (e.auth) { location.replace('../login/login.html'); return; }
                 infoMsg.textContent = errText(e);
             }
             saveInfo.disabled = false;
@@ -235,7 +235,7 @@
                 course = fresh.course; items = fresh.items || [];
                 draw();
             } catch (e) {
-                if (e.auth) { location.href = '../login/login.html'; return; }
+                if (e.auth) { location.replace('../login/login.html'); return; }
                 listMsg.textContent = errText(e);
             }
         }
@@ -288,7 +288,7 @@
                     course.status = course.status === 'active' ? 'inactive' : 'active';
                     drawSide();
                 } catch (e) {
-                    if (e.auth) { location.href = '../login/login.html'; return; }
+                    if (e.auth) { location.replace('../login/login.html'); return; }
                     toggle.disabled = false;
                     m.textContent = items.length ? errText(e) : 'Avval kamida bitta video yoki qo\'llanma qo\'shing.';
                 }
@@ -319,7 +319,7 @@
                     course = fresh.course; items = fresh.items || [];
                     draw();
                 } catch (e) {
-                    if (e.auth) { location.href = '../login/login.html'; return; }
+                    if (e.auth) { location.replace('../login/login.html'); return; }
                     go.disabled = false;
                     am.textContent = errText(e);
                 }
@@ -385,13 +385,13 @@
                             G.toast('Baho saqlandi');
                             await load();
                         } catch (e) {
-                            if (e.auth) { location.href = '../login/login.html'; return; }
+                            if (e.auth) { location.replace('../login/login.html'); return; }
                             gb.disabled = false; gm.textContent = errText(e);
                         }
                     });
                     r.appendChild(gf); box.appendChild(r);
                 });
-            }).catch(function (e) { if (e.auth) { location.href = '../login/login.html'; return; } box.textContent = 'Javoblarni yuklab bo\'lmadi.'; });
+            }).catch(function (e) { if (e.auth) { location.replace('../login/login.html'); return; } box.textContent = 'Javoblarni yuklab bo\'lmadi.'; });
         }
         async function load() {
             const d = await get('/teacher/courses/' + pick.value + '/tasks', session);
@@ -426,7 +426,7 @@
                 G.toast('Vazifa berildi');
                 await load();
             } catch (e) {
-                if (e.auth) { location.href = '../login/login.html'; return; }
+                if (e.auth) { location.replace('../login/login.html'); return; }
                 fmsg.textContent = errText(e);
             }
             add.disabled = false;

@@ -157,7 +157,7 @@
 
                     // Redirect based on role
                     setTimeout(() => {
-                        window.location.href = siteUrl(data.user.role === 'admin' ? 'secondary-pages/admin/admin.html' : 'secondary-pages/dashboard/dashboard.html');
+                        window.location.replace(siteUrl(data.user.role === 'admin' ? 'secondary-pages/admin/admin.html' : 'secondary-pages/dashboard/dashboard.html'));
                     }, 1500);
                 } else {
                     showError(data.error || 'Kirishda xatolik yuz berdi');

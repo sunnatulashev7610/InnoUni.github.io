@@ -15,7 +15,7 @@
     };
     const PLANS = ['Standart tarif', 'Markaz tarifi (10 o\'quvchi)'];
 
-    function relogin() { location.href = '../login/login.html'; }
+    function relogin() { location.replace('../login/login.html'); }
     function btn(label, cls, onClick) {
         const b = el('button', 'pg-btn ' + (cls || ''), label); b.type = 'button';
         if (onClick) b.addEventListener('click', onClick);

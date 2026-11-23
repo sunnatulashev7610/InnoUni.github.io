@@ -50,7 +50,7 @@
 					localStorage.setItem('token', data.token);
 					localStorage.setItem('user', JSON.stringify(data.user));
 					localStorage.setItem('userRole', 'admin');
-					location.href = 'admin.html';
+					location.replace('admin.html');
 				} catch (x) {
 					showError(window.config && window.config.backendMissing ? 'Server ulanmagan. BACKEND_API_URL kiritilmagan.' : 'Tarmoq xatoligi. Qayta urinib ko\'ring.');
 				} finally { btn.disabled = false; txt.textContent = 'Kirish'; }

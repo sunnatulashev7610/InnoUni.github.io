@@ -205,7 +205,7 @@
                 courses = r.courses; drawGrid();
             } catch (e) {
                 if (mine !== ticket) return;
-                if (e.auth) { location.href = '../login/login.html'; return; }
+                if (e.auth) { location.replace('../login/login.html'); return; }
                 grid.textContent = ''; grid.appendChild(el('p', 'pg-muted', 'Kurslarni yuklab bo\'lmadi. Keyinroq urinib ko\'ring.'));
             }
         }
@@ -228,7 +228,7 @@
                 c.enrolled = true; c.students += 1; c.progress = 0;
                 drawGrid();
             } catch (e) {
-                if (e.auth) { location.href = '../login/login.html'; return; }
+                if (e.auth) { location.replace('../login/login.html'); return; }
                 btn.disabled = false;
                 btn.textContent = e.message === 'Already enrolled in this course' ? 'Allaqachon yozilgansiz' : 'Xatolik, qayta urining';
             }
@@ -528,7 +528,7 @@
                 x.addEventListener('click', async function () {
                     x.disabled = true;
                     try { await send('DELETE', '/groups/' + gid + '/posts/' + p.id, session); c.remove(); }
-                    catch (e) { if (e.auth) { location.href = '../login/login.html'; return; } x.disabled = false; msg.textContent = e.message; }
+                    catch (e) { if (e.auth) { location.replace('../login/login.html'); return; } x.disabled = false; msg.textContent = e.message; }
                 });
                 who.appendChild(x);
             }
@@ -551,7 +551,7 @@
                 try {
                     const r = await get('/groups/' + gid + '/posts?before=' + oldest, session);
                     showPosts(r.posts, true); drawMore(r.more);
-                } catch (e) { if (e.auth) { location.href = '../login/login.html'; return; } b.disabled = false; msg.textContent = e.message; }
+                } catch (e) { if (e.auth) { location.replace('../login/login.html'); return; } b.disabled = false; msg.textContent = e.message; }
             });
             moreBox.appendChild(b);
         }
@@ -567,7 +567,7 @@
                 await send('POST', '/groups/' + gid + '/posts', session, { body: text.value, kind: topic && topic.checked ? 'topic' : 'message' });
                 text.value = ''; if (topic) topic.checked = false;
                 await load();
-            } catch (e) { if (e.auth) { location.href = '../login/login.html'; return; } msg.textContent = e.message; }
+            } catch (e) { if (e.auth) { location.replace('../login/login.html'); return; } msg.textContent = e.message; }
             send_.disabled = false;
         });
 
@@ -653,7 +653,7 @@
                             await send('POST', '/student/tasks/' + t.id + '/submit', session, { content: ta.value });
                             t.status = 'submitted'; t.content = ta.value.trim(); openId = null; draw();
                         } catch (e) {
-                            if (e.auth) { location.href = '../login/login.html'; return; }
+                            if (e.auth) { location.replace('../login/login.html'); return; }
                             go.disabled = false;
                             msg.textContent = /graded/.test(e.message) ? 'Bu ish allaqachon baholangan, o\'zgartirib bo\'lmaydi.' : e.message;
                         }
