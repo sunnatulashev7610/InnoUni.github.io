@@ -709,17 +709,29 @@ describe('competitions: seasonal tournaments', () => {
         out.dispatchEvent(new t.w.Event('click', { bubbles: true })); await t.flush();
         expect(t.calls.find((c) => c.path === '/tournaments/4/withdraw').body).toEqual({ team_id: 3 });
     });
-    test('after the draw: groups with seeds and the fixture list by round, as text', async () => {
+    test('after the draw: group tables and the fixture list by round, scores only for finished matches, all as text', async () => {
         const state = makeState();
-        state.tournaments = { my_admin_teams: [], tournaments: [{ id: 4, title: 'Kuz', topic: 'P', round_days: 2, status: 'groups',
-            teams: [{ team_id: 1, name: 'Alfa', group_no: 1, seed_rating: 1050 }, { team_id: 2, name: '<i>Beta</i>', group_no: 1, seed_rating: 1000 }, { team_id: 3, name: 'Gamma', group_no: 2, seed_rating: 990 }],
-            matches: [{ id: 1, stage: 'group', group_no: 1, round_no: 1, team_a: 1, team_b: 2, name_a: 'Alfa', name_b: '<i>Beta</i>', battle_id: null }] }] };
+        const row = (rank, id, name, pts) => ({ rank, team_id: id, name, played: 1, won: pts === 3 ? 1 : 0, drawn: 0, lost: pts === 3 ? 0 : 1, points: pts, diff: pts === 3 ? 3.33 : -3.33 });
+        state.tournaments = { my_admin_teams: [], tournaments: [{ id: 4, title: 'Kuz', topic: 'P', round_days: 2, status: 'groups', next_round: 2, round_ready: false, groups_finished: false,
+            teams: [{ team_id: 1, name: 'Alfa', group_no: 1 }, { team_id: 2, name: '<i>Beta</i>', group_no: 1 }, { team_id: 3, name: 'Gamma', group_no: 2 }],
+            groups: [{ group_no: 1, table: [row(1, 1, 'Alfa', 3), row(2, 2, '<i>Beta</i>', 0)] }, { group_no: 2, table: [row(1, 3, 'Gamma', 0)] }],
+            matches: [{ id: 1, stage: 'group', group_no: 1, round_no: 1, team_a: 1, team_b: 2, name_a: 'Alfa', name_b: '<i>Beta</i>', battle_id: 9, state: 'finished', score_a: 3.33, score_b: 0 },
+                { id: 2, stage: 'group', group_no: 1, round_no: 2, team_a: 1, team_b: 2, name_a: 'Alfa', name_b: '<i>Beta</i>', battle_id: 10, state: 'active', score_a: null, score_b: null },
+                { id: 3, stage: 'group', group_no: 2, round_no: 3, team_a: 3, team_b: 3, name_a: 'Gamma', name_b: 'Gamma', battle_id: null, state: 'waiting', score_a: null, score_b: null }] }] };
         const t = boot(state); await t.run('musobaqalar'); await t.flush();
         const sp = pane(t.c, 'season');
         expect(sp.textContent).toContain('Guruh bosqichi');
-        expect(sp.querySelector('[data-group="1"]').textContent).toContain('A guruhi');
-        expect(sp.querySelector('[data-group="1"]').textContent).toContain('1-tur: Alfa — <i>Beta</i>');
-        expect(sp.querySelector('[data-group="1"] i')).toBeNull();
-        expect(sp.querySelector('[data-group="2"]').textContent).toContain('B guruhi');
+        const g1 = sp.querySelector('[data-group="1"]');
+        expect(g1.textContent).toContain('A guruhi');
+        expect(g1.textContent).toContain('1-tur: Alfa 3.33 : 0 <i>Beta</i>');
+        expect(g1.textContent).toContain("2-tur: Alfa — <i>Beta</i> (o'ynalmoqda)");
+        expect(g1.querySelector('i')).toBeNull();
+        expect([...g1.querySelectorAll('tr')].map((r) => r.textContent)[1]).toContain('Alfa');
+        expect(sp.querySelector('[data-group="2"]').textContent).toContain('3-tur: Gamma — Gamma');
+        expect(sp.textContent).toContain('3.33');
+        const go = [...sp.querySelectorAll('button')].find((b) => b.textContent.startsWith("O'ynash"));
+        go.dispatchEvent(new t.w.Event('click', { bubbles: true }));
+        expect(pane(t.c, 'battle').hidden).toBe(false);
     });
+
 });

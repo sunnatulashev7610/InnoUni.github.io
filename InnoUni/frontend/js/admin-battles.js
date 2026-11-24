@@ -18,6 +18,10 @@
     function say(m) {
         if (/Score every team/i.test(m)) return "Avval topshirgan har bir jamoani baholang.";
         if (/whole number/i.test(m)) return "Ball 0 dan 100 gacha butun son bo'lsin.";
+        if (/AI that prepares/i.test(m)) return "Savollarni tayyorlovchi AI ulanmagan. Render Environment'da kalitni tekshiring.";
+        if (/Could not prepare/i.test(m)) return "Savollarni tayyorlab bo'lmadi. Bir daqiqadan keyin qayta urining.";
+        if (/previous round is not finished/i.test(m)) return "Oldingi tur hali tugamagan.";
+        if (/rounds have already started/i.test(m)) return "Barcha turlar allaqachon boshlangan.";
         if (/Groups need/i.test(m)) return "Guruh tuzish uchun 4, 6–8 yoki 12–16 jamoa kerak. Hozirgi sonni o'zgartiring.";
         if (/not possible in the current stage/i.test(m)) return "Bu qadam hozirgi bosqichda mumkin emas.";
         if (/Round length/i.test(m)) return "Tur davomiyligi 1–7 kun bo'lsin.";
@@ -78,7 +82,20 @@
                         }
                         c.appendChild(row);
                     });
+                    if (t.status === 'groups') {
+                        c.appendChild(el('p', 'pg-muted', t.groups_finished ? "Guruh bosqichi tugadi. Pley-off keyingi bosqichda." : (t.next_round ? 'Keyingi: ' + t.next_round + '-tur (jami ' + t.rounds_total + ' tur)' + (t.round_ready ? '' : '. Oldingi tur tugashini kuting.') : '')));
+                    }
                     const bar = el('div'); bar.style.cssText = 'display:flex;gap:8px;margin-top:10px;flex-wrap:wrap';
+                    if (t.status === 'groups' && t.next_round) {
+                        const sr = el('button', 'pg-btn', t.next_round + '-turni boshlash'); sr.type = 'button'; let go = false;
+                        if (!t.round_ready) { sr.disabled = true; sr.style.opacity = '.45'; sr.style.cursor = 'not-allowed'; }
+                        sr.addEventListener('click', function () {
+                            if (!go) { go = true; sr.textContent = 'Aniqmi? Qayta bosing'; setTimeout(function () { go = false; sr.textContent = t.next_round + '-turni boshlash'; }, 4000); return; }
+                            sr.disabled = true; msg.textContent = 'Savollar tayyorlanmoqda…';
+                            act('/admin/tournaments/' + t.id + '/start-round', {}, t.next_round + '-tur boshlandi').then(function () { sr.disabled = false; });
+                        });
+                        bar.appendChild(sr);
+                    }
                     if (t.status === 'open') {
                         const dr = el('button', 'pg-btn', 'Qura tashlash'); dr.type = 'button'; let armed = false;
                         dr.addEventListener('click', function () {

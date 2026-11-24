@@ -33,3 +33,24 @@ describe('round robin', () => {
         expect(meetings(r)).toEqual(['1-2', '1-3', '2-3']);
     });
 });
+
+describe('group table', () => {
+    const { standings } = require('../utils/tournamentDraw');
+    const teams = [1, 2, 3].map((id) => ({ team_id: id, name: 'T' + id, seed_rating: 1000 + id }));
+    test('win 3, draw 1, loss 0; then difference; unfinished matches do not count', () => {
+        const t = standings(teams, [
+            { team_a: 1, team_b: 2, score_a: 5, score_b: 2 },
+            { team_a: 2, team_b: 3, score_a: 4, score_b: 4 },
+            { team_a: 1, team_b: 3, score_a: null, score_b: null }]);
+        expect(t.map((r) => [r.team_id, r.points, r.diff, r.played])).toEqual([[1, 3, 3, 1], [3, 1, 0, 1], [2, 1, -3, 2]].map((x) => x));
+        expect(t.map((r) => r.rank)).toEqual([1, 2, 3]);
+    });
+    test('equal points: difference, then score for, then the stronger seed', () => {
+        const t = standings(teams, [{ team_a: 1, team_b: 2, score_a: 3, score_b: 3 }]);
+        expect(t.map((r) => r.team_id)).toEqual([2, 1, 3]);   // 1 and 2 drew (1 point each, seed 1002 > 1001); 3 has not played
+    });
+    test('scores are summed without floating point noise', () => {
+        const t = standings(teams, [{ team_a: 1, team_b: 2, score_a: 3.33, score_b: 0 }, { team_a: 1, team_b: 3, score_a: 3.33, score_b: 0 }]);
+        expect(t[0]).toMatchObject({ team_id: 1, diff: 6.66, score_for: 6.66 });
+    });
+});

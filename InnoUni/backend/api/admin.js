@@ -6,6 +6,7 @@ const battles = require('./battles');
 const tournaments = require('./tournaments');
 const { TOURNAMENT_LIMITS, groupCount, drawGroups, roundRobin } = require('../utils/tournamentDraw');
 const { notify } = require('../utils/notify');
+const ai = require('../utils/aiProvider');
 const { BATTLE_LIMITS } = require('../utils/battleLimits');
 
 const router = express.Router();
@@ -277,10 +278,47 @@ router.post('/tournaments/:id/draw', async (req, res) => {
     } catch (e) { fail(res, e); }
 });
 
+// Starts the next group round: ONE set of AI questions for the whole round (each team plays once per round,
+// so nobody answers the same question twice); one battle per match, running at once.
+router.post('/tournaments/:id/start-round', async (req, res) => {
+    try {
+        const t = await tournamentIn(req, res, ['groups']); if (!t) return;
+        const [one] = await tournaments.loadTournaments(req.db, 0, t.id);
+        if (one.next_round === null) return res.status(409).json({ error: 'All group rounds have already started' });
+        if (!one.round_ready) return res.status(409).json({ error: 'The previous round is not finished yet' });
+        if (!ai.isLive()) return res.status(503).json({ error: 'The AI that prepares quiz questions is not connected yet' });
+        const round = one.next_round;
+        const title = `${t.title} · ${round}-tur`;
+        let made;
+        try { made = await ai.battleQuiz({ topic: t.topic, title }); } catch (e) {
+            console.error('Tournament quiz failed:', e.message);
+            return res.status(502).json({ error: 'Could not prepare the questions. Try again in a minute' });
+        }
+        const round_matches = one.matches.filter((m) => m.stage === 'group' && m.round_no === round);
+        const teamIds = new Set();
+        for (const m of round_matches) {
+            const id = await battles.createTournamentBattle(req.db, { title: `${title} · ${String.fromCharCode(64 + m.group_no)} guruhi`, topic: t.topic, days: t.round_days, teamA: m.team_a, teamB: m.team_b, createdBy: req.user.userId, questions: made.questions });
+            const [claim] = await req.db.execute('UPDATE tournament_matches SET battle_id = ? WHERE id = ? AND battle_id IS NULL', [id, m.id]);
+            if (!claim.affectedRows) { await req.db.execute("UPDATE battles SET status = 'cancelled' WHERE id = ?", [id]); continue; }   // a second click got there first
+            teamIds.add(m.team_a); teamIds.add(m.team_b);
+        }
+        const ids = [...teamIds];
+        if (ids.length) {
+            const [people] = await req.db.execute(`SELECT DISTINCT user_id FROM team_members WHERE status = 'active' AND team_id IN (${ids.map(() => '?').join(', ')})`, ids);
+            await Promise.all(people.map((p) => notify(req.db, p.user_id, { kind: 'tournament', title: `${round}-tur boshlandi`, body: t.title, page: 'musobaqalar', refId: t.id })));
+        }
+        res.json({ round, matches: round_matches.length });
+    } catch (e) { fail(res, e); }
+});
+
 router.post('/tournaments/:id/cancel', async (req, res) => {
     try {
         const t = await tournamentIn(req, res, ['open', 'groups']); if (!t) return;
         await req.db.execute("UPDATE tournaments SET status = 'cancelled' WHERE id = ?", [t.id]);
+        // Matches still being played stop with the tournament
+        const [one] = await tournaments.loadTournaments(req.db, 0, t.id);
+        const running = one ? one.matches.filter((m) => m.state === 'active').map((m) => m.battle_id) : [];
+        if (running.length) await req.db.execute(`UPDATE battles SET status = 'cancelled' WHERE status = 'active' AND id IN (${running.map(() => '?').join(', ')})`, running);
         res.json({ status: 'cancelled' });
     } catch (e) { fail(res, e); }
 });

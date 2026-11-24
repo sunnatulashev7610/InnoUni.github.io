@@ -45,4 +45,25 @@ function roundRobin(ids) {
     return rounds;
 }
 
-module.exports = { TOURNAMENT_LIMITS, groupCount, drawGroups, roundRobin };
+// Group table: win 3, draw 1, loss 0; then score difference, then score for, then the seed rating, then team id.
+// matches: [{team_a, team_b, score_a, score_b}] - only finished ones (both scores numbers) count.
+function standings(teams, matches) {
+    const row = {};
+    teams.forEach((t) => { row[t.team_id] = { team_id: t.team_id, name: t.name, seed_rating: t.seed_rating || 0, played: 0, won: 0, drawn: 0, lost: 0, points: 0, diff: 0, score_for: 0 }; });
+    matches.forEach((m) => {
+        if (typeof m.score_a !== 'number' || typeof m.score_b !== 'number' || !row[m.team_a] || !row[m.team_b]) return;
+        const a = row[m.team_a]; const b = row[m.team_b];
+        a.played++; b.played++;
+        a.score_for += m.score_a; b.score_for += m.score_b;
+        a.diff += m.score_a - m.score_b; b.diff += m.score_b - m.score_a;
+        if (m.score_a > m.score_b) { a.won++; a.points += 3; b.lost++; }
+        else if (m.score_a < m.score_b) { b.won++; b.points += 3; a.lost++; }
+        else { a.drawn++; b.drawn++; a.points++; b.points++; }
+    });
+    const round2 = (x) => Math.round(x * 100) / 100;
+    return Object.values(row).map((r) => ({ ...r, diff: round2(r.diff), score_for: round2(r.score_for) }))
+        .sort((x, y) => y.points - x.points || y.diff - x.diff || y.score_for - x.score_for || y.seed_rating - x.seed_rating || x.team_id - y.team_id)
+        .map((r, i) => ({ ...r, rank: i + 1 }));
+}
+
+module.exports = { TOURNAMENT_LIMITS, groupCount, drawGroups, roundRobin, standings };

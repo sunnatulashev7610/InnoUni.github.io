@@ -17,7 +17,8 @@ async function boot(opts = {}) {
         if (opts.status) return { ok: false, status: opts.status, json: async () => ({ error: opts.error || 'x' }) };
         if (p === '/admin/tournaments' && method === 'GET') return { ok: true, status: 200, json: async () => ({ tournaments: opts.noTournaments ? [] : [
             { id: 4, title: '<b>Kuz</b> kubogi', topic: 'Python', round_days: 2, status: 'open', teams: [{ team_id: 1, name: 'Alfa', group_no: null }, { team_id: 2, name: '<i>Beta</i>', group_no: null }], matches: [] },
-            { id: 5, title: 'Bahor', topic: 'JS', round_days: 3, status: 'groups', teams: [{ team_id: 3, name: 'Gamma', group_no: 2 }], matches: [] }] }) };
+            { id: 5, title: 'Bahor', topic: 'JS', round_days: 3, status: 'groups', next_round: 2, round_ready: opts.roundReady !== false, rounds_total: 3, groups_finished: false, teams: [{ team_id: 3, name: 'Gamma', group_no: 2 }], matches: [] }] }) };
+        if (p.includes('/start-round') && opts.roundError) return { ok: false, status: 503, json: async () => ({ error: 'The AI that prepares quiz questions is not connected yet' }) };
         if (p.includes('/draw') && opts.drawError) return { ok: false, status: 400, json: async () => ({ error: 'Groups need 4, 6-8 or 12-16 teams; now there are 5' }) };
         if (method === 'GET') return { ok: true, status: 200, json: async () => (opts.empty ? { battles: [], max_score: 100 } : LIST()) };
         if (p.endsWith('/finish') && opts.finishError) return { ok: false, status: 400, json: async () => ({ error: 'Score every team that handed in a project first' }) };
@@ -77,7 +78,7 @@ describe('tournaments section', () => {
         expect(open.textContent).toContain('<i>Beta</i>'); expect(open.querySelector('i')).toBeNull();
         expect([...open.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Chiqarish', 'Chiqarish', 'Qura tashlash', 'Bekor qilish']);
         expect(groups.textContent).toContain('B guruhi');
-        expect([...groups.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Bekor qilish']);
+        expect([...groups.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['2-turni boshlash', 'Bekor qilish']);
     });
     test('creating needs a title and a topic and sends the round length', async () => {
         const { c, calls } = await boot();
@@ -101,5 +102,29 @@ describe('tournaments section', () => {
         const { c, calls } = await boot();
         c.querySelector('[data-tournament="4"] [data-team="2"] button').click(); await tick();
         expect(calls.find((x) => x.p === '/admin/tournaments/4/remove-team').body).toEqual({ team_id: 2 });
+    });
+});
+
+describe('rounds', () => {
+    const startBtn = (c) => [...c.querySelectorAll('[data-tournament="5"] button')].find((b) => /-turni boshlash|Aniqmi/.test(b.textContent));
+    test('starting the next round needs two clicks and calls the right endpoint', async () => {
+        const { c, calls } = await boot();
+        const b = startBtn(c); expect(c.querySelector('[data-tournament="5"]').textContent).toContain('Keyingi: 2-tur (jami 3 tur)');
+        b.click(); await tick();
+        expect(calls.some((x) => x.p.endsWith('/start-round'))).toBe(false);
+        b.click(); await tick();
+        expect(calls.find((x) => x.p === '/admin/tournaments/5/start-round').method).toBe('POST');
+    });
+    test('while the previous round is still running the button is off and says why', async () => {
+        const { c, calls } = await boot({ roundReady: false });
+        const b = startBtn(c); expect(b.disabled).toBe(true);
+        expect(c.querySelector('[data-tournament="5"]').textContent).toContain('Oldingi tur tugashini kuting');
+        b.click(); b.click(); await tick();
+        expect(calls.some((x) => x.p.endsWith('/start-round'))).toBe(false);
+    });
+    test('a missing AI is explained in Uzbek', async () => {
+        const { c } = await boot({ roundError: true });
+        const b = startBtn(c); b.click(); b.click(); await tick(60);
+        expect(c.textContent).toContain('AI ulanmagan');
     });
 });
