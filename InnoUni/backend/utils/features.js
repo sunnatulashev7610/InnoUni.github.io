@@ -4,7 +4,9 @@
 const FLAGS = {
     teams: { env: 'FEATURE_TEAMS', fallback: true },
     library: { env: 'FEATURE_LIBRARY', fallback: false },
-    ai: { env: 'FEATURE_AI', fallback: true }
+    ai: { env: 'FEATURE_AI', fallback: true },
+    // Teacher accounts and the teacher cabinet. Closed for now: the app is built for students first (FEATURE_TEACHERS=true opens it)
+    teachers: { env: 'FEATURE_TEACHERS', fallback: false }
 };
 
 function isEnabled(name) {

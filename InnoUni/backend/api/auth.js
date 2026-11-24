@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const loginGuard = require('../utils/loginGuard');
 const jwt = require('jsonwebtoken');
+const { isEnabled } = require('../utils/features');
 const router = express.Router();
 
 const { JWT_SECRET } = require('../config');
@@ -60,6 +61,9 @@ router.post('/register', async (req, res) => {
         const validRoles = ['student', 'teacher'];
         if (!validRoles.includes(role)) {
             return res.status(400).json({ error: 'Invalid role specified' });
+        }
+        if (role === 'teacher' && !isEnabled('teachers')) {
+            return res.status(403).json({ error: 'Teacher accounts are not open yet', code: 'TEACHERS_CLOSED' });
         }
 
         // Validate password strength before touching the database
@@ -148,6 +152,10 @@ router.post('/login', async (req, res) => {
 
         if (user.blocked) {
             return res.status(403).json({ error: 'This account is blocked' });
+        }
+
+        if (user.role === 'teacher' && !isEnabled('teachers')) {
+            return res.status(403).json({ error: 'Teacher accounts are not open yet', code: 'TEACHERS_CLOSED' });
         }
 
         // Check if role matches (if specified)

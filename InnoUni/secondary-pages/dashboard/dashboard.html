@@ -443,8 +443,16 @@
 			}
 		}
 		var session = readSession();
+		// The app is for students first: the teacher cabinet is closed for now (FEATURE_TEACHERS on the server opens it again)
+		var TEACHERS_OPEN = false;
+		if (session && session.role === 'teacher' && !TEACHERS_OPEN) {
+			['token', 'user', 'userRole'].forEach(function (k) { try { localStorage.removeItem(k); } catch (x) { /* ignore */ } });
+			location.replace('../login/login.html?teachers=soon');
+		}
+		document.querySelectorAll('.role-switch').forEach(function (n) { n.hidden = !TEACHERS_OPEN; });
 		if (session && session.role === 'admin') location.replace('../admin/admin.html');
 		function initialRole() {
+			if (!TEACHERS_OPEN) return 'student';
 			if (session) return session.role === 'teacher' ? 'teacher' : 'student';
 			var r = (location.search.match(/[?&]role=(student|teacher)/) || [])[1];
 			try { r = r || localStorage.getItem('geRole'); } catch (e) { /* storage may be blocked */ }

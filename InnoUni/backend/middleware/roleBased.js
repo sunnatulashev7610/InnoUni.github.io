@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { isEnabled } = require('../utils/features');
 
 const { JWT_SECRET } = require('../config');
 const { verificationRequired } = require('../utils/verified');
@@ -25,6 +26,9 @@ async function currentAccount(db, userId) {
 const READ_ONLY = new Set(['GET', 'HEAD', 'OPTIONS']);
 const OPEN_FOR_UNVERIFIED = /^\/api\/(auth|notifications)(\/|$)/;
 
+const TEACHERS_CLOSED = { error: 'Teacher accounts are not open yet', code: 'TEACHERS_CLOSED' };
+const teacherBlocked = (user) => user && user.role === 'teacher' && !isEnabled('teachers');
+
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -44,6 +48,7 @@ const authenticateToken = (req, res, next) => {
             } catch (e) {
                 // The database is unreachable: the route itself will fail too, so do not invent a second error here
                 console.error('Account check failed:', e.message);
+                if (teacherBlocked(user)) return res.status(403).json(TEACHERS_CLOSED);
                 req.user = user;
                 return next();
             }
@@ -58,6 +63,7 @@ const authenticateToken = (req, res, next) => {
                 return res.status(403).json({ error: 'Confirm your email address first', code: 'EMAIL_NOT_VERIFIED' });
             }
         }
+        if (teacherBlocked(user)) return res.status(403).json(TEACHERS_CLOSED);
         req.user = user;
         next();
     });

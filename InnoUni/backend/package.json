@@ -36,5 +36,10 @@
   },
   "engines": {
     "node": ">=16.0.0"
+  },
+  "jest": {
+    "setupFiles": [
+      "<rootDir>/tests/setup-env.js"
+    ]
   }
 }
