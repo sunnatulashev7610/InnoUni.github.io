@@ -62,6 +62,11 @@
         if (/AI is not connected|not available right now/i.test(m)) return "Savollar tayyorlanmadi: sun'iy intellekt hozir ulanmagan. Keyinroq urinib ko'ring.";
         if (/Could not (make|generate|prepare)/i.test(m)) return "Savollarni tayyorlab bo'lmadi. Yana bir marta bosing.";
         if (/Already answered/i.test(m)) return 'Bu savolga javob allaqachon berilgan.';
+        if (/Registration is closed/i.test(m)) return "Ro'yxatdan o'tish yopilgan.";
+        if (/already registered/i.test(m)) return "Bu jamoa allaqachon ro'yxatdan o'tgan.";
+        if (/tournament is full/i.test(m)) return "Turnirda joy qolmagan (eng ko'pi 16 jamoa).";
+        if (/needs at least \d+ active members/i.test(m)) return "Jamoada kamida 3 ta faol a'zo bo'lishi kerak.";
+        if (/Only the team admin can do this/i.test(m)) return "Buni faqat jamoa admini qila oladi.";
         if (/valid https/i.test(m)) return "Havola https:// bilan boshlanishi va to'g'ri bo'lishi kerak.";
         if (/Link is too long/i.test(m)) return 'Havola juda uzun.';
         if (/Only the admin of a playing team/i.test(m)) return "Loyihani faqat o'ynayotgan jamoaning admini topshira oladi.";
@@ -596,6 +601,75 @@
         return wrap;
     }
 
+    // ---- Seasonal tournaments: register a team, see the groups and the fixture list
+    const TOURNAMENT_STATUS = { open: "Ro'yxatdan o'tish ochiq", groups: 'Guruh bosqichi', knockout: 'Pley-off', finished: 'Tugagan' };
+    function fixtureList(t) {
+        const wrap = el('div');
+        const groups = {}; t.teams.forEach(function (x) { if (x.group_no) (groups[x.group_no] = groups[x.group_no] || []).push(x); });
+        Object.keys(groups).sort().forEach(function (g) {
+            const c = el('div', 'pg-card'); c.dataset.group = g;
+            c.appendChild(el('h4', 'pg-h3', String.fromCharCode(64 + Number(g)) + ' guruhi'));
+            groups[g].forEach(function (x) { c.appendChild(el('div', '', x.name + (x.seed_rating ? ' · ' + x.seed_rating + ' ball' : ''))); });
+            const rounds = {}; t.matches.filter(function (m) { return m.stage === 'group' && String(m.group_no) === g; }).forEach(function (m) { (rounds[m.round_no] = rounds[m.round_no] || []).push(m); });
+            Object.keys(rounds).sort().forEach(function (r) {
+                c.appendChild(el('p', 'pg-muted', r + '-tur: ' + rounds[r].map(function (m) { return m.name_a + ' — ' + m.name_b; }).join(' · ')));
+            });
+            wrap.appendChild(c);
+        });
+        wrap.style.cssText = 'display:grid;gap:10px;margin-top:10px';
+        return wrap;
+    }
+    async function tournamentsPane(session) {
+        const box = el('div'); box.style.cssText = 'display:grid;gap:14px';
+        let data;
+        try { data = await get('/tournaments', session); } catch (err) { box.appendChild(empty(problem(err))); return box; }
+        data.tournaments = data.tournaments || []; data.my_admin_teams = data.my_admin_teams || [];
+        data.tournaments.forEach(function (t) {
+            const c = el('div', 'pg-card'); c.dataset.tournament = String(t.id);
+            const top = el('div'); top.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between';
+            top.appendChild(el('h3', 'pg-h3', t.title)); top.appendChild(el('span', 'pg-pill sun', TOURNAMENT_STATUS[t.status] || t.status)); c.appendChild(top);
+            c.appendChild(el('p', 'pg-muted', 'Mavzu: ' + t.topic + ' · Har tur ' + t.round_days + ' kun · Jamoalar: ' + t.teams.length));
+            const msg = note();
+            if (t.status === 'open') {
+                const reg = {}; t.teams.forEach(function (x) { reg[x.team_id] = true; });
+                t.teams.forEach(function (x) {
+                    const row = el('div', 'pg-muted', x.name);
+                    if (x.mine) {
+                        const out = small(el('button', 'pg-btn ghost', 'Chiqarish')); out.type = 'button'; out.style.marginLeft = '8px';
+                        out.addEventListener('click', async function () { try { await send('POST', '/tournaments/' + t.id + '/withdraw', session, { team_id: x.team_id }); G.toast('Jamoa ro\'yxatdan chiqarildi'); await redraw(); } catch (err) { msg.textContent = problem(err); } });
+                        row.appendChild(out);
+                    }
+                    c.appendChild(row);
+                });
+                const free = data.my_admin_teams.filter(function (m) { return !reg[m.id]; });
+                if (free.length) {
+                    const f = el('form'); f.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:8px'; f.noValidate = true;
+                    const sel = el('select', 'pg-input'); sel.style.maxWidth = '260px'; sel.setAttribute('aria-label', 'Jamoa');
+                    free.forEach(function (m) { const o = el('option', '', m.name + ' (' + m.members + " a'zo)"); o.value = m.id; sel.appendChild(o); });
+                    const go = small(el('button', 'pg-btn', "Ro'yxatdan o'tkazish")); go.type = 'submit';
+                    f.appendChild(sel); f.appendChild(go); c.appendChild(f);
+                    f.addEventListener('submit', async function (e) {
+                        e.preventDefault(); msg.textContent = ''; go.disabled = true;
+                        try { await send('POST', '/tournaments/' + t.id + '/register', session, { team_id: Number(sel.value) }); G.toast("Jamoa ro'yxatdan o'tdi"); await redraw(); } catch (err) { msg.textContent = problem(err); go.disabled = false; }
+                    });
+                } else if (!data.my_admin_teams.length) c.appendChild(el('p', 'pg-muted', "Ro'yxatdan o'tkazish uchun jamoa admini bo'lishingiz kerak."));
+                c.appendChild(el('p', 'pg-muted', "Platforma guruhlarni reyting bo'yicha qura tashlaydi. Guruhda har bir jamoa boshqalar bilan o'ynaydi."));
+            } else c.appendChild(fixtureList(t));
+            c.appendChild(msg); box.appendChild(c);
+        });
+        async function redraw() { const fresh = await tournamentsPane(session); box.replaceWith(fresh); }
+        if (!data.tournaments.length) {
+            const c = card('Mavsumiy turnirlar: tez orada');
+            c.appendChild(el('p', 'pg-muted', "Platforma o'zi o'tkazadigan katta musobaqa. Futbol jahon chempionati kabi saralanib boriladi."));
+            [['1', "Jamoalar ro'yxatdan o'tadi"], ['2', "Reyting bo'yicha guruhlarga bo'linadi (3–4 jamoa)"], ['3', "Guruhda har kim har kim bilan o'ynaydi"], ['4', "Har guruhdan eng yaxshi 2 jamoa pley-offga o'tadi"], ['5', 'Yutgan davom etadi, chempion kubok oladi']].forEach(function (x) {
+                const r = el('div'); r.style.cssText = 'display:flex;gap:10px;align-items:center;padding:6px 0'; r.appendChild(el('span', 'pg-pill', x[0])); r.appendChild(el('span', '', x[1])); c.appendChild(r);
+            });
+            c.appendChild(el('p', 'pg-muted', "Hozircha battlelarda reyting to'plang: u guruhlarga saralashda hisobga olinadi."));
+            box.appendChild(c);
+        }
+        return box;
+    }
+
     // ---- Competitions: its own section of the dashboard (battles now; seasonal tournaments are announced here)
     G.register('musobaqalar', async function (root, session) {
         let tab = G.ctx.compTab || 'battle'; G.ctx.compTab = null;
@@ -616,13 +690,7 @@
             pg.appendChild(tm);
 
             const se = el('div'); se.hidden = tab !== 'season'; se.dataset.pane = 'season'; panes.season = se;
-            const c = card('Mavsumiy turnirlar: tez orada');
-            c.appendChild(el('p', 'pg-muted', "Platforma o'zi o'tkazadigan katta musobaqa. Futbol jahon chempionati kabi saralanib boriladi."));
-            [['1', "Jamoalar ro'yxatdan o'tadi"], ['2', "4 tadan guruhlarga bo'linadi"], ['3', "Har guruhdan eng yaxshi 2 jamoa o'tadi"], ['4', 'Yakuniy bosqich: yutgan davom etadi, chempion kubok oladi']].forEach(function (x) {
-                const r = el('div'); r.style.cssText = 'display:flex;gap:10px;align-items:center;padding:6px 0'; r.appendChild(el('span', 'pg-pill', x[0])); r.appendChild(el('span', '', x[1])); c.appendChild(r);
-            });
-            c.appendChild(el('p', 'pg-muted', "Hozircha battlelarda reyting to'plang: u turnirga saralashda hisobga olinadi."));
-            se.appendChild(c); pg.appendChild(se);
+            se.appendChild(await tournamentsPane(session)); pg.appendChild(se);
         }
         await draw();
     });

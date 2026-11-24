@@ -15,6 +15,10 @@ async function boot(opts = {}) {
     w.fetch = jest.fn(async (url, o = {}) => {
         const p = url.replace('https://api.test/api', ''); const method = o.method || 'GET'; calls.push({ p, method, body: o.body ? JSON.parse(o.body) : undefined });
         if (opts.status) return { ok: false, status: opts.status, json: async () => ({ error: opts.error || 'x' }) };
+        if (p === '/admin/tournaments' && method === 'GET') return { ok: true, status: 200, json: async () => ({ tournaments: opts.noTournaments ? [] : [
+            { id: 4, title: '<b>Kuz</b> kubogi', topic: 'Python', round_days: 2, status: 'open', teams: [{ team_id: 1, name: 'Alfa', group_no: null }, { team_id: 2, name: '<i>Beta</i>', group_no: null }], matches: [] },
+            { id: 5, title: 'Bahor', topic: 'JS', round_days: 3, status: 'groups', teams: [{ team_id: 3, name: 'Gamma', group_no: 2 }], matches: [] }] }) };
+        if (p.includes('/draw') && opts.drawError) return { ok: false, status: 400, json: async () => ({ error: 'Groups need 4, 6-8 or 12-16 teams; now there are 5' }) };
         if (method === 'GET') return { ok: true, status: 200, json: async () => (opts.empty ? { battles: [], max_score: 100 } : LIST()) };
         if (p.endsWith('/finish') && opts.finishError) return { ok: false, status: 400, json: async () => ({ error: 'Score every team that handed in a project first' }) };
         return { ok: true, status: 200, json: async () => ({ ok: true }) };
@@ -63,4 +67,39 @@ test('finishing needs two clicks; a server refusal is shown in Uzbek', async () 
 test('empty list and lost session', async () => {
     expect((await boot({ empty: true })).c.textContent).toContain("baholashni kutayotgan battle yo'q");
     const lost = await boot({ status: 401 }); expect(lost.onAuth).toHaveBeenCalled();
+});
+
+describe('tournaments section', () => {
+    test('lists tournaments as plain text; only an open one can be drawn or have teams removed', async () => {
+        const { c } = await boot();
+        const open = c.querySelector('[data-tournament="4"]'); const groups = c.querySelector('[data-tournament="5"]');
+        expect(open.textContent).toContain('<b>Kuz</b> kubogi'); expect(c.querySelector('h3 b')).toBeNull();
+        expect(open.textContent).toContain('<i>Beta</i>'); expect(open.querySelector('i')).toBeNull();
+        expect([...open.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Chiqarish', 'Chiqarish', 'Qura tashlash', 'Bekor qilish']);
+        expect(groups.textContent).toContain('B guruhi');
+        expect([...groups.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Bekor qilish']);
+    });
+    test('creating needs a title and a topic and sends the round length', async () => {
+        const { c, calls } = await boot();
+        const f = [...c.querySelectorAll('form')].find((x) => x.textContent.includes('Yangi turnir'));
+        submit(f); await tick();
+        expect(calls.some((x) => x.method === 'POST' && x.p === '/admin/tournaments')).toBe(false);
+        f.querySelector('input[aria-label="Turnir nomi"]').value = 'Kuz kubogi'; f.querySelector('input[aria-label="Mavzu"]').value = 'Python'; f.querySelector('select').value = '3';
+        submit(f); await tick();
+        expect(calls.find((x) => x.method === 'POST' && x.p === '/admin/tournaments').body).toEqual({ title: 'Kuz kubogi', topic: 'Python', round_days: 3 });
+    });
+    test('the draw needs two clicks; a refusal is shown in Uzbek', async () => {
+        const { c, calls } = await boot({ drawError: true });
+        const dr = [...c.querySelectorAll('button')].find((b) => b.textContent === 'Qura tashlash');
+        dr.click(); await tick();
+        expect(calls.some((x) => x.p.endsWith('/draw'))).toBe(false);
+        dr.click(); await tick();
+        expect(calls.find((x) => x.p === '/admin/tournaments/4/draw').method).toBe('POST');
+        expect(c.textContent).toContain('4, 6–8 yoki 12–16 jamoa');
+    });
+    test('removing a team sends its id', async () => {
+        const { c, calls } = await boot();
+        c.querySelector('[data-tournament="4"] [data-team="2"] button').click(); await tick();
+        expect(calls.find((x) => x.p === '/admin/tournaments/4/remove-team').body).toEqual({ team_id: 2 });
+    });
 });

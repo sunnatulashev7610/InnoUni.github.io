@@ -3,6 +3,9 @@ const { authenticateToken, adminOnly, invalidateUserCache } = require('../middle
 const { parseId, validateText } = require('../utils/validation');
 
 const battles = require('./battles');
+const tournaments = require('./tournaments');
+const { TOURNAMENT_LIMITS, groupCount, drawGroups, roundRobin } = require('../utils/tournamentDraw');
+const { notify } = require('../utils/notify');
 const { BATTLE_LIMITS } = require('../utils/battleLimits');
 
 const router = express.Router();
@@ -208,6 +211,77 @@ router.post('/battles/:id/finish', async (req, res) => {
         }
         await battles.closeBattle(req.db, battle.id, battles.rankTable(table), 'judging');
         res.json({ status: 'finished' });
+    } catch (e) { fail(res, e); }
+});
+
+// ---- Seasonal tournaments: create, draw the groups, cancel ----
+router.get('/tournaments', async (req, res) => {
+    try { res.json({ tournaments: await tournaments.loadTournaments(req.db, 0), limits: TOURNAMENT_LIMITS }); } catch (e) { fail(res, e); }
+});
+
+router.post('/tournaments', async (req, res) => {
+    try {
+        const b = req.body || {};
+        const title = validateText(b.title, { field: 'Title', maxLength: TOURNAMENT_LIMITS.maxTitleLength });
+        if (title.error) return res.status(400).json({ error: title.error });
+        const topic = validateText(b.topic, { field: 'Topic', maxLength: TOURNAMENT_LIMITS.maxTopicLength });
+        if (topic.error) return res.status(400).json({ error: topic.error });
+        const days = b.round_days === undefined ? TOURNAMENT_LIMITS.defaultRoundDays : b.round_days;
+        if (!Number.isInteger(days) || days < TOURNAMENT_LIMITS.minRoundDays || days > TOURNAMENT_LIMITS.maxRoundDays) return res.status(400).json({ error: `Round length must be ${TOURNAMENT_LIMITS.minRoundDays}-${TOURNAMENT_LIMITS.maxRoundDays} days` });
+        const [made] = await req.db.execute('INSERT INTO tournaments (title, topic, round_days, created_by) VALUES (?, ?, ?, ?)', [title.value, topic.value, days, req.user.userId]);
+        res.status(201).json({ id: made.insertId });
+    } catch (e) { fail(res, e); }
+});
+
+async function tournamentIn(req, res, statuses) {
+    const id = parseId(req.params.id);
+    if (!id) { res.status(400).json({ error: 'Invalid tournament id' }); return null; }
+    const [rows] = await req.db.execute('SELECT id, title, topic, round_days, status FROM tournaments WHERE id = ?', [id]);
+    if (!rows[0]) { res.status(404).json({ error: 'Tournament not found' }); return null; }
+    if (!statuses.includes(rows[0].status)) { res.status(409).json({ error: 'This step is not possible in the current stage' }); return null; }
+    return rows[0];
+}
+
+router.post('/tournaments/:id/remove-team', async (req, res) => {
+    try {
+        const t = await tournamentIn(req, res, ['open']); if (!t) return;
+        const teamId = parseId(req.body && req.body.team_id);
+        if (!teamId) return res.status(400).json({ error: 'Choose a team' });
+        const [r] = await req.db.execute('DELETE FROM tournament_teams WHERE tournament_id = ? AND team_id = ?', [t.id, teamId]);
+        if (!r.affectedRows) return res.status(404).json({ error: 'Team is not registered' });
+        res.json({ removed: true });
+    } catch (e) { fail(res, e); }
+});
+
+// Closes registration: groups by snake seeding on battle rating, then the whole group-stage fixture list
+router.post('/tournaments/:id/draw', async (req, res) => {
+    try {
+        const t = await tournamentIn(req, res, ['open']); if (!t) return;
+        const [reg] = await req.db.execute('SELECT team_id FROM tournament_teams WHERE tournament_id = ?', [t.id]);
+        if (!groupCount(reg.length)) return res.status(400).json({ error: `Groups need 4, 6-8 or 12-16 teams; now there are ${reg.length}` });
+        const ids = reg.map((r) => r.team_id);
+        const [rated] = await req.db.execute(`SELECT team_id, rating FROM team_battle_stats WHERE team_id IN (${ids.map(() => '?').join(', ')})`, ids);
+        const groups = drawGroups(ids.map((id) => ({ team_id: id, rating: (rated.find((r) => r.team_id === id) || { rating: 1000 }).rating })));
+        const [moved] = await req.db.execute("UPDATE tournaments SET status = 'groups' WHERE id = ? AND status = 'open'", [t.id]);
+        if (!moved.affectedRows) return res.status(409).json({ error: 'This step is not possible in the current stage' });
+        for (let g = 0; g < groups.length; g++) {
+            for (const team of groups[g]) await req.db.execute('UPDATE tournament_teams SET group_no = ?, seed_rating = ? WHERE tournament_id = ? AND team_id = ?', [g + 1, team.rating, t.id, team.team_id]);
+            const rounds = roundRobin(groups[g].map((x) => x.team_id));
+            for (let r = 0; r < rounds.length; r++) {
+                for (const [a, b] of rounds[r]) await req.db.execute("INSERT INTO tournament_matches (tournament_id, stage, group_no, round_no, team_a, team_b) VALUES (?, 'group', ?, ?, ?, ?)", [t.id, g + 1, r + 1, a, b]);
+            }
+        }
+        const [people] = await req.db.execute(`SELECT DISTINCT user_id FROM team_members WHERE status = 'active' AND team_id IN (${ids.map(() => '?').join(', ')})`, ids);
+        await Promise.all(people.map((p) => notify(req.db, p.user_id, { kind: 'tournament', title: "Turnir guruhlari e'lon qilindi", body: t.title, page: 'musobaqalar', refId: t.id })));
+        res.json({ status: 'groups', groups: groups.length });
+    } catch (e) { fail(res, e); }
+});
+
+router.post('/tournaments/:id/cancel', async (req, res) => {
+    try {
+        const t = await tournamentIn(req, res, ['open', 'groups']); if (!t) return;
+        await req.db.execute("UPDATE tournaments SET status = 'cancelled' WHERE id = ?", [t.id]);
+        res.json({ status: 'cancelled' });
     } catch (e) { fail(res, e); }
 });
 
