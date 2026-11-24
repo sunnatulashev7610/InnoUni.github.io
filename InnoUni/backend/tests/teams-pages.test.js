@@ -32,7 +32,11 @@ function boot(state) {
         const body = opts.body ? JSON.parse(opts.body) : undefined;
         calls.push({ path: p, method, body });
         let r = { body: { message: 'ok' } };
-        if (/^\/battles\/teams\/\d+\/record/.test(p)) {
+        if (/^\/tournaments$/.test(p)) {
+            r = { body: state.tournaments === undefined ? { tournaments: [], my_admin_teams: [] } : state.tournaments };
+        } else if (/^\/tournaments\/\d+\/(register|withdraw)/.test(p)) {
+            r = state.regFails ? { ok: false, status: 400, body: { error: 'A team needs at least 3 active members' } } : { body: { registered: true } };
+        } else if (/^\/battles\/teams\/\d+\/record/.test(p)) {
             r = { body: { rating: 1216, league: 'Oltin', played: 4, wins: 2, badges: [{ id: 'first_win', name: "Birinchi g'alaba" }], trophies: [{ battle_id: 1, title: '<b>Kubok</b> battle', ends_at: null }] } };
         } else if (/^\/battles\/leaderboard/.test(p)) {
             r = { body: { teams: [{ team_id: 3, name: '<i>Alfa</i>', rating: 1216, league: 'Oltin', played: 4, wins: 2 }] } };
@@ -664,5 +668,58 @@ describe('competitions: the list of teams', () => {
         expect(tp.querySelectorAll('[data-team]')).toHaveLength(1);
         q.value = 'zzz'; q.dispatchEvent(new t.w.Event('input', { bubbles: true }));
         expect(tp.textContent).toContain('Hech narsa topilmadi');
+    });
+});
+
+
+describe('competitions: seasonal tournaments', () => {
+    const OPEN = { id: 4, title: '<b>Kuz</b> kubogi', topic: 'Python', round_days: 2, status: 'open', teams: [{ team_id: 1, name: 'Python Klub', group_no: null, mine: false }], matches: [] };
+    const mineTeams = [{ id: 3, name: 'Mening jamoam', members: 4 }];
+    test('with no tournament the page explains the format honestly', async () => {
+        const t = boot(makeState()); await t.run('musobaqalar'); await t.flush();
+        expect(pane(t.c, 'season').textContent).toContain('tez orada');
+        expect(pane(t.c, 'season').textContent).toContain('har kim har kim bilan');
+    });
+    test('an admin registers a team in an open tournament; titles are plain text', async () => {
+        const state = makeState(); state.tournaments = { tournaments: [OPEN], my_admin_teams: mineTeams };
+        const t = boot(state); await t.run('musobaqalar'); await t.flush();
+        const sp = pane(t.c, 'season');
+        expect(sp.textContent).toContain("<b>Kuz</b> kubogi"); expect(sp.querySelector('h3 b')).toBeNull();
+        expect(sp.textContent).toContain("Ro'yxatdan o'tish ochiq");
+        const form = sp.querySelector('form');
+        form.dispatchEvent(new t.w.Event('submit', { bubbles: true, cancelable: true })); await t.flush();
+        const call = t.calls.find((c) => c.path === '/tournaments/4/register');
+        expect(call.method).toBe('POST'); expect(call.body).toEqual({ team_id: 3 });
+    });
+    test('a refusal is shown in Uzbek; non-admins get no form', async () => {
+        const state = makeState(); state.tournaments = { tournaments: [OPEN], my_admin_teams: mineTeams }; state.regFails = true;
+        const t = boot(state); await t.run('musobaqalar'); await t.flush();
+        const sp = pane(t.c, 'season');
+        sp.querySelector('form').dispatchEvent(new t.w.Event('submit', { bubbles: true, cancelable: true })); await t.flush();
+        expect(sp.textContent).toContain('kamida 3 ta faol');
+        const s2 = makeState(); s2.tournaments = { tournaments: [OPEN], my_admin_teams: [] };
+        const t2 = boot(s2); await t2.run('musobaqalar'); await t2.flush();
+        expect(pane(t2.c, 'season').querySelector('form')).toBeNull();
+        expect(pane(t2.c, 'season').textContent).toContain("jamoa admini bo'lishingiz kerak");
+    });
+    test('your registered team can be withdrawn', async () => {
+        const state = makeState(); state.tournaments = { tournaments: [Object.assign({}, OPEN, { teams: [{ team_id: 3, name: 'Mening jamoam', group_no: null, mine: true }] })], my_admin_teams: mineTeams };
+        const t = boot(state); await t.run('musobaqalar'); await t.flush();
+        const out = [...pane(t.c, 'season').querySelectorAll('button')].find((b) => b.textContent === 'Chiqarish');
+        out.dispatchEvent(new t.w.Event('click', { bubbles: true })); await t.flush();
+        expect(t.calls.find((c) => c.path === '/tournaments/4/withdraw').body).toEqual({ team_id: 3 });
+    });
+    test('after the draw: groups with seeds and the fixture list by round, as text', async () => {
+        const state = makeState();
+        state.tournaments = { my_admin_teams: [], tournaments: [{ id: 4, title: 'Kuz', topic: 'P', round_days: 2, status: 'groups',
+            teams: [{ team_id: 1, name: 'Alfa', group_no: 1, seed_rating: 1050 }, { team_id: 2, name: '<i>Beta</i>', group_no: 1, seed_rating: 1000 }, { team_id: 3, name: 'Gamma', group_no: 2, seed_rating: 990 }],
+            matches: [{ id: 1, stage: 'group', group_no: 1, round_no: 1, team_a: 1, team_b: 2, name_a: 'Alfa', name_b: '<i>Beta</i>', battle_id: null }] }] };
+        const t = boot(state); await t.run('musobaqalar'); await t.flush();
+        const sp = pane(t.c, 'season');
+        expect(sp.textContent).toContain('Guruh bosqichi');
+        expect(sp.querySelector('[data-group="1"]').textContent).toContain('A guruhi');
+        expect(sp.querySelector('[data-group="1"]').textContent).toContain('1-tur: Alfa — <i>Beta</i>');
+        expect(sp.querySelector('[data-group="1"] i')).toBeNull();
+        expect(sp.querySelector('[data-group="2"]').textContent).toContain('B guruhi');
     });
 });
