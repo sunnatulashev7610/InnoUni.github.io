@@ -389,7 +389,22 @@ router.post('/:id/answer', async (req, res) => {
     } catch (e) { serverError(res, e); }
 });
 
+// A battle made by the platform for a tournament match: starts at once, both teams already in, same questions as the rest of the round
+async function createTournamentBattle(db, { title, topic, days, teamA, teamB, createdBy, questions }) {
+    const [made] = await db.execute(
+        "INSERT INTO battles (title, topic, kind, duration_days, host_team_id, created_by, status, starts_at, ends_at) VALUES (?, ?, 'quiz', ?, ?, ?, 'active', UTC_TIMESTAMP(), DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? DAY))",
+        [title, topic, days, teamA, createdBy, days]);
+    await db.execute("INSERT INTO battle_teams (battle_id, team_id, state) VALUES (?, ?, 'host')", [made.insertId, teamA]);
+    await db.execute("INSERT INTO battle_teams (battle_id, team_id, state) VALUES (?, ?, 'accepted')", [made.insertId, teamB]);
+    for (let i = 0; i < questions.length; i++) {
+        const q = questions[i];
+        await db.execute('INSERT INTO battle_questions (battle_id, position, question, options, correct, explanation) VALUES (?, ?, ?, ?, ?, ?)', [made.insertId, i + 1, q.q, JSON.stringify(q.options), q.answer, q.explanation || null]);
+    }
+    return made.insertId;
+}
+
 module.exports = router;
+module.exports.createTournamentBattle = createTournamentBattle;
 module.exports.closeBattle = closeBattle;
 module.exports.finalizeDue = finalizeDue;
 module.exports.rankTable = rankTable;

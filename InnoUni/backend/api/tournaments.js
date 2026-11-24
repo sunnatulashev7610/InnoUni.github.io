@@ -4,7 +4,8 @@ const express = require('express');
 const { authenticateToken } = require('../middleware/roleBased');
 const { parseId } = require('../utils/validation');
 const { BATTLE_LIMITS } = require('../utils/battleLimits');
-const { TOURNAMENT_LIMITS } = require('../utils/tournamentDraw');
+const { TOURNAMENT_LIMITS, standings } = require('../utils/tournamentDraw');
+const battles = require('./battles');
 const { getTeam, countActive } = require('../utils/teamAccess');
 
 const router = express.Router();
@@ -22,13 +23,37 @@ async function loadTournaments(db, userId, onlyId) {
     const ids = list.map((t) => t.id);
     const [teams] = await db.execute(`SELECT tt.tournament_id, tt.team_id, tt.group_no, tt.seed_rating, t.name, t.captain_id FROM tournament_teams tt JOIN teams t ON t.id = tt.team_id WHERE tt.tournament_id IN (${holes(ids)}) ORDER BY tt.group_no, tt.created_at`, ids);
     const [matches] = await db.execute(`SELECT id, tournament_id, stage, group_no, round_no, team_a, team_b, battle_id FROM tournament_matches WHERE tournament_id IN (${holes(ids)}) ORDER BY round_no, group_no, id`, ids);
+    // Matches that are being played: close the ones whose time is up, then read state and scores
+    const battleIds = matches.filter((m) => m.battle_id).map((m) => m.battle_id);
+    let states = []; let results = [];
+    if (battleIds.length) {
+        await battles.finalizeDue(db, battleIds);
+        [states] = await db.execute(`SELECT id, status FROM battles WHERE id IN (${holes(battleIds)})`, battleIds);
+        [results] = await db.execute(`SELECT battle_id, team_id, score FROM battle_results WHERE battle_id IN (${holes(battleIds)})`, battleIds);
+    }
     return list.map((t) => {
         const mine = teams.filter((x) => x.tournament_id === t.id);
         const name = (id) => (mine.find((x) => x.team_id === id) || {}).name;
+        const ms = matches.filter((m) => m.tournament_id === t.id).map((m) => {
+            const st = m.battle_id ? (states.find((x) => x.id === m.battle_id) || {}).status : null;
+            const sc = (team) => { const r = results.find((x) => x.battle_id === m.battle_id && x.team_id === team); return r ? Number(r.score) : null; };
+            const done = st === 'finished';
+            return { id: m.id, stage: m.stage, group_no: m.group_no, round_no: m.round_no, team_a: m.team_a, team_b: m.team_b, name_a: name(m.team_a), name_b: name(m.team_b), battle_id: m.battle_id,
+                state: !m.battle_id ? 'waiting' : st === 'finished' ? 'finished' : st === 'judging' ? 'judging' : 'active', score_a: done ? sc(m.team_a) : null, score_b: done ? sc(m.team_b) : null };
+        });
+        const groupNos = [...new Set(mine.filter((x) => x.group_no).map((x) => x.group_no))].sort((a, b) => a - b);
+        const groupMs = ms.filter((m) => m.stage === 'group');
+        const pending = groupMs.filter((m) => m.state === 'waiting').map((m) => m.round_no);
+        const next = pending.length ? Math.min(...pending) : null;
         return {
             id: t.id, title: t.title, topic: t.topic, round_days: t.round_days, status: t.status,
             teams: mine.map((x) => ({ team_id: x.team_id, name: x.name, group_no: x.group_no, seed_rating: x.seed_rating, mine: x.captain_id === userId })),
-            matches: matches.filter((m) => m.tournament_id === t.id).map((m) => ({ id: m.id, stage: m.stage, group_no: m.group_no, round_no: m.round_no, team_a: m.team_a, team_b: m.team_b, name_a: name(m.team_a), name_b: name(m.team_b), battle_id: m.battle_id }))
+            matches: ms,
+            groups: groupNos.map((g) => ({ group_no: g, table: standings(mine.filter((x) => x.group_no === g), groupMs.filter((m) => m.group_no === g)) })),
+            rounds_total: groupMs.length ? Math.max(...groupMs.map((m) => m.round_no)) : 0,
+            next_round: next,
+            round_ready: next !== null && groupMs.filter((m) => m.round_no < next).every((m) => m.state === 'finished'),
+            groups_finished: groupMs.length > 0 && groupMs.every((m) => m.state === 'finished')
         };
     });
 }

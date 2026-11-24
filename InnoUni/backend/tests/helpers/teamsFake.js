@@ -144,8 +144,14 @@ function createTeamsFake() {
         if (q.startsWith('SELECT COUNT(*) AS n FROM battle_teams bt JOIN battles x ON x.id = bt.battle_id WHERE bt.team_id = ?')) {
             return [[{ n: s.bteams.filter((b) => b.team_id === p[0] && ['invited', 'active'].includes(s.battles.find((x) => x.id === b.battle_id).status)).length }]];
         }
+        if (q.startsWith("INSERT INTO battles (title, topic, kind, duration_days, host_team_id, created_by, status, starts_at, ends_at)")) { const b = { id: s.bid++, title: p[0], topic: p[1], kind: 'quiz', status: 'active', duration_days: p[2], host_team_id: p[3], created_by: p[4], starts_at: new Date(), ends_at: new Date(Date.now() + p[5] * 86400000) }; s.battles.push(b); return [{ insertId: b.id }]; }
         if (q.startsWith('INSERT INTO battles (')) { const b = { id: s.bid++, title: p[0], topic: p[1], kind: p[2], status: 'invited', duration_days: p[3], host_team_id: p[4], created_by: p[5], starts_at: null, ends_at: null }; s.battles.push(b); return [{ insertId: b.id }]; }
-        if (q.startsWith('INSERT INTO battle_teams (battle_id, team_id, state)')) { s.bteams.push({ battle_id: p[0], team_id: p[1], state: q.includes("'host'") ? 'host' : 'invited' }); return [{}]; }
+        if (q.startsWith('INSERT INTO battle_teams (battle_id, team_id, state)')) { s.bteams.push({ battle_id: p[0], team_id: p[1], state: q.includes("'host'") ? 'host' : q.includes("'accepted'") ? 'accepted' : 'invited' }); return [{}]; }
+        if (q.startsWith('SELECT id, status FROM battles WHERE id IN (')) return [s.battles.filter((b) => p.includes(b.id)).map((b) => ({ id: b.id, status: b.status }))];
+        if (q.startsWith('SELECT battle_id, team_id, score FROM battle_results WHERE battle_id IN (')) return [s.results.filter((r) => p.includes(r.battle_id)).map((r) => ({ battle_id: r.battle_id, team_id: r.team_id, score: r.score }))];
+        if (q === 'UPDATE tournament_matches SET battle_id = ? WHERE id = ? AND battle_id IS NULL') { const m = s.tm.find((x) => x.id === p[1] && x.battle_id === null); if (m) m.battle_id = p[0]; return [{ affectedRows: m ? 1 : 0 }]; }
+        if (q === "UPDATE battles SET status = 'cancelled' WHERE id = ?") { const b = s.battles.find((x) => x.id === p[0]); if (b) b.status = 'cancelled'; return [{ affectedRows: b ? 1 : 0 }]; }
+        if (q.startsWith("UPDATE battles SET status = 'cancelled' WHERE status = 'active' AND id IN (")) { let n = 0; s.battles.forEach((b) => { if (p.includes(b.id) && b.status === 'active') { b.status = 'cancelled'; n++; } }); return [{ affectedRows: n }]; }
         if (q === 'SELECT id, status, host_team_id, title, duration_days, kind, topic FROM battles WHERE id = ?') return [s.battles.filter((b) => b.id === p[0])];
         if (q.startsWith('SELECT bt.team_id, t.name FROM battle_teams bt JOIN teams t ON t.id = bt.team_id WHERE bt.battle_id = ? AND t.captain_id = ?')) {
             return [s.bteams.filter((b) => b.battle_id === p[0] && b.state === 'invited').map((b) => ({ team_id: b.team_id, t: s.teams.find((x) => x.id === b.team_id) })).filter((x) => x.t.captain_id === p[1]).map((x) => ({ team_id: x.team_id, name: x.t.name }))];
