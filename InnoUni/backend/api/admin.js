@@ -6,6 +6,7 @@ const battles = require('./battles');
 const tournaments = require('./tournaments');
 const { TOURNAMENT_LIMITS, STAGES, STAGE_TITLE, groupCount, drawGroups, roundRobin, playoffPairs, firstStage, nextPairs } = require('../utils/tournamentDraw');
 const { notify } = require('../utils/notify');
+const { SLOTS, slotOfRound, cleanQuestions, LIMITS: QUESTION_LIMITS } = require('../utils/tournamentQuestions');
 const ai = require('../utils/aiProvider');
 const { BATTLE_LIMITS } = require('../utils/battleLimits');
 
@@ -245,7 +246,10 @@ router.post('/tournaments/:id/draw', async (req, res) => {
 
 // Starts the next stage: a group round, then the playoffs (quarter-final, semi-final, final). ONE set of AI questions for the whole stage
 // (each team plays once per stage, so nobody answers the same question twice); one battle per match, running at once.
-async function runStage(req, res, t, one, matches, label, titleOf) {
+async function runStage(req, res, t, slot, label) {
+    // The admin's own questions for this stage come first; they cost nothing and need no AI
+    const [own] = await req.db.execute('SELECT question, options, correct, explanation FROM tournament_questions WHERE tournament_id = ? AND slot = ? ORDER BY position', [t.id, slot]);
+    if (own.length) return { questions: own.map((r) => ({ q: r.question, options: JSON.parse(r.options), answer: r.correct, explanation: r.explanation || '' })), own: true };
     if (!ai.isLive()) return res.status(503).json({ error: 'The AI that prepares quiz questions is not connected yet' });
     let made;
     try { made = await ai.battleQuiz({ topic: t.topic, title: label }); } catch (e) {
@@ -271,7 +275,7 @@ router.post('/tournaments/:id/start-round', async (req, res) => {
             if (!one.round_ready) return res.status(409).json({ error: 'The previous round is not finished yet' });
             const round = one.next_round;
             const title = `${t.title} · ${round}-tur`;
-            const made = await runStage(req, res, t, one, null, title); if (!made.questions) return;
+            const made = await runStage(req, res, t, slotOfRound(round), title); if (!made.questions) return;
             const round_matches = one.matches.filter((m) => m.stage === 'group' && m.round_no === round);
             const teamIds = new Set();
             for (const m of round_matches) {
@@ -296,7 +300,7 @@ router.post('/tournaments/:id/start-round', async (req, res) => {
             pairs = nextPairs(one.matches.filter((m) => m.stage === one.playoff_stage).map((m) => m.winner));
         }
         const title = `${t.title} · ${STAGE_TITLE[stage]}`;
-        const made = await runStage(req, res, t, one, null, title); if (!made.questions) return;
+        const made = await runStage(req, res, t, stage, title); if (!made.questions) return;
         // Write the matches first; if a second click wrote them too, only one set stays
         const round_no = STAGES.indexOf(stage) + 1;
         const rows = [];
@@ -318,6 +322,39 @@ router.post('/tournaments/:id/start-round', async (req, res) => {
         if (t.status === 'groups') await req.db.execute("UPDATE tournaments SET status = 'playoffs' WHERE id = ? AND status = 'groups'", [t.id]);
         await tellTeams(req, t, teamIds, `${STAGE_TITLE[stage]} boshlandi`);
         res.json({ stage, matches: rows.length });
+    } catch (e) { fail(res, e); }
+});
+
+// ---- The admin's own questions per stage ----
+const slotIn = (req, res) => {
+    const slot = String(req.params.slot || '');
+    if (!SLOTS.includes(slot)) { res.status(400).json({ error: 'Unknown stage' }); return null; }
+    return slot;
+};
+
+router.get('/tournaments/:id/questions', async (req, res) => {
+    try {
+        const t = await tournamentIn(req, res, ['open', 'groups', 'playoffs']); if (!t) return;
+        const [rows] = await req.db.execute('SELECT slot, position, question, options, correct, explanation FROM tournament_questions WHERE tournament_id = ? ORDER BY slot, position', [t.id]);
+        const slots = {};
+        rows.forEach((r) => { (slots[r.slot] = slots[r.slot] || []).push({ q: r.question, options: JSON.parse(r.options), answer: r.correct, explanation: r.explanation || '' }); });
+        res.json({ slots, all_slots: SLOTS, limits: QUESTION_LIMITS });
+    } catch (e) { fail(res, e); }
+});
+
+// Replaces every question of one stage; an empty list goes back to the AI. Battles that already started keep their own copy.
+router.put('/tournaments/:id/questions/:slot', async (req, res) => {
+    try {
+        const t = await tournamentIn(req, res, ['open', 'groups', 'playoffs']); if (!t) return;
+        const slot = slotIn(req, res); if (!slot) return;
+        const clean = cleanQuestions(req.body && req.body.questions);
+        if (clean.error) return res.status(400).json({ error: clean.error });
+        await req.db.execute('DELETE FROM tournament_questions WHERE tournament_id = ? AND slot = ?', [t.id, slot]);
+        for (let i = 0; i < clean.questions.length; i++) {
+            const x = clean.questions[i];
+            await req.db.execute('INSERT INTO tournament_questions (tournament_id, slot, position, question, options, correct, explanation) VALUES (?, ?, ?, ?, ?, ?, ?)', [t.id, slot, i + 1, x.q, JSON.stringify(x.options), x.answer, x.explanation || null]);
+        }
+        res.json({ slot, count: clean.questions.length });
     } catch (e) { fail(res, e); }
 });
 
