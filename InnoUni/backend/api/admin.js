@@ -23,7 +23,6 @@ async function log(db, adminId, action, targetId, detail) {
 router.get('/stats', async (req, res) => {
     try {
         const [roles] = await req.db.execute('SELECT role, COUNT(*) AS n FROM users GROUP BY role');
-        const [orders] = await req.db.execute('SELECT status, COUNT(*) AS n FROM orders GROUP BY status');
         const [teams] = await req.db.execute('SELECT COUNT(*) AS n FROM teams');
         const [extra] = await req.db.execute(
             'SELECT (SELECT COUNT(*) FROM courses) AS courses, (SELECT COUNT(*) FROM users WHERE email_verified = 0) AS unverified, (SELECT COUNT(*) FROM users WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)) AS new_week');
@@ -31,7 +30,6 @@ router.get('/stats', async (req, res) => {
         const users = by(roles, 'role');
         res.json({
             users: { student: 0, teacher: 0, admin: 0, ...users },
-            orders: { pending: 0, confirmed: 0, rejected: 0, ...by(orders, 'status') },
             teams: Number(teams[0]?.n || 0),
             courses: Number(extra[0]?.courses || 0),
             unverified: Number(extra[0]?.unverified || 0),
@@ -103,39 +101,6 @@ router.get('/teams', async (req, res) => {
         const [teams] = await req.db.execute(
             'SELECT t.id, t.name, t.topics_done, t.achievements, u.full_name AS captain, (SELECT COUNT(*) FROM team_members m WHERE m.team_id = t.id AND m.status = \'active\') AS members FROM teams t JOIN users u ON t.captain_id = u.id ORDER BY t.id DESC');
         res.json({ teams });
-    } catch (e) { fail(res, e); }
-});
-
-// All orders, optional ?status= and ?kind=. Only tariff orders are decided here; the rest are answered by teachers.
-router.get('/orders', async (req, res) => {
-    const { status, kind } = req.query;
-    if (status && !['pending', 'offered', 'confirmed', 'rejected', 'cancelled'].includes(status)) return res.status(400).json({ error: 'Invalid status' });
-    if (kind && !['course', 'material', 'tariff'].includes(kind)) return res.status(400).json({ error: 'Invalid kind' });
-    try {
-        const where = []; const params = [];
-        if (status) { where.push('o.status = ?'); params.push(status); }
-        if (kind) { where.push('o.kind = ?'); params.push(kind); }
-        const [orders] = await req.db.execute(
-            `SELECT o.id, o.kind, o.item_title, o.note, o.price, o.reply, o.status, o.created_at, u.full_name FROM orders o JOIN users u ON o.user_id = u.id${where.length ? ' WHERE ' + where.join(' AND ') : ''} ORDER BY o.id DESC LIMIT 200`,
-            params);
-        res.json({ orders });
-    } catch (e) { fail(res, e); }
-});
-
-// Confirm or reject a tariff order
-router.post('/orders/:id/decision', async (req, res) => {
-    const id = parseId(req.params.id);
-    if (!id) return res.status(400).json({ error: 'Invalid order id' });
-    if (!['confirmed', 'rejected'].includes(req.body.status)) return res.status(400).json({ error: 'Status must be confirmed or rejected' });
-    const reply = validateText(req.body.reply, { field: 'Reply', required: false, maxLength: 1000 });
-    if (reply.error) return res.status(400).json({ error: reply.error });
-    try {
-        const [r] = await req.db.execute(
-            'UPDATE orders SET status = ?, reply = ?, handled_by = ? WHERE id = ? AND kind = \'tariff\' AND status = \'pending\'',
-            [req.body.status, reply.value, req.user.userId, id]);
-        if (!r.affectedRows) return res.status(404).json({ error: 'No pending tariff order with this id' });
-        await log(req.db, req.user.userId, 'order_' + req.body.status, null, 'order #' + id);
-        res.json({ id, status: req.body.status });
     } catch (e) { fail(res, e); }
 });
 

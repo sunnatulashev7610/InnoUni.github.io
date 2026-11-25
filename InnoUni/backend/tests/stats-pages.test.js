@@ -7,7 +7,7 @@ const dataSrc = fs.readFileSync(path.join(root, 'frontend/js/dashboard-data.js')
 const pageSrc = fs.readFileSync(path.join(root, 'frontend/js/dashboard-stats.js'), 'utf8');
 
 const teacherSum = {
-    activeCourses: 2, draftCourses: 1, students: 4, tasksGiven: 6, toGrade: 3, gradedCount: 5, avgGrade: 77.5, ordersPending: 2,
+    activeCourses: 2, draftCourses: 1, students: 4, tasksGiven: 6, toGrade: 3, gradedCount: 5, avgGrade: 77.5,
     courses: [{ id: 1, title: '<b>JS</b>', status: 'active', students: 4, tasks: 6, submitted: 8, avgGrade: 77.5 }],
     week: [0, 1, 2, 3, 4, 5, 6].map((i) => ({ day: '2026-11-0' + (i + 1), count: i })),
     recent: [{ type: 'submission', who: 'Ali Valiyev', what: 'Vazifa 1', at: new Date().toISOString() }],

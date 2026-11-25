@@ -723,8 +723,8 @@
                 if (!item) return;
                 item.textContent = String(n); item.hidden = !(n > 0);
             };
-            if (c.role === 'student') { set('groups', c.groups); set('vazifalar', c.tasksTodo); set('orders', c.ordersAnswered); }
-            if (c.role === 'teacher') { set('t-grading', c.toGrade); set('t-orders', c.ordersPending); set('groups', c.groups); }
+            if (c.role === 'student') { set('groups', c.groups); set('vazifalar', c.tasksTodo); }
+            if (c.role === 'teacher') { set('t-grading', c.toGrade); set('groups', c.groups); }
         },
         api: { get: get, send: send },
         twice: twice,

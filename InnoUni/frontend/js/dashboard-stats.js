@@ -84,7 +84,6 @@
         const todo = card('Diqqat talab qiladi');
         const list = el('div'); list.style.cssText = 'display:grid;gap:10px';
         [[s.toGrade, ' ta javob baholashni kutmoqda', 't-grading', 'fas fa-clipboard-check'],
-         [s.ordersPending, ' ta yangi buyurtma', 't-orders', 'fas fa-inbox'],
          [s.draftCourses, ' ta kurs qoralamada', 't-courses', 'fas fa-pen']].forEach(function (x) {
             if (!x[0]) return;
             const b = el('button', 'pg-todo'); b.type = 'button';

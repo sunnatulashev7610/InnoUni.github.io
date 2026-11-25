@@ -93,11 +93,6 @@
 				<i class="fas fa-chart-line"></i>
 				Natijalar
 			</button>
-			<button class="nav-item" onclick="loadPage('orders', this)">
-				<i class="fas fa-cart-shopping"></i>
-				Buyurtmalar
-				<span class="nav-badge">2</span>
-			</button>
 			<button class="nav-item" onclick="loadPage('pricing', this)">
 				<i class="fas fa-tags"></i>
 				Narxlar
@@ -161,11 +156,6 @@
 			<button class="nav-item" onclick="loadPage('t-students', this)">
 				<i class="fas fa-user-graduate"></i>
 				O'quvchilar
-			</button>
-			<button class="nav-item" onclick="loadPage('t-orders', this)">
-				<i class="fas fa-inbox"></i>
-				Buyurtmalar
-				<span class="nav-badge">3</span>
 			</button>
 			<button class="nav-item" onclick="loadPage('t-create', this)">
 				<i class="fas fa-circle-plus"></i>
@@ -283,7 +273,6 @@
 	<script src="../../frontend/js/dashboard-notifications.js"></script>
 	<script src="../../frontend/js/dashboard-search.js"></script>
 	<script src="../../frontend/js/dashboard-teacher.js"></script>
-	<script src="../../frontend/js/dashboard-orders.js"></script>
 	<script src="../../frontend/js/dashboard-stats.js"></script>
 	<script src="../../frontend/js/dashboard-ai.js"></script>
 	<script src="../../frontend/js/dashboard-ai-hub.js"></script>
@@ -298,7 +287,7 @@
 		// The three AI tools live in one section; old links to them open the matching tab there
 		var AI_TABS = { ai: 'ai', 'ai-courses': 'ai-courses', 'ai-materials': 'ai-materials' };
 		document.querySelectorAll('[data-feature]').forEach(function (n) { n.hidden = !FEATURES[n.dataset.feature]; });
-		// Demo visitors (no sign-in) only look from the outside: no course or group interior, no real orders.
+		// Demo visitors (no sign-in) only look from the outside: no course or group interior.
 		var DEMO_LOCKED = { 'course-detail': 1, 'group-detail': 1, 'ai-lesson': 1 };
 		function demoNotice(text) {
 			var old = document.querySelector('.pg-toast.demo'); if (old) old.remove();
@@ -475,7 +464,7 @@
 				bar.className = 'demo-bar'; bar.setAttribute('role', 'note');
 				bar.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;padding:10px 16px;margin-bottom:14px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line);font-size:.92rem';
 				var tx = document.createElement('span');
-				tx.textContent = "Demo rejim: kurslar, guruhlar va buyurtmalar faqat ko'rish uchun.";
+				tx.textContent = "Demo rejim: kurslar va guruhlar faqat ko'rish uchun.";
 				var acts = document.createElement('span'); acts.style.cssText = 'display:flex;gap:12px;font-weight:600';
 				[['Ro\'yxatdan o\'tish', '../login/register.html'], ['Kirish', '../login/login.html']].forEach(function (l) {
 					var a = document.createElement('a'); a.textContent = l[0]; a.href = l[1]; acts.appendChild(a);
@@ -603,84 +592,11 @@
 				send(form.closest('[data-chat]'), input.value);
 				input.value = '';
 			});
-			// ---- Pricing page: monthly/yearly switch and "choose plan" -> pre-filled order ----
-			function openOrderWith(type, item, fmtIndex) {
-				var btn = navFor(currentRole === 'teacher' ? 't-orders' : 'orders');
-				if (session) {
-					// real mode: the orders page builds its own form and reads this preset
-					window.GEData.ctx.orderPreset = { type: type, item: item, yearly: fmtIndex === 1 };
-					loadPage('orders', btn);
-					return;
-				}
-				loadPage('orders', btn);
-				var tries = 0;
-				var timer = setInterval(function () {
-					var form = content.querySelector('#orderForm');
-					if (form || ++tries > 40) {
-						clearInterval(timer);
-						if (!form) return;
-						orderSetType(type);
-						var sel = content.querySelector('#orderItem');
-						Array.prototype.forEach.call(sel.options, function (o, k) { if (o.value === item) sel.selectedIndex = k; });
-						content.querySelector('#orderFormat').selectedIndex = fmtIndex;
-						orderUpdateTotal();
-					}
-				}, 50);
-			}
-			// ---- Orders page ----
 			function money(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + " so'm"; }
-			function catalog() { var el = content.querySelector('#orderCatalog'); return el ? JSON.parse(el.textContent) : null; }
-			function orderUpdateTotal() {
-				var sel = content.querySelector('#orderItem');
-				var opt = sel && sel.options[sel.selectedIndex];
-				if (!opt) return;
-				var isTarif = content.querySelector('.pg-seg .on').dataset.orderType === 'tarif';
-				var yearly = isTarif && content.querySelector('#orderFormat').selectedIndex === 1;
-				content.querySelector('#orderTotal').textContent = money(yearly ? Math.round(opt.dataset.price * 12 * 0.8) : opt.dataset.price);
-			}
-			function orderSetType(type) {
-				var cat = catalog(); if (!cat) return;
-				var seg = content.querySelector('.pg-seg');
-				seg.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.dataset.orderType === type); });
-				var item = content.querySelector('#orderItem'), fmt = content.querySelector('#orderFormat');
-				item.textContent = ''; fmt.textContent = '';
-				cat[type].items.forEach(function (it) { var o = document.createElement('option'); o.value = it.n; o.textContent = it.n; o.dataset.price = it.p; item.appendChild(o); });
-				cat[type].formats.forEach(function (f) { var o = document.createElement('option'); o.textContent = f; fmt.appendChild(o); });
-				orderUpdateTotal();
-			}
-			content.addEventListener('change', function (e) { if (e.target.id === 'orderItem' || e.target.id === 'orderFormat') orderUpdateTotal(); });
 			function toast(text) {
 				var t = document.createElement('div'); t.className = 'pg-toast'; t.textContent = text;
 				document.body.appendChild(t); setTimeout(function () { t.remove(); }, 3500);
 			}
-			content.addEventListener('submit', function (e) {
-				if (e.target.id !== 'orderForm') return;
-				e.preventDefault();
-				if (!session) { demoNotice("Demo rejimida buyurtma berib bo'lmaydi. Ro'yxatdan o'ting yoki hisobingizga kiring."); return; }
-				var type = content.querySelector('.pg-seg .on').dataset.orderType;
-				var sel = content.querySelector('#orderItem'), opt = sel.options[sel.selectedIndex];
-				var list = content.querySelector('#pgFilterTarget');
-				var id = 'GE-' + (1043 + list.children.length - 5);
-				var row = document.createElement('div');
-				row.className = 'pg-order new'; row.dataset.cat = type;
-				var ic = document.createElement('div'); ic.className = 'ic';
-				var look = { kurs: ['rgba(108,183,240,.2)', '#6cb7f0', 'fa-graduation-cap'], material: ['rgba(246,183,60,.2)', '#f6b73c', 'fa-book'], tarif: ['rgba(255,122,89,.2)', '#ff7a59', 'fa-crown'] }[type];
-				ic.style.background = look[0]; ic.style.color = look[1];
-				var i = document.createElement('i'); i.className = 'fas ' + look[2]; ic.appendChild(i);
-				var mid = document.createElement('div'); mid.className = 'mid';
-				var b = document.createElement('b'); b.textContent = opt.value;
-				var sp = document.createElement('span'); sp.className = 'pg-muted';
-				sp.textContent = id + ' \u00b7 ' + content.querySelector('#orderFormat').value + ' \u00b7 hozir';
-				mid.appendChild(b); mid.appendChild(sp);
-				var end = document.createElement('div'); end.className = 'end';
-				var pr = document.createElement('b'); pr.textContent = content.querySelector('#orderTotal').textContent;
-				var pill = document.createElement('span'); pill.className = 'pg-pill sun'; pill.textContent = 'Kutilmoqda';
-				end.appendChild(pr); end.appendChild(pill);
-				row.appendChild(ic); row.appendChild(mid); row.appendChild(end);
-				list.insertBefore(row, list.firstChild); // text only, never HTML
-				content.querySelector('#orderNote').value = '';
-				toast('Buyurtma qabul qilindi: ' + id);
-			});
 			/* ---- Team space: discussion, Q&A, resources (textContent only) ---- */
 			function mk(tag, cls, text) { var el = document.createElement(tag); if (cls) el.className = cls; if (text) el.textContent = text; return el; }
 			content.addEventListener('submit', function (e) {
@@ -821,12 +737,6 @@
 				q('#gdStudent').textContent = btn.dataset.student; q('#gdAnswer').textContent = btn.dataset.answer.replace(/\\n/g, '\n');
 				q('#gradeForm').dataset.current = btn.dataset.task;
 			}
-			function recount() {
-				['wait', 'ok', 'bad'].forEach(function (k) {
-					var el = q('#ord' + { wait: 'Wait', ok: 'Ok', bad: 'Bad' }[k]);
-					if (el) el.textContent = content.querySelectorAll('.pg-order[data-state="' + k + '"]').length;
-				});
-			}
 			content.addEventListener('click', function (e) {
 				var a = e.target.closest('[data-action]');
 				if (a && a.dataset.action === 'add-lesson') {
@@ -851,15 +761,6 @@
 				if (sub) { pickSub(sub); return; }
 				var qs = e.target.closest('#quickScores [data-score]');
 				if (qs) { q('#gScore').value = qs.dataset.score; return; }
-				var oa = e.target.closest('[data-order-act]');
-				if (oa) {
-					var row = oa.closest('.pg-order'), ok = oa.dataset.orderAct === 'ok';
-					row.dataset.state = row.dataset.cat = ok ? 'ok' : 'bad';
-					var st = row.querySelector('.state'); st.textContent = '';
-					var pill = document.createElement('span'); pill.className = 'pg-pill' + (ok ? '' : ' coral'); pill.textContent = ok ? 'Tasdiqlangan' : 'Rad etilgan';
-					st.appendChild(pill); row.querySelector('.acts').textContent = '';
-					recount(); toast(ok ? 'Buyurtma tasdiqlandi' : 'Buyurtma rad etildi');
-				}
 			});
 			content.addEventListener('input', function (e) {
 				if (e.target.closest('#courseForm')) courseSync();
@@ -936,14 +837,8 @@
 					var yearly = bill.dataset.billing === '1';
 					bill.parentNode.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b === bill); });
 					content.querySelectorAll('#pricingPlans .amt').forEach(function (a) { var m = Number(a.dataset.m); a.textContent = money(yearly ? Math.round(m * 0.8) : m).replace(" so'm", ''); });
-					content.querySelectorAll('#pricingPlans .pg-plan-btn[data-order-preset]').forEach(function (b) { var p = b.dataset.orderPreset.split('|'); p[2] = yearly ? '1' : '0'; b.dataset.orderPreset = p.join('|'); });
 					return;
 				}
-				var preset = e.target.closest('[data-order-preset]');
-				if (preset) { var pp = preset.dataset.orderPreset.split('|'); openOrderWith(pp[0], pp[1], Number(pp[2])); return; }
-				var ot = e.target.closest('[data-order-type]');
-				if (ot) { orderSetType(ot.dataset.orderType); return; }
-				if (e.target.closest('[data-action="focus-order"]')) { var f = content.querySelector('#orderForm'); if (f) { f.scrollIntoView({ behavior: 'smooth', block: 'center' }); content.querySelector('#orderItem').focus(); } return; }
 				var hand = e.target.closest('[data-action="raise-hand"]');
 				if (hand) hand.classList.toggle('on');
 			});

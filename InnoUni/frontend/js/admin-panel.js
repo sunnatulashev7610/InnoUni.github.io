@@ -48,10 +48,8 @@
             grid.appendChild(statCard('fas fa-book', s.courses, 'Kurslar', 'var(--brand-soft)', 'var(--brand-ink)'));
             grid.appendChild(statCard('fas fa-people-group', s.teams, 'Jamoalar', 'var(--warn-soft)', 'var(--warn)'));
             grid.appendChild(statCard('fas fa-user-plus', s.new_week, 'Oxirgi 7 kunda yangi', 'var(--info-soft)', 'var(--info)'));
-            grid.appendChild(statCard('fas fa-hourglass-half', s.orders.pending, 'Kutilayotgan buyurtma', 'var(--danger-soft)', 'var(--danger)'));
             todo.appendChild(el('b', '', 'Kutilayotgan ishlar'));
             const items = [];
-            if (s.orders.pending) items.push(s.orders.pending + ' ta buyurtma tasdiqlashni kutmoqda (Buyurtmalar bo\'limi).');
             if (s.unverified) items.push(s.unverified + ' ta foydalanuvchi emailini hali tasdiqlamagan.');
             if (!items.length) items.push('Hozircha hammasi joyida.');
             items.forEach(function (t) { const p = el('p', 'pg-muted', t); p.style.margin = '6px 0 0'; todo.appendChild(p); });

@@ -46,14 +46,12 @@
 			<div class="sidebar-title">Boshqaruv</div>
 			<button class="nav-item active" onclick="loadPage('a-home', this)"><i class="fas fa-gauge"></i>Umumiy</button>
 			<button class="nav-item" onclick="loadPage('a-users', this)"><i class="fas fa-users-gear"></i>Foydalanuvchilar</button>
-			<button class="nav-item" onclick="loadPage('a-orders', this)"><i class="fas fa-receipt"></i>Buyurtmalar</button>
 			<button class="nav-item" onclick="loadPage('a-battles', this)"><i class="fas fa-trophy"></i>Battlelar</button>
 		</div>
 	</nav>
 	<main class="main"><div class="content-area" id="content"><div class="loading"><div class="spinner"></div></div></div></main>
 	<script src="../../frontend/js/theme.js"></script>
 	<script src="../../frontend/js/config.js"></script>
-	<script src="../../frontend/js/admin-orders.js"></script>
 	<script src="../../frontend/js/admin-battles.js"></script>
 	<script src="../../frontend/js/admin-panel.js"></script>
 	<script>
@@ -78,7 +76,6 @@
 					content.innerHTML = h;
 					var tk = null; try { tk = localStorage.getItem('token'); } catch (e) {}
 					var out = function () { location.replace('admin-login.html'); };
-					if (page === 'a-orders' && tk && window.AdminOrders) window.AdminOrders.render(content, tk, out, toast);
 					if (page === 'a-battles' && tk && window.AdminBattles) window.AdminBattles.render(content, tk, out, toast);
 					if (page === 'a-home' && tk && window.AdminPanel) window.AdminPanel.home(content, tk, out, toast);
 					if (page === 'a-users' && tk && window.AdminPanel) {
@@ -106,13 +103,6 @@
 				aa.textContent = blocked ? 'Blokdan chiqarish' : 'Bloklash';
 				toast(blocked ? 'Foydalanuvchi bloklandi' : 'Blok olib tashlandi');
 				return;
-			}
-			var ao = e.target.closest('[data-adm-order]');
-			if (ao) {
-				var ok = ao.dataset.admOrder === 'ok', row = ao.closest('tr'), st = row.querySelector('.state');
-				st.textContent = ok ? 'Tasdiqlangan' : 'Rad etilgan'; st.className = 'state pg-pill' + (ok ? '' : ' coral');
-				row.querySelector('.acts').textContent = '';
-				toast(ok ? 'Buyurtma tasdiqlandi' : 'Buyurtma rad etildi');
 			}
 		});
 		content.addEventListener('input', function (e) {
