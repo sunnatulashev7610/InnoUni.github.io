@@ -304,7 +304,7 @@ app.use('/api/auth/resend-verification', authLimiter); // guards the current-pas
 app.use('/api/auth', authRouter);
 app.use('/api/student', studentRouter);
 app.use('/api/teacher', teacherRouter);
-app.use('/api/groups', groupsRouter);
+app.use('/api/groups', requireFeature('groups'), groupsRouter);
 app.use('/api/summary', summaryRouter);
 app.use('/api/dashboard', authenticateToken, dashboardRouter);
 app.use('/api/teams', requireFeature('teams'), teamsRouter);

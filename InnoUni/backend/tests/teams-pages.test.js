@@ -330,7 +330,7 @@ describe('wiring', () => {
         expect(html).toContain('frontend/js/dashboard-teams.js');
         expect(html.indexOf('dashboard-team-chat.js')).toBeGreaterThan(-1);
         expect(html.indexOf('dashboard-team-chat.js')).toBeLessThan(html.indexOf('dashboard-teams.js'));
-        expect(html).toMatch(/var FEATURES = \{ teams: true, library: false \}/);
+        expect(html).toMatch(/var FEATURES = \{ teams: true, library: false, groups: false, courses: false \}/);
     });
 
     test('the demo form has the same fields', () => {

@@ -6,7 +6,9 @@ const FLAGS = {
     library: { env: 'FEATURE_LIBRARY', fallback: false },
     ai: { env: 'FEATURE_AI', fallback: true },
     // Teacher accounts and the teacher cabinet. Closed for now: the app is built for students first (FEATURE_TEACHERS=true opens it)
-    teachers: { env: 'FEATURE_TEACHERS', fallback: false }
+    teachers: { env: 'FEATURE_TEACHERS', fallback: false },
+    // Study groups and the public course catalog are closed for now: the focus is teams and competitions (FEATURE_GROUPS=true opens groups)
+    groups: { env: 'FEATURE_GROUPS', fallback: false }
 };
 
 function isEnabled(name) {
