@@ -293,7 +293,7 @@
         const id = window.GEData.ctx.courseId;
         pg.textContent = '';
         const back = el('button', 'pg-back'); back.type = 'button';
-        back.appendChild(el('i', 'fas fa-arrow-left')); back.appendChild(document.createTextNode(' Barcha kurslar'));
+        back.appendChild(el('i', 'fas fa-arrow-left')); back.appendChild(document.createTextNode(window.FEATURES && window.FEATURES.courses === false ? ' AI kurslarim' : ' Barcha kurslar'));
         back.addEventListener('click', function () { window.GEData.open('courses', 'courses'); });
         pg.appendChild(back);
         if (!id) { pg.appendChild(el('p', 'pg-muted', 'Kursni "Kurslar" sahifasidan tanlang.')); return; }

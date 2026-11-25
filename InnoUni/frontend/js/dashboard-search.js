@@ -33,13 +33,14 @@
             }));
         } else {
             jobs.push(get('/student/courses', session).then(function (d) {
-                (d.courses || []).forEach(function (c) { items.push({ kind: 'Kurs', title: c.title, sub: [c.category, c.teacher].filter(Boolean).join(' '), go: function () { G.ctx.courseId = c.id; G.open('course-detail', 'courses'); } }); });
+                // the public catalog is closed: only the courses the student is in
+                (d.courses || []).filter(function (c) { return c.enrolled || !(window.FEATURES && window.FEATURES.courses === false); }).forEach(function (c) { items.push({ kind: 'Kurs', title: c.title, sub: [c.category, c.teacher].filter(Boolean).join(' '), go: function () { G.ctx.courseId = c.id; G.open('course-detail', 'courses'); } }); });
             }));
             jobs.push(get('/student/tasks', session).then(function (d) {
                 (d.tasks || []).forEach(function (t) { items.push({ kind: 'Vazifa', title: t.title, sub: t.course, go: function () { G.open('vazifalar', 'vazifalar'); } }); });
             }));
         }
-        jobs.push(get('/groups', session).then(function (d) {
+        if (!(window.FEATURES && window.FEATURES.groups === false)) jobs.push(get('/groups', session).then(function (d) {
             (d.groups || []).forEach(function (g) { items.push({ kind: 'Guruh', title: g.name, sub: '', go: function () { G.ctx.groupId = g.id; G.open('group-detail', 'groups'); } }); });
         }));
         // one failing source must not break the others
