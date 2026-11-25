@@ -15,6 +15,7 @@
         if (!res.ok) { const e = new Error(out.error || 'HTTP ' + res.status); e.status = res.status; throw e; }
         return out;
     }
+    const STAGE_NAME = { quarter: 'Chorak final', semi: 'Yarim final', final: 'Final' };
     function say(m) {
         if (/Score every team/i.test(m)) return "Avval topshirgan har bir jamoani baholang.";
         if (/whole number/i.test(m)) return "Ball 0 dan 100 gacha butun son bo'lsin.";
@@ -22,6 +23,10 @@
         if (/Could not prepare/i.test(m)) return "Savollarni tayyorlab bo'lmadi. Bir daqiqadan keyin qayta urining.";
         if (/previous round is not finished/i.test(m)) return "Oldingi tur hali tugamagan.";
         if (/rounds have already started/i.test(m)) return "Barcha turlar allaqachon boshlangan.";
+        if (/group stage is not finished/i.test(m)) return "Guruh bosqichi hali tugamagan.";
+        if (/previous stage is not finished/i.test(m)) return "Oldingi bosqich hali tugamagan.";
+        if (/already started/i.test(m)) return "Bu bosqich allaqachon boshlangan.";
+        if (/tournament is over/i.test(m)) return "Turnir tugagan.";
         if (/Groups need/i.test(m)) return "Guruh tuzish uchun 4, 6–8 yoki 12–16 jamoa kerak. Hozirgi sonni o'zgartiring.";
         if (/not possible in the current stage/i.test(m)) return "Bu qadam hozirgi bosqichda mumkin emas.";
         if (/Round length/i.test(m)) return "Tur davomiyligi 1–7 kun bo'lsin.";
@@ -82,8 +87,10 @@
                         }
                         c.appendChild(row);
                     });
+                    if (t.champion) c.appendChild(el('p', 'pg-muted', '🏆 Chempion: ' + t.champion.name));
+                    else if (t.playoff_stage) c.appendChild(el('p', 'pg-muted', 'Pley-off: ' + (STAGE_NAME[t.playoff_stage]) + (t.stage_finished ? ' tugadi.' : ' davom etmoqda.')));
                     if (t.status === 'groups') {
-                        c.appendChild(el('p', 'pg-muted', t.groups_finished ? "Guruh bosqichi tugadi. Pley-off keyingi bosqichda." : (t.next_round ? 'Keyingi: ' + t.next_round + '-tur (jami ' + t.rounds_total + ' tur)' + (t.round_ready ? '' : '. Oldingi tur tugashini kuting.') : '')));
+                        c.appendChild(el('p', 'pg-muted', t.groups_finished ? "Guruh bosqichi tugadi. Pley-offni boshlashingiz mumkin." : (t.next_round ? 'Keyingi: ' + t.next_round + '-tur (jami ' + t.rounds_total + ' tur)' + (t.round_ready ? '' : '. Oldingi tur tugashini kuting.') : '')));
                     }
                     const bar = el('div'); bar.style.cssText = 'display:flex;gap:8px;margin-top:10px;flex-wrap:wrap';
                     if (t.status === 'groups' && t.next_round) {
@@ -96,6 +103,16 @@
                         });
                         bar.appendChild(sr);
                     }
+                    if ((t.status === 'groups' || t.status === 'playoffs') && t.next_stage) {
+                        const label = t.next_stage === 'start' ? 'Pley-offni boshlash' : STAGE_NAME[t.next_stage] + 'ni boshlash';
+                        const ps = el('button', 'pg-btn', label); ps.type = 'button'; let armed2 = false;
+                        ps.addEventListener('click', function () {
+                            if (!armed2) { armed2 = true; ps.textContent = 'Aniqmi? Qayta bosing'; setTimeout(function () { armed2 = false; ps.textContent = label; }, 4000); return; }
+                            ps.disabled = true; msg.textContent = 'Savollar tayyorlanmoqda…';
+                            act('/admin/tournaments/' + t.id + '/start-round', {}, 'Bosqich boshlandi').then(function () { ps.disabled = false; });
+                        });
+                        bar.appendChild(ps);
+                    }
                     if (t.status === 'open') {
                         const dr = el('button', 'pg-btn', 'Qura tashlash'); dr.type = 'button'; let armed = false;
                         dr.addEventListener('click', function () {
@@ -104,7 +121,7 @@
                         });
                         bar.appendChild(dr);
                     }
-                    if (t.status === 'open' || t.status === 'groups') {
+                    if (t.status === 'open' || t.status === 'groups' || t.status === 'playoffs') {
                         const cn = el('button', 'pg-btn ghost', 'Bekor qilish'); cn.type = 'button'; let sure = false;
                         cn.addEventListener('click', function () {
                             if (!sure) { sure = true; cn.textContent = 'Aniqmi? Qayta bosing'; setTimeout(function () { sure = false; cn.textContent = 'Bekor qilish'; }, 4000); return; }

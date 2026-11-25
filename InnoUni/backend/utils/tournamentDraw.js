@@ -66,4 +66,36 @@ function standings(teams, matches) {
         .map((r, i) => ({ ...r, rank: i + 1 }));
 }
 
-module.exports = { TOURNAMENT_LIMITS, groupCount, drawGroups, roundRobin, standings };
+// ---- Playoffs: the best 2 of every group; knockout (quarter-final -> semi-final -> final) ----
+const STAGES = ['quarter', 'semi', 'final'];
+const STAGE_TITLE = { quarter: 'Chorak final', semi: 'Yarim final', final: 'Final' };
+
+// groups: [{group_no, table:[{team_id, rank}]}] sorted by group. Winners meet runners-up of another group (A1-B2, B1-A2 ...).
+function playoffPairs(groups) {
+    const g = groups.slice().sort((x, y) => x.group_no - y.group_no);
+    const top = (i, rank) => (g[i].table.find((r) => r.rank === rank) || {}).team_id;
+    if (g.length === 1) return [[top(0, 1), top(0, 2)]];
+    if (g.length === 2) return [[top(0, 1), top(1, 2)], [top(1, 1), top(0, 2)]];
+    if (g.length === 4) return [[top(0, 1), top(1, 2)], [top(2, 1), top(3, 2)], [top(1, 1), top(0, 2)], [top(3, 1), top(2, 2)]];
+    return null;
+}
+const firstStage = (pairCount) => ({ 1: 'final', 2: 'semi', 4: 'quarter' }[pairCount] || null);
+
+// Winners of a stage (in match order) meet two by two in the next one
+function nextPairs(winners) {
+    const out = [];
+    for (let i = 0; i + 1 < winners.length; i += 2) out.push([winners[i], winners[i + 1]]);
+    return out;
+}
+
+// Knockout winner of a finished match. A draw goes to the team that was better in the groups (lower rank, then higher seed rating).
+// rankOf: {team_id: {rank, seed_rating}}
+function knockoutWinner(m, rankOf) {
+    if (typeof m.score_a !== 'number' || typeof m.score_b !== 'number') return null;
+    if (m.score_a !== m.score_b) return m.score_a > m.score_b ? m.team_a : m.team_b;
+    const a = rankOf[m.team_a] || { rank: 99, seed_rating: 0 }; const b = rankOf[m.team_b] || { rank: 99, seed_rating: 0 };
+    if (a.rank !== b.rank) return a.rank < b.rank ? m.team_a : m.team_b;
+    return a.seed_rating >= b.seed_rating ? m.team_a : m.team_b;
+}
+
+module.exports = { TOURNAMENT_LIMITS, groupCount, drawGroups, roundRobin, standings, STAGES, STAGE_TITLE, playoffPairs, firstStage, nextPairs, knockoutWinner };

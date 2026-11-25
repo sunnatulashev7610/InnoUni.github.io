@@ -4,7 +4,7 @@ const express = require('express');
 const { authenticateToken } = require('../middleware/roleBased');
 const { parseId } = require('../utils/validation');
 const { BATTLE_LIMITS } = require('../utils/battleLimits');
-const { TOURNAMENT_LIMITS, standings } = require('../utils/tournamentDraw');
+const { TOURNAMENT_LIMITS, standings, STAGES, knockoutWinner } = require('../utils/tournamentDraw');
 const battles = require('./battles');
 const { getTeam, countActive } = require('../utils/teamAccess');
 
@@ -45,15 +45,32 @@ async function loadTournaments(db, userId, onlyId) {
         const groupMs = ms.filter((m) => m.stage === 'group');
         const pending = groupMs.filter((m) => m.state === 'waiting').map((m) => m.round_no);
         const next = pending.length ? Math.min(...pending) : null;
+        const groups = groupNos.map((g) => ({ group_no: g, table: standings(mine.filter((x) => x.group_no === g), groupMs.filter((m) => m.group_no === g)) }));
+        const groupsFinished = groupMs.length > 0 && groupMs.every((m) => m.state === 'finished');
+        // Playoffs: a knockout draw goes to the team that was better in the groups
+        const rankOf = {};
+        groups.forEach((g) => g.table.forEach((r) => { rankOf[r.team_id] = { rank: r.rank, seed_rating: r.seed_rating }; }));
+        ms.forEach((m) => { if (m.stage !== 'group') m.winner = m.state === 'finished' ? knockoutWinner(m, rankOf) : null; });
+        const stagesStarted = STAGES.filter((st) => ms.some((m) => m.stage === st));
+        const lastStage = stagesStarted.length ? stagesStarted[stagesStarted.length - 1] : null;
+        const lastMs = lastStage ? ms.filter((m) => m.stage === lastStage) : [];
+        const stageFinished = lastMs.length > 0 && lastMs.every((m) => m.state === 'finished');
+        const finalMatch = ms.find((m) => m.stage === 'final');
+        const champId = finalMatch && finalMatch.winner ? finalMatch.winner : null;
         return {
-            id: t.id, title: t.title, topic: t.topic, round_days: t.round_days, status: t.status,
+            id: t.id, title: t.title, topic: t.topic, round_days: t.round_days, status: champId ? 'finished' : t.status,
             teams: mine.map((x) => ({ team_id: x.team_id, name: x.name, group_no: x.group_no, seed_rating: x.seed_rating, mine: x.captain_id === userId })),
             matches: ms,
-            groups: groupNos.map((g) => ({ group_no: g, table: standings(mine.filter((x) => x.group_no === g), groupMs.filter((m) => m.group_no === g)) })),
+            groups,
             rounds_total: groupMs.length ? Math.max(...groupMs.map((m) => m.round_no)) : 0,
             next_round: next,
             round_ready: next !== null && groupMs.filter((m) => m.round_no < next).every((m) => m.state === 'finished'),
-            groups_finished: groupMs.length > 0 && groupMs.every((m) => m.state === 'finished')
+            groups_finished: groupsFinished,
+            playoff_stage: lastStage,
+            stage_finished: stageFinished,
+            // What the admin can start now: the first playoff stage once the groups are over, then each next stage once the one before is finished
+            next_stage: groupsFinished ? (lastStage === null ? 'start' : stageFinished && lastStage !== 'final' ? STAGES[STAGES.indexOf(lastStage) + 1] : null) : null,
+            champion: champId ? { team_id: champId, name: name(champId) } : null
         };
     });
 }

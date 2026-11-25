@@ -734,4 +734,29 @@ describe('competitions: seasonal tournaments', () => {
         expect(pane(t.c, 'battle').hidden).toBe(false);
     });
 
+    test('playoffs: stage cards with winners, the champion on top, all as text', async () => {
+        const state = makeState();
+        const m = (id, stage, a, b, st, sa, sb, w) => ({ id, stage, group_no: null, round_no: 1, team_a: a, team_b: b, name_a: a === 1 ? '<i>Alfa</i>' : 'Beta', name_b: b === 2 ? 'Beta' : 'Gamma', battle_id: 20 + id, state: st, score_a: sa, score_b: sb, winner: w });
+        state.tournaments = { my_admin_teams: [], tournaments: [{ id: 4, title: 'Kuz', topic: 'P', round_days: 2, status: 'finished', next_round: null, groups_finished: true, playoff_stage: 'final', stage_finished: true,
+            champion: { team_id: 1, name: '<b>Alfa</b>' }, teams: [], groups: [],
+            matches: [m(1, 'semi', 1, 2, 'finished', 5, 2, 1), m(2, 'semi', 3, 4, 'finished', 1, 3, 4), m(3, 'final', 1, 2, 'finished', 4, 4, 1)] }] };
+        const t = boot(state); await t.run('musobaqalar'); await t.flush();
+        const sp = pane(t.c, 'season');
+        expect(sp.querySelector('[data-champion="1"]').textContent).toContain('Chempion: <b>Alfa</b>');
+        expect(sp.querySelector('[data-stage="semi"]').textContent).toContain('Yarim final');
+        expect(sp.querySelector('[data-stage="semi"]').textContent).toContain('<i>Alfa</i> 5 : 2 Beta → <i>Alfa</i>');
+        expect(sp.querySelector('[data-stage="final"]').textContent).toContain('Final');
+        expect(sp.querySelector('b')).toBeNull(); expect(sp.querySelector('i')).toBeNull();
+    });
+    test('playoffs running: the page says how a draw is decided', async () => {
+        const state = makeState();
+        state.tournaments = { my_admin_teams: [], tournaments: [{ id: 4, title: 'Kuz', topic: 'P', round_days: 2, status: 'playoffs', next_round: null, groups_finished: true, playoff_stage: 'final', stage_finished: false, champion: null, teams: [], groups: [],
+            matches: [{ id: 3, stage: 'final', group_no: null, round_no: 3, team_a: 1, team_b: 2, name_a: 'Alfa', name_b: 'Beta', battle_id: 9, state: 'active', score_a: null, score_b: null, winner: null }] }] };
+        const t = boot(state); await t.run('musobaqalar'); await t.flush();
+        const sp = pane(t.c, 'season');
+        expect(sp.textContent).toContain('Pley-off');
+        expect(sp.textContent).toContain("Alfa — Beta (o'ynalmoqda)");
+        expect(sp.textContent).toContain('Durang');
+    });
+
 });
