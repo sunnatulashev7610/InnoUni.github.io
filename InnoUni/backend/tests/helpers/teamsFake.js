@@ -210,6 +210,8 @@ function createTeamsFake() {
             return [{}];
         }
         if (q.startsWith('SELECT team_id, rating, played, wins FROM team_battle_stats WHERE team_id = ?')) return [s.stats[p[0]] ? [{ team_id: p[0], ...s.stats[p[0]] }] : []];
+        if (q.startsWith('SELECT r.battle_id, r.score, b.title, b.ends_at FROM battle_results r JOIN battles b')) return [s.results.filter((r) => r.team_id === p[0]).map((r) => { const b = s.battles.find((x) => x.id === r.battle_id); return { battle_id: r.battle_id, score: r.score, title: b.title, ends_at: b.ends_at }; }).sort((x, y) => y.ends_at - x.ends_at || y.battle_id - x.battle_id).slice(0, 5)];
+        if (q.startsWith('SELECT r.battle_id, r.team_id, r.score, t.name FROM battle_results r JOIN teams t')) return [s.results.filter((r) => r.team_id !== p[0] && p.slice(1).includes(r.battle_id)).map((r) => ({ battle_id: r.battle_id, team_id: r.team_id, score: r.score, name: (s.teams.find((t) => t.id === r.team_id) || {}).name }))];
         if (q.startsWith('SELECT r.battle_id, b.title, b.ends_at FROM battle_results r JOIN battles b')) return [s.results.filter((r) => r.team_id === p[0] && r.place === 1 && r.correct_total > 0).map((r) => { const b = s.battles.find((x) => x.id === r.battle_id); return { battle_id: r.battle_id, title: b.title, ends_at: b.ends_at }; })];
         if (q.startsWith('SELECT s.team_id, s.rating, s.played, s.wins, t.name FROM team_battle_stats s')) return [Object.keys(s.stats).filter((k) => s.stats[k].played > 0).map((k) => ({ team_id: Number(k), ...s.stats[k], name: (s.teams.find((t) => t.id === Number(k)) || {}).name })).sort((a, b) => b.rating - a.rating || b.wins - a.wins)];
         // ---- seasonal tournaments
