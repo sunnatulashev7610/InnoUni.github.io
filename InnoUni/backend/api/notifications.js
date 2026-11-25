@@ -1,5 +1,6 @@
 // The bell in the header: my notifications, read marks, clearing.
 const express = require('express');
+const { sendDueRemindersSoon } = require('../utils/reminders');
 const { authenticateToken } = require('../middleware/roleBased');
 const { parseId } = require('../utils/validation');
 
@@ -11,6 +12,7 @@ const LIMIT = 30;
 router.get('/', async (req, res) => {
     try {
         const uid = req.user.userId;
+        if (process.env.NODE_ENV !== 'test') sendDueRemindersSoon(req.db);
         const [rows] = await req.db.execute(
             `SELECT id, kind, title, body, page, ref_id, read_at, created_at FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT ${LIMIT}`, [uid]);
         const [c] = await req.db.execute('SELECT COUNT(*) AS n FROM notifications WHERE user_id = ? AND read_at IS NULL', [uid]);

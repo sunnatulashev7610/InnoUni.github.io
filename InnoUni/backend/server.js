@@ -445,6 +445,8 @@ if (require.main === module) {
         app.listen(PORT, () => {
             console.log(`Server running on port ${PORT}`);
         });
+        // Meetup reminders: every 5 minutes (opening the notifications also triggers a check, in case the server was asleep)
+        setInterval(() => require('./utils/reminders').sendDueReminders(db).catch((e) => console.error('Reminders failed:', e.message)), 5 * 60000).unref();
         // Render sets RENDER_EXTERNAL_URL; elsewhere set PUBLIC_URL. Failure is only logged.
         const publicUrl = (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/+$/, '');
         if (telegram.isConfigured() && process.env.TELEGRAM_WEBHOOK_SECRET && publicUrl) {
