@@ -54,3 +54,29 @@ describe('group table', () => {
         expect(t[0]).toMatchObject({ team_id: 1, diff: 6.66, score_for: 6.66 });
     });
 });
+
+describe('playoff maths', () => {
+    const { playoffPairs, firstStage, nextPairs, knockoutWinner } = require('../utils/tournamentDraw');
+    const grp = (no, ids) => ({ group_no: no, table: ids.map((id, i) => ({ team_id: id, rank: i + 1 })) });
+    test('one group: the top two meet in the final', () => {
+        expect(playoffPairs([grp(1, [1, 2, 3, 4])])).toEqual([[1, 2]]);
+        expect(firstStage(1)).toBe('final');
+    });
+    test('two groups: winner meets the other group\'s runner-up', () => {
+        expect(playoffPairs([grp(2, [5, 6, 7]), grp(1, [1, 2, 3, 4])])).toEqual([[1, 6], [5, 2]]);
+        expect(firstStage(2)).toBe('semi');
+    });
+    test('four groups: quarter-finals, groups never meet again at once', () => {
+        const p = playoffPairs([grp(1, [1, 2, 3]), grp(2, [4, 5, 6]), grp(3, [7, 8, 9]), grp(4, [10, 11, 12])]);
+        expect(p).toEqual([[1, 5], [7, 11], [4, 2], [10, 8]]);
+        expect(firstStage(4)).toBe('quarter');
+    });
+    test('winners pair up in order', () => { expect(nextPairs([1, 7, 4, 10])).toEqual([[1, 7], [4, 10]]); });
+    test('knockout: higher score wins; a draw goes to the better group rank, then seed rating', () => {
+        const rankOf = { 1: { rank: 2, seed_rating: 1000 }, 2: { rank: 1, seed_rating: 900 }, 3: { rank: 1, seed_rating: 1100 } };
+        expect(knockoutWinner({ team_a: 1, team_b: 2, score_a: 5, score_b: 3 }, rankOf)).toBe(1);
+        expect(knockoutWinner({ team_a: 1, team_b: 2, score_a: 4, score_b: 4 }, rankOf)).toBe(2);
+        expect(knockoutWinner({ team_a: 2, team_b: 3, score_a: 0, score_b: 0 }, rankOf)).toBe(3);
+        expect(knockoutWinner({ team_a: 1, team_b: 2, score_a: null, score_b: null }, rankOf)).toBeNull();
+    });
+});

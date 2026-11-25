@@ -118,7 +118,8 @@ describe('the table', () => {
         expect(table.map((r) => r.rank)).toEqual([1, 2, 3, 4]);
         expect(table.map((r) => r.diff)).toEqual([9.99, 3.33, -3.33, -9.99]);
         expect(t.matches[0]).toMatchObject({ state: 'finished', score_a: expect.any(Number), score_b: expect.any(Number) });
-        expect((await startRound()).status).toBe(409);                 // nothing left to start
+        expect((await startRound()).body).toEqual({ stage: 'final', matches: 1 });   // after the groups the playoffs start (see tournament-playoffs)
+        expect((await startRound()).status).toBe(409);                 // the final is running
     });
     test('a match nobody played is a 0:0 draw worth a point each', async () => {
         await startRound(); await finishRound(1, () => 0);

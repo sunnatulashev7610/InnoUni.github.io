@@ -17,7 +17,7 @@ async function boot(opts = {}) {
         if (opts.status) return { ok: false, status: opts.status, json: async () => ({ error: opts.error || 'x' }) };
         if (p === '/admin/tournaments' && method === 'GET') return { ok: true, status: 200, json: async () => ({ tournaments: opts.noTournaments ? [] : [
             { id: 4, title: '<b>Kuz</b> kubogi', topic: 'Python', round_days: 2, status: 'open', teams: [{ team_id: 1, name: 'Alfa', group_no: null }, { team_id: 2, name: '<i>Beta</i>', group_no: null }], matches: [] },
-            { id: 5, title: 'Bahor', topic: 'JS', round_days: 3, status: 'groups', next_round: 2, round_ready: opts.roundReady !== false, rounds_total: 3, groups_finished: false, teams: [{ team_id: 3, name: 'Gamma', group_no: 2 }], matches: [] }] }) };
+            { id: 5, title: 'Bahor', topic: 'JS', round_days: 3, status: 'groups', next_round: 2, round_ready: opts.roundReady !== false, rounds_total: 3, groups_finished: false, teams: [{ team_id: 3, name: 'Gamma', group_no: 2 }], matches: [] }].concat(opts.playoff ? [Object.assign({ id: 6, title: 'Qish', topic: 'C', round_days: 2, status: 'playoffs', next_round: null, groups_finished: true, playoff_stage: 'semi', stage_finished: true, next_stage: 'final', champion: null, teams: [], matches: [] }, opts.playoff)] : []) }) };
         if (p.includes('/start-round') && opts.roundError) return { ok: false, status: 503, json: async () => ({ error: 'The AI that prepares quiz questions is not connected yet' }) };
         if (p.includes('/draw') && opts.drawError) return { ok: false, status: 400, json: async () => ({ error: 'Groups need 4, 6-8 or 12-16 teams; now there are 5' }) };
         if (method === 'GET') return { ok: true, status: 200, json: async () => (opts.empty ? { battles: [], max_score: 100 } : LIST()) };
@@ -126,5 +126,29 @@ describe('rounds', () => {
         const { c } = await boot({ roundError: true });
         const b = startBtn(c); b.click(); b.click(); await tick(60);
         expect(c.textContent).toContain('AI ulanmagan');
+    });
+});
+
+describe('playoffs', () => {
+    const btn = (c) => [...c.querySelectorAll('[data-tournament="6"] button')].find((b) => /boshlash|Aniqmi/.test(b.textContent));
+    test('after the groups: one button starts the playoffs (two clicks, right endpoint)', async () => {
+        const { c, calls } = await boot({ playoff: { status: 'groups', playoff_stage: null, stage_finished: false, next_stage: 'start' } });
+        const b = btn(c); expect(b.textContent).toBe('Pley-offni boshlash');
+        expect(c.querySelector('[data-tournament="6"]').textContent).toContain('Pley-offni boshlashingiz mumkin');
+        b.click(); await tick();
+        expect(calls.some((x) => x.p === '/admin/tournaments/6/start-round')).toBe(false);
+        b.click(); await tick();
+        expect(calls.find((x) => x.p === '/admin/tournaments/6/start-round').method).toBe('POST');
+    });
+    test('the next stage button is named after the stage; nothing to press while a stage is running', async () => {
+        expect(btn((await boot({ playoff: {} })).c).textContent).toBe('Finalni boshlash');
+        const run = await boot({ playoff: { stage_finished: false, next_stage: null } });
+        expect(btn(run.c)).toBeUndefined();
+        expect(run.c.querySelector('[data-tournament="6"]').textContent).toContain('Yarim final davom etmoqda');
+    });
+    test('the champion is shown as text', async () => {
+        const { c } = await boot({ playoff: { status: 'finished', playoff_stage: 'final', next_stage: null, champion: { team_id: 1, name: '<b>Alfa</b>' } } });
+        const card = c.querySelector('[data-tournament="6"]');
+        expect(card.textContent).toContain('Chempion: <b>Alfa</b>'); expect(card.querySelector('b')).toBeNull();
     });
 });

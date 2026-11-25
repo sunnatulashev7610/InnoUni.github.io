@@ -602,7 +602,8 @@
     }
 
     // ---- Seasonal tournaments: register a team, see the groups and the fixture list
-    const TOURNAMENT_STATUS = { open: "Ro'yxatdan o'tish ochiq", groups: 'Guruh bosqichi', knockout: 'Pley-off', finished: 'Tugagan' };
+    const TOURNAMENT_STATUS = { open: "Ro'yxatdan o'tish ochiq", groups: 'Guruh bosqichi', playoffs: 'Pley-off', finished: 'Tugagan' };
+    const STAGE_NAME = { quarter: 'Chorak final', semi: 'Yarim final', final: 'Final' };
     function scoreText(n) { return String(Math.round(n * 100) / 100); }
     function fixtureList(t, goBattles) {
         const wrap = el('div'); wrap.style.cssText = 'display:grid;gap:10px;margin-top:10px';
@@ -625,10 +626,29 @@
             });
             wrap.appendChild(c);
         });
+        if (t.champion) {
+            const ch = el('div', 'pg-card'); ch.dataset.champion = String(t.champion.team_id);
+            ch.appendChild(el('h4', 'pg-h3', '🏆 Chempion: ' + t.champion.name));
+            wrap.insertBefore(ch, wrap.firstChild);
+        }
+        ['quarter', 'semi', 'final'].forEach(function (st) {
+            const ms = t.matches.filter(function (m) { return m.stage === st; });
+            if (!ms.length) return;
+            const c = el('div', 'pg-card'); c.dataset.stage = st;
+            c.appendChild(el('h4', 'pg-h3', STAGE_NAME[st]));
+            ms.forEach(function (m) {
+                let line;
+                if (m.state === 'finished') line = m.name_a + ' ' + scoreText(m.score_a) + ' : ' + scoreText(m.score_b) + ' ' + m.name_b + ' → ' + (m.winner === m.team_a ? m.name_a : m.name_b);
+                else line = m.name_a + ' — ' + m.name_b + (m.state === 'judging' ? ' (baholanmoqda)' : " (o'ynalmoqda)");
+                c.appendChild(el('p', 'pg-muted', line));
+            });
+            wrap.appendChild(c);
+        });
         if (goBattles && t.matches.some(function (m) { return m.state === 'active'; })) {
             const go = small(el('button', 'pg-btn', "O'ynash: Battlelar")); go.type = 'button'; go.addEventListener('click', goBattles); wrap.appendChild(go);
         }
-        if (t.groups_finished) wrap.appendChild(el('p', 'pg-muted', "Guruh bosqichi tugadi. Pley-off keyingi bosqichda e'lon qilinadi."));
+        if (t.groups_finished && !t.playoff_stage) wrap.appendChild(el('p', 'pg-muted', "Guruh bosqichi tugadi. Pley-off admin boshlaganda e'lon qilinadi."));
+        else if (t.playoff_stage && !t.champion) wrap.appendChild(el('p', 'pg-muted', "Pley-off davom etmoqda. Durang bo'lsa, guruhda yuqori o'rin olgan jamoa o'tadi."));
         else if (t.next_round) wrap.appendChild(el('p', 'pg-muted', t.next_round + "-tur o'yinlari admin boshlaganda ochiladi. Har tur " + t.round_days + ' kun davom etadi.'));
         return wrap;
     }
