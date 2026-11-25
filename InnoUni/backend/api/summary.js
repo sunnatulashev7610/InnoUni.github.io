@@ -39,14 +39,12 @@ router.get('/counts', async (req, res) => {
         if (req.user.role === 'student') {
             const t = await studentTasks(db, uid);
             const [g] = await db.execute('SELECT COUNT(*) AS n FROM group_members WHERE user_id = ?', [uid]);
-            const [o] = await db.execute('SELECT COUNT(*) AS n FROM orders WHERE user_id = ? AND status = \'offered\'', [uid]);
-            return res.json({ role: 'student', groups: Number(g[0].n), tasksTodo: t.todo, ordersAnswered: Number(o[0].n) });
+            return res.json({ role: 'student', groups: Number(g[0].n), tasksTodo: t.todo });
         }
         if (req.user.role === 'teacher') {
             const [r] = await db.execute('SELECT COUNT(*) AS n FROM task_submissions s JOIN tasks t ON t.id = s.task_id JOIN courses c ON c.id = t.course_id WHERE c.teacher_id = ? AND s.status = \'submitted\'', [uid]);
-            const [o] = await db.execute('SELECT COUNT(*) AS n FROM orders o LEFT JOIN courses c ON c.id = o.course_id WHERE o.kind IN (\'course\', \'material\') AND o.status = \'pending\' AND (o.course_id IS NULL OR c.teacher_id = ?)', [uid]);
             const [g] = await db.execute('SELECT COUNT(*) AS n FROM group_members WHERE user_id = ?', [uid]);
-            return res.json({ role: 'teacher', toGrade: Number(r[0].n), ordersPending: Number(o[0].n), groups: Number(g[0].n) });
+            return res.json({ role: 'teacher', toGrade: Number(r[0].n), groups: Number(g[0].n) });
         }
         res.json({ role: req.user.role });
     } catch (e) { fail(res, e); }
@@ -120,7 +118,6 @@ router.get('/teacher', teacherOnly, async (req, res) => {
             FROM course_enrollments ce JOIN courses c ON c.id = ce.course_id JOIN users u ON u.id = ce.user_id
             WHERE c.teacher_id = ? ORDER BY ce.enrolled_at DESC LIMIT 6
         `, [uid]);
-        const [ord] = await db.execute('SELECT COUNT(*) AS n FROM orders o LEFT JOIN courses c ON c.id = o.course_id WHERE o.kind IN (\'course\', \'material\') AND o.status = \'pending\' AND (o.course_id IS NULL OR c.teacher_id = ?)', [uid]);
 
         const byDay = {};
         subDays.concat(enrDays).forEach((r) => { byDay[r.d] = (byDay[r.d] || 0) + Number(r.n); });
@@ -133,7 +130,6 @@ router.get('/teacher', teacherOnly, async (req, res) => {
             activeCourses: Number(c[0].active), draftCourses: Number(c[0].draft), students: Number(st[0].n), tasksGiven: Number(tk[0].n),
             toGrade: Number(sub[0].to_grade), gradedCount: Number(sub[0].graded),
             avgGrade: sub[0].avg === null ? null : Math.round(Number(sub[0].avg) * 10) / 10,
-            ordersPending: Number(ord[0].n),
             courses: courses.map((x) => ({ id: x.id, title: x.title, status: x.status, students: Number(x.students), tasks: Number(x.tasks), submitted: Number(x.submitted), avgGrade: x.avg_grade === null ? null : Math.round(Number(x.avg_grade) * 10) / 10 })),
             week, recent
         });

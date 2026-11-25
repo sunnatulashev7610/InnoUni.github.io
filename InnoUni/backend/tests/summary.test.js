@@ -24,7 +24,6 @@ const fakeDb = {
         const q = norm(raw);
         if (q.includes('FROM tasks t LEFT JOIN course_enrollments ce')) return [data.tasks];
         if (q.includes('FROM group_members WHERE user_id')) return [[{ n: '3' }]];
-        if (q.startsWith('SELECT COUNT(*) AS n FROM orders WHERE user_id')) return [[{ n: '2' }]];
         if (q.includes('COUNT(CASE WHEN status = \'active\' THEN 1 END) AS active, COUNT(CASE WHEN status = \'completed\'')) return [[{ active: '2', done: '1' }]];
         if (q.includes('AVG(grade) AS avg FROM task_submissions')) return [[{ avg: data.empty ? null : data.avg }]];
         if (q.includes('FROM course_enrollments ce JOIN courses c ON c.id = ce.course_id LEFT JOIN users u')) return [data.empty ? [] : [{ id: 1, title: 'Py', progress: '100.00', status: 'active', teacher: 'M' }, { id: 2, title: 'JS', progress: '40.50', status: 'active', teacher: 'M' }]];
@@ -39,7 +38,6 @@ const fakeDb = {
         if (q.includes("DATE_FORMAT(ce.enrolled_at, '%Y-%m-%d') AS d")) return [[{ d: day(0), n: '1' }, { d: day(-2), n: '4' }]];
         if (q.includes('s.submitted_at AS at')) return [[{ at: '2026-11-10T10:00:00Z', who: 'Ali', what: 'Essay' }]];
         if (q.includes('ce.enrolled_at AS at')) return [[{ at: '2026-11-11T10:00:00Z', who: 'Vali', what: 'Py' }]];
-        if (q.includes('FROM orders o LEFT JOIN courses c')) return [[{ n: '2' }]];
         if (q.includes('SELECT COUNT(*) AS n FROM task_submissions s')) return [[{ n: '5' }]];
         if (q.includes('FROM course_enrollments ce JOIN courses c ON c.id = ce.course_id AND c.teacher_id = ?')) return [[{ id: 9, full_name: 'Ali', course_id: 1, course: 'Py', progress: '50', enrolled_at: 'e', last_submission: null, avg_grade: '90.00' }]];
         throw new Error('Unexpected query: ' + q);
@@ -53,9 +51,9 @@ test('login is required', async () => {
     expect((await request(app).get('/api/summary/counts')).status).toBe(401);
 });
 
-test('student counts: tasks to do, groups, answered orders', async () => {
+test('student counts: tasks to do, groups', async () => {
     const r = await request(app).get('/api/summary/counts').set(as(5, 'student'));
-    expect(r.body).toEqual({ role: 'student', groups: 3, tasksTodo: 3, ordersAnswered: 2 });
+    expect(r.body).toEqual({ role: 'student', groups: 3, tasksTodo: 3 });
 });
 
 test('student summary: task buckets, rounded average, completed course flag', async () => {
@@ -76,7 +74,7 @@ test('a brand-new student gets zeros and null, never sample numbers', async () =
 
 test('teacher summary: numbers, 7-day activity merges submissions and enrolments, recent is newest first', async () => {
     const r = await request(app).get('/api/summary/teacher').set(as(2, 'teacher'));
-    expect(r.body).toMatchObject({ activeCourses: 3, draftCourses: 1, students: 7, tasksGiven: 4, toGrade: 5, gradedCount: 6, avgGrade: 80.3, ordersPending: 2 });
+    expect(r.body).toMatchObject({ activeCourses: 3, draftCourses: 1, students: 7, tasksGiven: 4, toGrade: 5, gradedCount: 6, avgGrade: 80.3 });
     expect(r.body.week).toHaveLength(7);
     expect(r.body.week[6]).toEqual({ day: day(0), count: 3 });
     expect(r.body.week[4]).toEqual({ day: day(-2), count: 4 });

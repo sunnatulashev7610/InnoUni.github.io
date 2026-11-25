@@ -9,7 +9,7 @@ const USERS = [
     { id: 3, full_name: 'Gulnora', email: 'g@x.uz', role: 'teacher', blocked: 1, email_verified: 1, created_at: '2026-11-02' }
 ];
 const answers = (url) => {
-    if (url.includes('/admin/stats')) return { users: { student: 7, teacher: 2, admin: 1 }, orders: { pending: 3 }, teams: 4, courses: 9, unverified: 5, new_week: 6 };
+    if (url.includes('/admin/stats')) return { users: { student: 7, teacher: 2, admin: 1 }, teams: 4, courses: 9, unverified: 5, new_week: 6 };
     if (url.includes('/admin/log')) return { log: [{ id: 1, action: 'block', detail: null, created_at: '2026-11-20T10:00:00Z', admin: 'Sam', target: 'Ali' }, { id: 2, action: 'set_role', detail: 'teacher', created_at: '2026-11-20T09:00:00Z', admin: 'Sam', target: 'Gulnora' }] };
     if (url.includes('/admin/users')) return { users: JSON.parse(JSON.stringify(USERS)) };
     return {};
@@ -35,8 +35,8 @@ afterEach(() => { windows.forEach((w) => w.close()); windows = []; });
 test('overview shows real numbers, the to-do hints and the log', async () => {
     const { c } = await boot((w, c, a, t) => w.AdminPanel.home(c, 'tok', a, t));
     const t = c.textContent;
-    ['7', '2', '9', '4', '6', '3'].forEach((n) => expect(t).toContain(n));
-    expect(t).toContain('3 ta buyurtma');
+    ['7', '2', '9', '4', '6'].forEach((n) => expect(t).toContain(n));
+    expect(t).not.toContain('buyurtma');
     expect(t).toContain('5 ta foydalanuvchi emailini');
     expect(t).toContain('Sam · Ali: bloklandi');
     expect(t).toContain('Sam · Gulnora: roli o\'zgartirildi (O\'qituvchi)');
