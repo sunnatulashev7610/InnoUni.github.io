@@ -18,6 +18,8 @@ async function boot(opts = {}) {
         if (p === '/admin/tournaments' && method === 'GET') return { ok: true, status: 200, json: async () => ({ tournaments: opts.noTournaments ? [] : [
             { id: 4, title: '<b>Kuz</b> kubogi', topic: 'Python', round_days: 2, status: 'open', teams: [{ team_id: 1, name: 'Alfa', group_no: null }, { team_id: 2, name: '<i>Beta</i>', group_no: null }], matches: [] },
             { id: 5, title: 'Bahor', topic: 'JS', round_days: 3, status: 'groups', next_round: 2, round_ready: opts.roundReady !== false, rounds_total: 3, groups_finished: false, teams: [{ team_id: 3, name: 'Gamma', group_no: 2 }], matches: [] }].concat(opts.playoff ? [Object.assign({ id: 6, title: 'Qish', topic: 'C', round_days: 2, status: 'playoffs', next_round: null, groups_finished: true, playoff_stage: 'semi', stage_finished: true, next_stage: 'final', champion: null, teams: [], matches: [] }, opts.playoff)] : []) }) };
+        if (/^\/admin\/tournaments\/\d+\/questions$/.test(p) && method === 'GET') return { ok: true, status: 200, json: async () => ({ slots: opts.slots || {}, all_slots: ['r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', 'quarter', 'semi', 'final'], limits: { min: 3, max: 20 } }) };
+        if (/\/questions\/\w+$/.test(p) && method === 'PUT') return opts.qError ? { ok: false, status: 400, json: async () => ({ error: 'Question 2: choose the correct option' }) } : { ok: true, status: 200, json: async () => ({ ok: true }) };
         if (p.includes('/start-round') && opts.roundError) return { ok: false, status: 503, json: async () => ({ error: 'The AI that prepares quiz questions is not connected yet' }) };
         if (p.includes('/draw') && opts.drawError) return { ok: false, status: 400, json: async () => ({ error: 'Groups need 4, 6-8 or 12-16 teams; now there are 5' }) };
         if (method === 'GET') return { ok: true, status: 200, json: async () => (opts.empty ? { battles: [], max_score: 100 } : LIST()) };
@@ -76,9 +78,9 @@ describe('tournaments section', () => {
         const open = c.querySelector('[data-tournament="4"]'); const groups = c.querySelector('[data-tournament="5"]');
         expect(open.textContent).toContain('<b>Kuz</b> kubogi'); expect(c.querySelector('h3 b')).toBeNull();
         expect(open.textContent).toContain('<i>Beta</i>'); expect(open.querySelector('i')).toBeNull();
-        expect([...open.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Chiqarish', 'Chiqarish', 'Qura tashlash', 'Bekor qilish']);
+        expect([...open.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Chiqarish', 'Chiqarish', 'Qura tashlash', 'Savollar', 'Bekor qilish']);
         expect(groups.textContent).toContain('B guruhi');
-        expect([...groups.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['2-turni boshlash', 'Bekor qilish']);
+        expect([...groups.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['2-turni boshlash', 'Savollar', 'Bekor qilish']);
     });
     test('creating needs a title and a topic and sends the round length', async () => {
         const { c, calls } = await boot();
@@ -150,5 +152,65 @@ describe('playoffs', () => {
         const { c } = await boot({ playoff: { status: 'finished', playoff_stage: 'final', next_stage: null, champion: { team_id: 1, name: '<b>Alfa</b>' } } });
         const card = c.querySelector('[data-tournament="6"]');
         expect(card.textContent).toContain('Chempion: <b>Alfa</b>'); expect(card.querySelector('b')).toBeNull();
+    });
+});
+
+describe('question editor', () => {
+    const open = async (opts) => { const t = await boot(opts); const b = [...t.c.querySelectorAll('[data-tournament="5"] button')].find((x) => x.textContent === 'Savollar'); b.click(); await tick(); await tick(); return Object.assign(t, { ed: t.c.querySelector('[data-editor="5"]') }); };
+    const fill = (w, blockEl, q, opts, right, ex) => {
+        const set = (n, v) => { n.value = v; };
+        set(blockEl.querySelector('textarea'), q);
+        const inputs = [...blockEl.querySelectorAll('input[type=text]')];
+        opts.forEach((v, i) => set(inputs[i], v)); set(inputs[4], ex || '');
+        blockEl.querySelectorAll('input[type=radio]')[right].checked = true;
+    };
+    const btn = (ed, text) => [...ed.querySelectorAll('button')].find((x) => x.textContent.startsWith(text));
+    test('the "Savollar" button opens an editor that says the AI will make the questions when there are none', async () => {
+        const { ed } = await open();
+        expect(ed).not.toBeNull(); expect(ed.textContent).toContain("Savol yo'q: bu bosqich uchun AI tuzadi");
+        expect([...ed.querySelectorAll('select option')].map((o) => o.textContent)).toContain('1-tur');
+        expect([...ed.querySelectorAll('select option')].map((o) => o.textContent)).toContain('Final');
+    });
+    test('questions are saved to the chosen stage; the admin\'s text stays text', async () => {
+        const { ed, calls, w } = await open();
+        ed.querySelector('select').value = 'semi'; ed.querySelector('select').dispatchEvent(new w.Event('change'));
+        for (let i = 0; i < 3; i++) btn(ed, "Savol qo'shish").click();
+        const bl = [...ed.querySelectorAll('[data-editor] > div > div')].filter((n) => n.querySelector('textarea'));
+        expect(bl).toHaveLength(3);
+        bl.forEach((n, i) => fill(w, n, '<b>Savol ' + i + '</b>', ['a', 'b', 'c', 'd'], i, 'Izoh'));
+        btn(ed, 'Saqlash').click(); await tick();
+        const put = calls.find((x) => x.method === 'PUT');
+        expect(put.p).toBe('/admin/tournaments/5/questions/semi');
+        expect(put.body.questions).toHaveLength(3);
+        expect(put.body.questions[1]).toEqual({ q: '<b>Savol 1</b>', options: ['a', 'b', 'c', 'd'], answer: 1, explanation: 'Izoh' });
+        expect(ed.querySelector('b b')).toBeNull();
+    });
+    test('saved questions are shown again with the right option marked; removing one renumbers', async () => {
+        const slots = { r1: [0, 1, 2].map((i) => ({ q: 'S' + i, options: ['a', 'b', 'c', 'd'], answer: 2, explanation: '' })) };
+        const { ed } = await open({ slots });
+        expect(ed.textContent).toContain('3 ta savol yozilgan');
+        const first = ed.querySelector('textarea').parentNode;
+        expect(first.querySelectorAll('input[type=radio]')[2].checked).toBe(true);
+        [...ed.querySelectorAll('button')].find((x) => x.textContent === "O'chirish").click();
+        expect(ed.textContent).toContain('2 ta savol yozilgan'); expect(ed.textContent).toContain('2-savol');
+    });
+    test('a server complaint is explained in Uzbek and nothing is lost', async () => {
+        const { ed, w } = await open({ qError: true });
+        for (let i = 0; i < 3; i++) btn(ed, "Savol qo'shish").click();
+        btn(ed, 'Saqlash').click(); await tick();
+        expect(ed.textContent).toContain("2-savol: to'g'ri variantni belgilang.");
+        expect(ed.querySelectorAll('textarea')).toHaveLength(3);
+    });
+    test('"AI tuzsin" sends an empty list', async () => {
+        const slots = { r1: [0, 1, 2].map((i) => ({ q: 'S' + i, options: ['a', 'b', 'c', 'd'], answer: 0, explanation: '' })) };
+        const { ed, calls } = await open({ slots });
+        btn(ed, "O'z savollarini").click(); await tick();
+        expect(calls.find((x) => x.method === 'PUT').body).toEqual({ questions: [] });
+        expect(ed.textContent).toContain("Savol yo'q");
+    });
+    test('the button opens and closes the editor', async () => {
+        const { c } = await open();
+        [...c.querySelectorAll('[data-tournament="5"] button')].find((x) => x.textContent === 'Savollar').click();
+        expect(c.querySelector('[data-editor]')).toBeNull();
     });
 });

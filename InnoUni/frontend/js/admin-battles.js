@@ -29,6 +29,13 @@
         if (/tournament is over/i.test(m)) return "Turnir tugagan.";
         if (/Groups need/i.test(m)) return "Guruh tuzish uchun 4, 6–8 yoki 12–16 jamoa kerak. Hozirgi sonni o'zgartiring.";
         if (/not possible in the current stage/i.test(m)) return "Bu qadam hozirgi bosqichda mumkin emas.";
+        let q;
+        if ((q = m.match(/A stage needs (\d+) to (\d+) questions/))) return 'Bosqichda ' + q[1] + ' tadan ' + q[2] + ' tagacha savol bo\'lishi kerak.';
+        if ((q = m.match(/Question (\d+): the question text is empty/))) return q[1] + '-savol: matn bo\'sh.';
+        if ((q = m.match(/Question (\d+): it needs exactly/))) return q[1] + '-savol: 4 ta variantning hammasini to\'ldiring.';
+        if ((q = m.match(/Question (\d+): the options must be different/))) return q[1] + '-savol: variantlar bir-biridan farq qilsin.';
+        if ((q = m.match(/Question (\d+): choose the correct/))) return q[1] + '-savol: to\'g\'ri variantni belgilang.';
+        if ((q = m.match(/Question (\d+): .*too long/))) return q[1] + '-savol: matn juda uzun.';
         if (/Round length/i.test(m)) return "Tur davomiyligi 1–7 kun bo'lsin.";
         if (/not waiting for the judge/i.test(m)) return "Bu battle endi baholanmaydi.";
         return "Amalni bajarib bo'lmadi. Keyinroq urinib ko'ring.";
@@ -36,6 +43,66 @@
     function linkNode(url) {
         if (!/^https:\/\//i.test(String(url))) return el('span', '', String(url));
         const a = el('a', '', String(url)); a.href = String(url); a.target = '_blank'; a.rel = 'noopener noreferrer'; return a;
+    }
+
+    // The admin writes the questions of one stage (own questions are used instead of the AI). Everything is set with textContent / .value.
+    const SLOT_NAME = { quarter: 'Chorak final', semi: 'Yarim final', final: 'Final' };
+    const slotLabel = function (k) { return SLOT_NAME[k] || k.slice(1) + '-tur'; };
+    function questionEditor(t, token, toast, onAuthError) {
+        const box = el('div', 'pg-card'); box.dataset.editor = String(t.id); box.style.marginTop = '10px';
+        box.appendChild(el('h4', 'pg-h3', 'Savollar'));
+        const info = el('p', 'pg-muted'); const msg = el('p', 'pg-muted'); msg.setAttribute('role', 'alert');
+        const pick = el('select', 'pg-input'); pick.setAttribute('aria-label', 'Bosqich');
+        const list = el('div'); list.style.cssText = 'display:grid;gap:12px;margin:10px 0';
+        const bar = el('div'); bar.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap';
+        let data = { slots: {}, all_slots: [], limits: { min: 3, max: 20 } }; let blocks = [];
+
+        function block(x, n) {
+            const b = el('div'); b.style.cssText = 'border:1px solid var(--line,#8884);border-radius:10px;padding:10px;display:grid;gap:6px';
+            const head = el('div'); head.style.cssText = 'display:flex;justify-content:space-between;align-items:center';
+            const title = el('b', '', ''); const rm = el('button', 'pg-btn ghost', "O'chirish"); rm.type = 'button'; rm.style.padding = '4px 10px';
+            head.appendChild(title); head.appendChild(rm); b.appendChild(head);
+            const q = el('textarea', 'pg-input'); q.rows = 2; q.maxLength = 400; q.placeholder = 'Savol matni'; q.setAttribute('aria-label', 'Savol matni'); q.value = x.q || ''; b.appendChild(q);
+            const name = 'ans-' + t.id + '-' + Math.random().toString(36).slice(2); const opts = []; const radios = [];
+            for (let i = 0; i < 4; i++) {
+                const row = el('label'); row.style.cssText = 'display:flex;gap:8px;align-items:center';
+                const r = el('input'); r.type = 'radio'; r.name = name; r.checked = x.answer === i; r.setAttribute('aria-label', (i + 1) + '-variant to\'g\'ri');
+                const o = el('input', 'pg-input'); o.type = 'text'; o.maxLength = 200; o.placeholder = (i + 1) + '-variant'; o.setAttribute('aria-label', (i + 1) + '-variant'); o.value = (x.options && x.options[i]) || ''; o.style.flex = '1';
+                row.appendChild(r); row.appendChild(o); b.appendChild(row); opts.push(o); radios.push(r);
+            }
+            const ex = el('input', 'pg-input'); ex.type = 'text'; ex.maxLength = 300; ex.placeholder = 'Izoh (ixtiyoriy)'; ex.setAttribute('aria-label', 'Izoh'); ex.value = x.explanation || ''; b.appendChild(ex);
+            const obj = { node: b, title: title, read: function () { const a = radios.findIndex(function (r) { return r.checked; }); return { q: q.value, options: opts.map(function (o) { return o.value; }), answer: a, explanation: ex.value }; } };
+            rm.addEventListener('click', function () { blocks = blocks.filter(function (z) { return z !== obj; }); b.remove(); renumber(); });
+            return obj;
+        }
+        function renumber() { blocks.forEach(function (b, i) { b.title.textContent = (i + 1) + '-savol'; }); info.textContent = blocks.length ? blocks.length + ' ta savol yozilgan.' : "Savol yo'q: bu bosqich uchun AI tuzadi."; }
+        function show() {
+            list.textContent = ''; blocks = [];
+            (data.slots[pick.value] || []).forEach(function (x) { const b = block(x); blocks.push(b); list.appendChild(b.node); });
+            renumber(); msg.textContent = '';
+        }
+        function add() { if (blocks.length >= data.limits.max) { msg.textContent = 'Eng ko\'pi ' + data.limits.max + ' ta savol.'; return; } const b = block({}); blocks.push(b); list.appendChild(b.node); renumber(); }
+        async function save(clear) {
+            msg.textContent = '';
+            const questions = clear ? [] : blocks.map(function (b) { return b.read(); });
+            try {
+                await call('PUT', '/admin/tournaments/' + t.id + '/questions/' + pick.value, token, { questions: questions });
+                data.slots[pick.value] = questions; if (!questions.length) delete data.slots[pick.value];
+                toast(questions.length ? 'Savollar saqlandi' : 'Bosqich AI savollariga qaytdi'); show();
+            } catch (err) { if (err.auth) { onAuthError(); return; } msg.textContent = say(String(err.message)); }
+        }
+        const addB = el('button', 'pg-btn ghost', "Savol qo'shish"); addB.type = 'button'; addB.addEventListener('click', add);
+        const saveB = el('button', 'pg-btn', 'Saqlash'); saveB.type = 'button'; saveB.addEventListener('click', function () { save(false); });
+        const clrB = el('button', 'pg-btn ghost', "O'z savollarini o'chirish (AI tuzsin)"); clrB.type = 'button'; clrB.addEventListener('click', function () { save(true); });
+        [addB, saveB, clrB].forEach(function (x) { bar.appendChild(x); });
+        pick.addEventListener('change', show);
+        [pick, info, list, bar, msg].forEach(function (x) { box.appendChild(x); });
+        call('GET', '/admin/tournaments/' + t.id + '/questions', token).then(function (r) {
+            data = r; const slots = (r.all_slots || []).filter(function (k) { return !/^r\d+$/.test(k) || Number(k.slice(1)) <= Math.max(t.rounds_total || 0, 3); });
+            slots.forEach(function (k) { const o = el('option', '', slotLabel(k) + (r.slots[k] ? ' · ' + r.slots[k].length + ' ta savol' : '')); o.value = k; pick.appendChild(o); });
+            show();
+        }).catch(function (e) { if (e.auth) { onAuthError(); return; } info.textContent = "Savollarni yuklab bo'lmadi."; });
+        return box;
     }
 
     window.AdminBattles = {
@@ -49,7 +116,7 @@
             const box = el('div'); box.style.cssText = 'display:grid;gap:16px'; pg.appendChild(box);
             const tbox = el('div'); tbox.style.cssText = 'display:grid;gap:16px;margin-top:24px'; pg.appendChild(tbox);
 
-            const STATUS = { open: "Ro'yxatdan o'tish ochiq", groups: 'Guruh bosqichi', knockout: 'Pley-off', finished: 'Tugagan' };
+            const STATUS = { open: "Ro'yxatdan o'tish ochiq", groups: 'Guruh bosqichi', playoffs: 'Pley-off', finished: 'Tugagan' };
             async function loadTournaments() {
                 tbox.textContent = '';
                 tbox.appendChild(el('h2', 'pg-h3', 'Mavsumiy turnirlar'));
@@ -122,6 +189,9 @@
                         bar.appendChild(dr);
                     }
                     if (t.status === 'open' || t.status === 'groups' || t.status === 'playoffs') {
+                        const qb = el('button', 'pg-btn ghost', 'Savollar'); qb.type = 'button';
+                        qb.addEventListener('click', function () { const old = c.querySelector('[data-editor]'); if (old) { old.remove(); return; } c.appendChild(questionEditor(t, token, toast, onAuthError)); });
+                        bar.appendChild(qb);
                         const cn = el('button', 'pg-btn ghost', 'Bekor qilish'); cn.type = 'button'; let sure = false;
                         cn.addEventListener('click', function () {
                             if (!sure) { sure = true; cn.textContent = 'Aniqmi? Qayta bosing'; setTimeout(function () { sure = false; cn.textContent = 'Bekor qilish'; }, 4000); return; }

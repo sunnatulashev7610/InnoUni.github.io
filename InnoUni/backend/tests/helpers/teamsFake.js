@@ -260,6 +260,10 @@ function createTeamsFake() {
         }
         if (q.startsWith('UPDATE team_events SET reminded_')) { const flag = q.match(/SET (reminded_\w+) = 1/)[1]; const e = s.events.find((x) => x.id === p[0] && !x[flag]); if (e) e[flag] = 1; return [{ affectedRows: e ? 1 : 0 }]; }
         if (q === "SELECT user_id FROM team_members WHERE team_id = ? AND status = 'active'") return [s.members.filter((m) => m.team_id === p[0] && m.status === 'active').map((m) => ({ user_id: m.user_id }))];
+        if (q.startsWith('SELECT question, options, correct, explanation FROM tournament_questions WHERE tournament_id = ? AND slot = ?')) return [(s.tq || []).filter((r) => r.tournament_id === p[0] && r.slot === p[1]).sort((x, y) => x.position - y.position)];
+        if (q.startsWith('SELECT slot, position, question, options, correct, explanation FROM tournament_questions')) return [(s.tq || []).filter((r) => r.tournament_id === p[0]).sort((x, y) => x.slot.localeCompare(y.slot) || x.position - y.position)];
+        if (q === 'DELETE FROM tournament_questions WHERE tournament_id = ? AND slot = ?') { s.tq = (s.tq || []).filter((r) => !(r.tournament_id === p[0] && r.slot === p[1])); return [{}]; }
+        if (q.startsWith('INSERT INTO tournament_questions')) { s.tq = s.tq || []; s.tq.push({ tournament_id: p[0], slot: p[1], position: p[2], question: p[3], options: p[4], correct: p[5], explanation: p[6] }); return [{}]; }
         if (q.startsWith('INSERT INTO team_events')) { const e = { id: s.eid++, team_id: p[0], user_id: p[1], title: p[2], place: p[3], note: p[4], starts_at: new Date(p[5].replace(' ', 'T') + 'Z') }; s.events.push(e); return [{ insertId: e.id }]; }
         if (q.startsWith("SELECT user_id FROM team_members WHERE team_id = ? AND status = 'active' AND user_id <> ?")) return [s.members.filter((m) => m.team_id === p[0] && m.status === 'active' && m.user_id !== p[1]).map((m) => ({ user_id: m.user_id }))];
         if (q === 'SELECT id FROM team_events WHERE id = ? AND team_id = ?') return [s.events.filter((e) => e.id === p[0] && e.team_id === p[1]).map((e) => ({ id: e.id }))];
