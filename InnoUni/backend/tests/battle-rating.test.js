@@ -57,13 +57,40 @@ describe('after a battle', () => {
         A = await team('Alfa', 1, [21, 22]); B = await team('Beta', 2, [31, 32]);
     });
     test('winner goes up, loser goes down; a new team starts at 1000 in Bronza with no badges', async () => {
-        expect((await get(`/teams/${A}/record`, 5)).body).toEqual({ rating: 1000, league: 'Bronza', played: 0, wins: 0, badges: [], trophies: [] });
+        expect((await get(`/teams/${A}/record`, 5)).body).toEqual({ rating: 1000, league: 'Bronza', played: 0, wins: 0, badges: [], trophies: [], recent: [], streak: 0 });
         const id = await battle(A, B, 1, 2, true, false);
         const a = (await get(`/teams/${A}/record`, 5)).body; const b = (await get(`/teams/${B}/record`, 5)).body;
         expect(a).toMatchObject({ rating: 1016, played: 1, wins: 1, league: 'Bronza' });
         expect(a.badges.map((x) => x.id)).toEqual(['first_win']);
         expect(a.trophies).toEqual([{ battle_id: id, title: expect.any(String), ends_at: expect.anything() }]);
         expect(b).toMatchObject({ rating: 984, played: 1, wins: 0, trophies: [] });
+    });
+    const lift = () => { const L = require('../utils/battleLimits').BATTLE_LIMITS; const old = L.maxPerPairPerWeek; L.maxPerPairPerWeek = 99; return () => { L.maxPerPairPerWeek = old; }; };
+    test('recent games: newest first, opponent, scores and result; win streak counts from the newest', async () => {
+        const undo = lift();
+        const g1 = await battle(A, B, 1, 2, false, true);     // A loses
+        const g2 = await battle(A, B, 1, 2, true, false);     // A wins
+        const g3 = await battle(A, B, 1, 2, true, false);     // A wins
+        const a = (await get(`/teams/${A}/record`, 5)).body; const b = (await get(`/teams/${B}/record`, 5)).body;
+        expect(a.recent.map((r) => [r.battle_id, r.result, r.opponent])).toEqual([[g3, 'win', 'Beta'], [g2, 'win', 'Beta'], [g1, 'loss', 'Beta']]);
+        expect(a.recent[0].score).toBeGreaterThan(a.recent[0].opponent_score);
+        expect(a.streak).toBe(2);
+        expect(b.recent.map((r) => r.result)).toEqual(['loss', 'loss', 'win']);
+        expect(b.recent[2].opponent).toBe('Alfa');
+        expect(b.streak).toBe(0);
+        undo();
+    });
+    test('a draw is not a win and breaks the streak', async () => {
+        await battle(A, B, 1, 2, true, true);
+        const a = (await get(`/teams/${A}/record`, 5)).body;
+        expect(a.recent[0].result).toBe('draw'); expect(a.streak).toBe(0);
+    });
+    test('only the last 5 games are listed', async () => {
+        const undo = lift();
+        for (let i = 0; i < 6; i++) await battle(A, B, 1, 2, true, false);
+        const a = (await get(`/teams/${A}/record`, 5)).body;
+        expect(a.recent).toHaveLength(5); expect(a.streak).toBe(5);
+        undo();
     });
     test('the rating is changed once, however often the battle is looked at', async () => {
         await battle(A, B, 1, 2, true, false);

@@ -159,6 +159,18 @@
         c.appendChild(top);
         c.appendChild(el('p', 'pg-muted', 'O\'ynagan: ' + r.played + ' · G\'alaba: ' + r.wins));
         if ((r.badges || []).length) { const bw = el('div'); bw.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px'; r.badges.forEach(function (x) { bw.appendChild(el('span', 'pg-pill', x.name)); }); c.appendChild(bw); }
+        if (r.streak >= 2) c.appendChild(el('span', 'pg-pill', '🔥 ' + r.streak + " ta g'alaba ketma-ket"));
+        const recent = Array.isArray(r.recent) ? r.recent : [];
+        if (recent.length) {
+            const RES = { win: "G'alaba", draw: 'Durang', loss: "Mag'lubiyat" };
+            const form = el('p', 'pg-muted', "So'nggi o'yinlar: " + recent.map(function (x) { return x.result === 'win' ? "G'" : x.result === 'draw' ? 'D' : 'M'; }).join(' '));
+            form.dataset.form = '1'; c.appendChild(form);
+            recent.forEach(function (x) {
+                const line = el('div', 'pg-muted'); line.dataset.game = String(x.battle_id);
+                line.textContent = (RES[x.result] || '') + ' · ' + (x.opponent || 'Raqibsiz') + ' · ' + x.score + ' : ' + x.opponent_score;
+                c.appendChild(line);
+            });
+        }
         if ((r.trophies || []).length) { c.appendChild(el('p', 'pg-muted', 'Kuboklar:')); r.trophies.forEach(function (x) { c.appendChild(el('div', '', '🏆 ' + x.title)); }); }
         else c.appendChild(el('p', 'pg-muted', "Hali kubok yo'q. Birinchi g'alabangiz kubok beradi."));
         return c;
@@ -801,7 +813,7 @@
                 pg.appendChild(c);
             }
 
-            const factRows = [['Ochgan', team.captain_name || '–'], ['Ochilgan sana', dateText(team.created_at)], ["A'zolar soni", team.members + ' / ' + limits.maxMembers], ['Soha', team.sphere || '–'], ['Haftalik ball', String(team.rating || 0) + (team.rank ? ' (#' + team.rank + ')' : '')], ['Holat', team.recruiting ? 'A\'zo qabul qilmoqda' : 'Yopiq']];
+            const factRows = [['Ochgan', team.captain_name || '–'], ['Ochilgan sana', dateText(team.created_at)], ["A'zolar soni", team.members + ' / ' + limits.maxMembers], ['Soha', team.sphere || '–'], ['Haftalik ball', String(team.rating || 0) + (team.rank ? ' (#' + team.rank + ')' : '')], ['Bu hafta', ((team.activity && team.activity.writers) || 0) + ' faol, ' + ((team.activity && team.activity.messages) || 0) + ' xabar'], ['Holat', team.recruiting ? 'A\'zo qabul qilmoqda' : 'Yopiq']];
             function factsNode(cls) {
                 const facts = el('div', 'pg-grid ' + (cls || ''));
                 factRows.forEach(function (f) {

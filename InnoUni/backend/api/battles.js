@@ -138,7 +138,20 @@ async function recordOf(db, teamId) {
     const [st] = await db.execute('SELECT team_id, rating, played, wins FROM team_battle_stats WHERE team_id = ?', [teamId]);
     const stats = st[0] || { team_id: teamId, rating: START, played: 0, wins: 0 };
     const [tr] = await db.execute('SELECT r.battle_id, b.title, b.ends_at FROM battle_results r JOIN battles b ON b.id = r.battle_id WHERE r.team_id = ? AND r.place = 1 AND r.correct_total > 0 ORDER BY b.ends_at DESC LIMIT 10', [teamId]);
-    return { rating: stats.rating, league: leagueOf(stats.rating), played: stats.played, wins: stats.wins, badges: badgesOf(stats), trophies: tr.map((t) => ({ battle_id: t.battle_id, title: t.title, ends_at: t.ends_at })) };
+    // Last 5 finished battles: against whom, the scores, and the result (the score decides; equal = draw)
+    const [mine] = await db.execute('SELECT r.battle_id, r.score, b.title, b.ends_at FROM battle_results r JOIN battles b ON b.id = r.battle_id WHERE r.team_id = ? ORDER BY b.ends_at DESC, r.battle_id DESC LIMIT 5', [teamId]);
+    let recent = [];
+    if (mine.length) {
+        const ids = mine.map((m) => m.battle_id);
+        const [others] = await db.execute(`SELECT r.battle_id, r.team_id, r.score, t.name FROM battle_results r JOIN teams t ON t.id = r.team_id WHERE r.team_id <> ? AND r.battle_id IN (${ids.map(() => '?').join(', ')})`, [teamId, ...ids]);
+        recent = mine.map((m) => {
+            const rivals = others.filter((o) => o.battle_id === m.battle_id).sort((a, b) => Number(b.score) - Number(a.score));
+            const top = rivals[0]; const my = Number(m.score); const their = top ? Number(top.score) : 0;
+            return { battle_id: m.battle_id, title: m.title, ends_at: m.ends_at, opponent: top ? top.name : null, score: my, opponent_score: their, result: !top || my > their ? 'win' : my === their ? 'draw' : 'loss' };
+        });
+    }
+    let streak = 0; for (const r of recent) { if (r.result !== 'win') break; streak++; }
+    return { rating: stats.rating, league: leagueOf(stats.rating), played: stats.played, wins: stats.wins, badges: badgesOf(stats), trophies: tr.map((t) => ({ battle_id: t.battle_id, title: t.title, ends_at: t.ends_at })), recent, streak };
 }
 
 // Public team facts (like the team page itself): rating, league, badges, trophies

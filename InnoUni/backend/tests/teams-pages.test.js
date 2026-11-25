@@ -37,7 +37,8 @@ function boot(state) {
         } else if (/^\/tournaments\/\d+\/(register|withdraw)/.test(p)) {
             r = state.regFails ? { ok: false, status: 400, body: { error: 'A team needs at least 3 active members' } } : { body: { registered: true } };
         } else if (/^\/battles\/teams\/\d+\/record/.test(p)) {
-            r = { body: { rating: 1216, league: 'Oltin', played: 4, wins: 2, badges: [{ id: 'first_win', name: "Birinchi g'alaba" }], trophies: [{ battle_id: 1, title: '<b>Kubok</b> battle', ends_at: null }] } };
+            r = { body: { rating: 1216, league: 'Oltin', played: 4, wins: 2, badges: [{ id: 'first_win', name: "Birinchi g'alaba" }], trophies: [{ battle_id: 1, title: '<b>Kubok</b> battle', ends_at: null }],
+                recent: [{ battle_id: 8, title: 'x', ends_at: null, opponent: '<i>Beta</i>', score: 5, opponent_score: 3, result: 'win' }, { battle_id: 7, title: 'y', ends_at: null, opponent: 'Gamma', score: 4, opponent_score: 4, result: 'draw' }, { battle_id: 6, title: 'z', ends_at: null, opponent: 'Delta', score: 1, opponent_score: 2, result: 'loss' }], streak: 2 } };
         } else if (/^\/battles\/leaderboard/.test(p)) {
             r = { body: { teams: [{ team_id: 3, name: '<i>Alfa</i>', rating: 1216, league: 'Oltin', played: 4, wins: 2 }] } };
         } else if (/^\/battles\/\d+\/quiz/.test(p)) {
@@ -491,6 +492,22 @@ describe('battle rating', () => {
         expect(rc.textContent).toContain('1216 ball'); expect(rc.textContent).toContain('Oltin liga');
         expect(rc.textContent).toContain("Birinchi g'alaba"); expect(rc.textContent).toContain('<b>Kubok</b> battle');
         expect(rc.querySelector('b b')).toBeNull();
+    });
+    test('the record card shows the form, the streak and the last games as text', async () => {
+        const t = boot(makeState()); t.w.GEData.ctx.teamId = 1;
+        await t.run('team-detail'); await t.flush();
+        const rc = t.c.querySelector('[data-record]');
+        expect(rc.querySelector('[data-form]').textContent).toContain("G' D M");
+        expect(rc.textContent).toContain("2 ta g'alaba ketma-ket");
+        expect(rc.querySelector('[data-game="8"]').textContent).toBe("G'alaba · <i>Beta</i> · 5 : 3");
+        expect(rc.querySelector('[data-game="7"]').textContent).toBe('Durang · Gamma · 4 : 4');
+        expect(rc.querySelector('[data-game="6"]').textContent).toContain("Mag'lubiyat");
+        expect(rc.querySelector('i')).toBeNull();
+    });
+    test('the team page shows this week\'s activity', async () => {
+        const t = boot(makeState()); t.w.GEData.ctx.teamId = 1;
+        await t.run('team-detail'); await t.flush();
+        expect(t.c.textContent).toMatch(/Bu hafta\d+ faol, \d+ xabar/);
     });
 });
 
