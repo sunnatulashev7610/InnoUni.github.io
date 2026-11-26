@@ -56,11 +56,11 @@
 	</main>
 	<script>
 		// A 404 page can be shown at any depth (/a/b/c), so build links from the site root instead of relative paths.
-		// GitHub Pages project site: https://user.github.io/<repo>/...
+		// GitHub Pages project site: https://user.github.io/<repo>/...; Netlify: the app is in /InnoUni/
 		(function () {
 			var parts = location.pathname.split('/').filter(Boolean);
 			// the app lives in the InnoUni/ folder on GitHub Pages, and at the web root when served by Express
-			var root = /\.github\.io$/.test(location.hostname) && parts.length ? '/' + parts[0] + '/InnoUni/' : '/';
+			var root = /\.github\.io$/.test(location.hostname) && parts.length ? '/' + parts[0] + '/InnoUni/' : (/\.netlify\.app$/.test(location.hostname) ? '/InnoUni/' : '/');
 			document.querySelectorAll('[data-go]').forEach(function (a) { a.setAttribute('href', root + a.getAttribute('data-go')); });
 			var p = document.getElementById('path');
 			p.textContent = location.pathname; // text only
