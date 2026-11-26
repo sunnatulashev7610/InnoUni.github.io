@@ -36,7 +36,7 @@
                 // the public catalog is closed: only the courses the student is in
                 (d.courses || []).filter(function (c) { return c.enrolled || !(window.FEATURES && window.FEATURES.courses === false); }).forEach(function (c) { items.push({ kind: 'Kurs', title: c.title, sub: [c.category, c.teacher].filter(Boolean).join(' '), go: function () { G.ctx.courseId = c.id; G.open('course-detail', 'courses'); } }); });
             }));
-            jobs.push(get('/student/tasks', session).then(function (d) {
+            if (!(window.FEATURES && window.FEATURES.tasks === false)) jobs.push(get('/student/tasks', session).then(function (d) {
                 (d.tasks || []).forEach(function (t) { items.push({ kind: 'Vazifa', title: t.title, sub: t.course, go: function () { G.open('vazifalar', 'vazifalar'); } }); });
             }));
         }

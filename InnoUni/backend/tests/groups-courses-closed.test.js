@@ -46,3 +46,20 @@ describe('dashboard page', () => {
         expect(html).toMatch(/page === 'courses' && window\.GEData && currentRole !== 'teacher'\) \{ window\.GEData\.ctx\.aiTab = 'ai-courses'; page = 'ai-hub'/);
     });
 });
+
+describe('pricing, tasks and results are closed too', () => {
+    const html = page('dashboard/dashboard.html');
+    test('the three menu items are hidden by the feature list, and the pages are closed', () => {
+        expect(html).toMatch(/var FEATURES = \{[^}]*tasks: false[^}]*results: false[^}]*pricing: false/);
+        const m = html.match(/var PAGE_FEATURE = \{([^}]*)\}/)[1];
+        expect(m).toMatch(/vazifalar: 'tasks'/); expect(m).toMatch(/results: 'results'/); expect(m).toMatch(/pricing: 'pricing'/);
+        [['vazifalar', 'tasks'], ['results', 'results'], ['pricing', 'pricing']].forEach(([p, f]) => {
+            const item = html.match(new RegExp(`<button class="nav-item"[^>]*loadPage\\('${p}'[^>]*>`))[0];
+            expect(item).toContain('hidden'); expect(item).toContain(`data-feature="${f}"`);
+        });
+    });
+    test('search does not look for tasks while they are closed', () => {
+        const src = fs.readFileSync(path.join(__dirname, '../../frontend/js/dashboard-search.js'), 'utf8');
+        expect(src).toMatch(/FEATURES\.tasks === false\)\) jobs\.push\(get\('\/student\/tasks'/);
+    });
+});

@@ -26,7 +26,7 @@ test('FEATURE_TEAMS=false closes teams for every role and method', async () => {
 
 test('dashboard shows Teams, keeps Library hidden and guards closed pages', () => {
     const html = require('fs').readFileSync(require('path').join(__dirname, '../../secondary-pages/dashboard/dashboard.html'), 'utf8');
-    expect(html).toMatch(/var FEATURES = \{ teams: true, library: false, groups: false, courses: false \}/);
+    expect(html).toMatch(/var FEATURES = \{ teams: true, library: false, groups: false, courses: false, tasks: false, results: false, pricing: false \}/);
     expect(html).toMatch(/data-feature="teams" hidden onclick="loadPage\('jamoalar'/);
     expect(html).toMatch(/data-feature="library" hidden onclick="loadPage\('library'/);
     expect(html).toMatch(/PAGE_FEATURE\[page\] && !FEATURES\[PAGE_FEATURE\[page\]\]/);
