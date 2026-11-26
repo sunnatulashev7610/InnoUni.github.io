@@ -192,6 +192,43 @@
         r.teams.forEach(function (x, i) { const tr = el('tr'); [i + 1, x.name, x.league, x.rating, x.wins].forEach(function (v) { tr.appendChild(el('td', '', String(v))); }); t.appendChild(tr); });
         c.appendChild(t); return c;
     }
+    // Personal results: my numbers and the best players (names are short: "Ali V."). Everything is set with textContent.
+    async function playersPane(session) {
+        const box = el('div'); box.style.cssText = 'display:grid;gap:18px';
+        let me = null; let top = null;
+        try { me = await get('/battles/players/me', session); } catch (e) { if (e.auth) throw e; }
+        try { top = await get('/battles/players/leaderboard', session); } catch (e) { if (e.auth) throw e; }
+        const mine = card('Mening natijam');
+        if (!me) mine.appendChild(empty("Natijani yuklab bo'lmadi."));
+        else if (!me.battles) mine.appendChild(empty("Hali natija yo'q. Jamoangiz battle o'ynaganda va siz savollarga javob berganingizda bu yerda ko'rinadi."));
+        else {
+            const row = el('div'); row.style.cssText = 'display:flex;gap:12px;flex-wrap:wrap'; row.dataset.myStats = '1';
+            [['Battle', me.battles], ["To'g'ri javob", me.correct + ' / ' + me.answered], ['Aniqlik', me.accuracy + '%'], ['MVP', me.mvp]].forEach(function (x) {
+                const b = el('div', 'pg-card'); b.appendChild(el('div', 'pg-muted', x[0])); b.appendChild(el('b', '', String(x[1]))); row.appendChild(b);
+            });
+            mine.appendChild(row);
+            const bw = el('div'); bw.dataset.myBadges = '1'; bw.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:10px';
+            (me.badges || []).forEach(function (b) { bw.appendChild(el('span', 'pg-pill', '🏅 ' + b.name)); });
+            mine.appendChild(bw);
+        }
+        box.appendChild(mine);
+        const board = card("Eng yaxshi o'yinchilar");
+        const players = top && Array.isArray(top.players) ? top.players : null;
+        if (!players) board.appendChild(empty("Jadvalni yuklab bo'lmadi."));
+        else if (!players.length) board.appendChild(empty("Hali natija yo'q."));
+        else {
+            const t = el('table', 'pg-table'); const hr = el('tr');
+            ['#', "O'yinchi", "To'g'ri", 'Aniqlik', 'Battle'].forEach(function (h) { hr.appendChild(el('th', '', h)); }); t.appendChild(hr);
+            players.forEach(function (x, i) {
+                const tr = el('tr'); if (x.me) { tr.dataset.me = '1'; tr.style.fontWeight = '700'; }
+                [i + 1, x.name + (x.me ? ' (siz)' : ''), x.correct, x.accuracy + '%', x.battles].forEach(function (v) { tr.appendChild(el('td', '', String(v))); }); t.appendChild(tr);
+            });
+            board.appendChild(t);
+            board.appendChild(el('p', 'pg-muted', "Jamoada anonim o'ynaydigan a'zolar jadvalda ko'rsatilmaydi."));
+        }
+        box.appendChild(board);
+        return box;
+    }
     async function battlesPane(session, teams, refresh) {
         const box = el('div'); box.style.cssText = 'display:grid;gap:18px';
         const mineAdmin = teams.filter(function (t) { return t.is_captain; });
@@ -766,7 +803,7 @@
             pg.appendChild(head('Musobaqalar', "Jamoalar o'rtasida battle o'tkazing, reyting va kubok yuting."));
             const panes = {};
             tabs.onChange = function (k) { tab = k; };
-            const nav = tabs([['battle', 'Battlelar'], ['teams', 'Jamoalar'], ['season', 'Mavsumiy turnirlar'], ['rules', 'Qoidalar']], tab, panes); nav.classList.add('pg-tabs-wrap'); pg.appendChild(nav);
+            const nav = tabs([['battle', 'Battlelar'], ['teams', 'Jamoalar'], ['season', 'Mavsumiy turnirlar'], ['players', "O'yinchilar"], ['rules', 'Qoidalar']], tab, panes); nav.classList.add('pg-tabs-wrap'); pg.appendChild(nav);
 
             const bt = el('div'); bt.hidden = tab !== 'battle'; bt.dataset.pane = 'battle'; panes.battle = bt;
             const battles = await battlesPane(session, data.teams, draw); bt.appendChild(battles); pg.appendChild(bt);
@@ -780,6 +817,8 @@
             se.appendChild(await tournamentsPane(session, function () { nav.querySelector('[data-tab="battle"]').click(); })); pg.appendChild(se);
 
             const ru = el('div'); ru.hidden = tab !== 'rules'; ru.dataset.pane = 'rules'; panes.rules = ru; ru.appendChild(rulesPane()); pg.appendChild(ru);
+            const pl = el('div'); pl.hidden = tab !== 'players'; pl.dataset.pane = 'players'; panes.players = pl;
+            pl.appendChild(await playersPane(session)); pg.appendChild(pl);
         }
         await draw();
     });

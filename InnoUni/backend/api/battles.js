@@ -9,6 +9,7 @@ const { notify } = require('../utils/notify');
 const ai = require('../utils/aiProvider');
 
 const { START, leagueOf, eloChanges, badgesOf } = require('../utils/battleRating');
+const player = require('../utils/playerStats');
 const router = express.Router();
 router.use(authenticateToken);
 
@@ -173,6 +174,23 @@ router.get('/leaderboard', async (req, res) => {
     try {
         const [rows] = await req.db.execute('SELECT s.team_id, s.rating, s.played, s.wins, t.name FROM team_battle_stats s JOIN teams t ON t.id = s.team_id WHERE s.played > 0 ORDER BY s.rating DESC, s.wins DESC LIMIT 20', []);
         res.json({ teams: rows.map((r) => ({ team_id: r.team_id, name: r.name, rating: r.rating, league: leagueOf(r.rating), played: r.played, wins: r.wins })) });
+    } catch (e) { serverError(res, e); }
+});
+
+// Personal results of the person who is logged in
+router.get('/players/me', async (req, res) => {
+    try {
+        const uid = req.user.userId;
+        const [rows] = await req.db.execute('SELECT a.battle_id, a.team_id, a.user_id, SUM(a.correct) AS ok, COUNT(*) AS n FROM battle_answers a JOIN battle_results r ON r.battle_id = a.battle_id AND r.team_id = a.team_id WHERE a.battle_id IN (SELECT battle_id FROM battle_answers WHERE user_id = ?) GROUP BY a.battle_id, a.team_id, a.user_id', [uid]);
+        res.json(player.statsFromRows(rows, uid));
+    } catch (e) { serverError(res, e); }
+});
+
+// The best players: by correct answers (then fewer answers = higher accuracy). Members who play anonymously in their team are not listed.
+router.get('/players/leaderboard', async (req, res) => {
+    try {
+        const [rows] = await req.db.execute('SELECT a.user_id, u.full_name, COUNT(*) AS n, SUM(a.correct) AS ok, COUNT(DISTINCT a.battle_id) AS battles FROM battle_answers a JOIN battle_results r ON r.battle_id = a.battle_id AND r.team_id = a.team_id JOIN users u ON u.id = a.user_id JOIN team_members m ON m.team_id = a.team_id AND m.user_id = a.user_id WHERE m.anonymous = 0 AND u.blocked = 0 GROUP BY a.user_id, u.full_name ORDER BY ok DESC, n ASC, a.user_id ASC LIMIT 20', []);
+        res.json({ players: rows.map((r) => ({ name: player.shortName(r.full_name), correct: Number(r.ok), answered: Number(r.n), accuracy: player.percent(r.ok, r.n), battles: Number(r.battles), me: r.user_id === req.user.userId })) });
     } catch (e) { serverError(res, e); }
 });
 
