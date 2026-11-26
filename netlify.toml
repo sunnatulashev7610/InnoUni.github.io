@@ -1,0 +1,23 @@
+# Netlify hosts only the static site. The API stays on Render (see InnoUni/frontend/js/config.js).
+[build]
+  publish = "."
+  # nothing to build
+
+# The app lives in the InnoUni folder
+[[redirects]]
+  from = "/"
+  to = "/InnoUni/index.html"
+  status = 301
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "SAMEORIGIN"
+
+# The backend and its tests are not part of the site
+[[redirects]]
+  from = "/InnoUni/backend/*"
+  to = "/404.html"
+  status = 404
