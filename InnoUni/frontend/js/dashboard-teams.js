@@ -229,6 +229,30 @@
         box.appendChild(board);
         return box;
     }
+    // ---- Hall of Fame: champions of the seasonal tournaments
+    async function famePane(session) {
+        const box = el('div'); box.style.cssText = 'display:grid;gap:18px';
+        let r = null;
+        try { r = await get('/tournaments/champions', session); } catch (e) { if (e.auth) throw e; }
+        const c = card('Shon-sharaf zali');
+        if (!r || !Array.isArray(r.champions)) c.appendChild(empty("Ro'yxatni yuklab bo'lmadi."));
+        else if (!r.champions.length) c.appendChild(empty("Hali chempion yo'q. Birinchi mavsumiy turnir g'olibi shu yerga yoziladi."));
+        else {
+            r.champions.forEach(function (x) {
+                const row = el('div'); row.dataset.champion = String(x.id); row.style.cssText = 'display:flex;gap:10px;align-items:center;padding:6px 0;flex-wrap:wrap';
+                row.appendChild(el('span', '', '🏆')); row.appendChild(el('b', '', x.team_name));
+                row.appendChild(el('span', 'pg-muted', x.title + ' · ' + x.topic + (x.finished_at ? ' · ' + String(x.finished_at).slice(0, 10) : '')));
+                c.appendChild(row);
+            });
+        }
+        box.appendChild(c);
+        if (r && r.teams && r.teams.length) {
+            const t = card("Eng ko'p kubok");
+            r.teams.forEach(function (x, i) { const row = el('div'); row.dataset.titles = String(x.team_id); row.textContent = (i + 1) + '. ' + x.name + ' · ' + x.titles + ' ta kubok'; t.appendChild(row); });
+            box.appendChild(t);
+        }
+        return box;
+    }
     async function battlesPane(session, teams, refresh) {
         const box = el('div'); box.style.cssText = 'display:grid;gap:18px';
         const mineAdmin = teams.filter(function (t) { return t.is_captain; });
@@ -803,7 +827,7 @@
             pg.appendChild(head('Musobaqalar', "Jamoalar o'rtasida battle o'tkazing, reyting va kubok yuting."));
             const panes = {};
             tabs.onChange = function (k) { tab = k; };
-            const nav = tabs([['battle', 'Battlelar'], ['teams', 'Jamoalar'], ['season', 'Mavsumiy turnirlar'], ['players', "O'yinchilar"], ['rules', 'Qoidalar']], tab, panes); nav.classList.add('pg-tabs-wrap'); pg.appendChild(nav);
+            const nav = tabs([['battle', 'Battlelar'], ['teams', 'Jamoalar'], ['season', 'Mavsumiy turnirlar'], ['players', "O'yinchilar"], ['fame', 'Shon-sharaf'], ['rules', 'Qoidalar']], tab, panes); nav.classList.add('pg-tabs-wrap'); pg.appendChild(nav);
 
             const bt = el('div'); bt.hidden = tab !== 'battle'; bt.dataset.pane = 'battle'; panes.battle = bt;
             const battles = await battlesPane(session, data.teams, draw); bt.appendChild(battles); pg.appendChild(bt);
@@ -815,6 +839,8 @@
 
             const se = el('div'); se.hidden = tab !== 'season'; se.dataset.pane = 'season'; panes.season = se;
             se.appendChild(await tournamentsPane(session, function () { nav.querySelector('[data-tab="battle"]').click(); })); pg.appendChild(se);
+
+            const fm = el('div'); fm.hidden = tab !== 'fame'; fm.dataset.pane = 'fame'; panes.fame = fm; fm.appendChild(await famePane(session)); pg.appendChild(fm);
 
             const ru = el('div'); ru.hidden = tab !== 'rules'; ru.dataset.pane = 'rules'; panes.rules = ru; ru.appendChild(rulesPane()); pg.appendChild(ru);
             const pl = el('div'); pl.hidden = tab !== 'players'; pl.dataset.pane = 'players'; panes.players = pl;

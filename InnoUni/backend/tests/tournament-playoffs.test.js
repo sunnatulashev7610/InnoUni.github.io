@@ -150,3 +150,35 @@ describe('16 teams: quarter-finals first', () => {
         expect((await startRound()).body).toEqual({ stage: 'final', matches: 1 });
     });
 });
+
+describe('champion notice and Hall of Fame', () => {
+    const hall = async () => (await request(app).get('/api/tournaments/champions').set(as(5))).body;
+    beforeEach(() => setup(4));
+    test('nothing in the Hall of Fame before a final is won', async () => {
+        expect(await hall()).toEqual({ champions: [], teams: [] });
+    });
+    test('when the final ends everybody is told once; the champion team gets the congratulation', async () => {
+        await allGroups(); await startRound();
+        await finishStage((m) => m.stage === 'final', (a, b) => Math.max(a, b));
+        fake.s.notices.length = 0;
+        await view(); await view(); await view();                                          // seen many times, told once
+        const champ = fake.s.notices.filter((n) => n.title === 'Tabriklaymiz! Kuz kubogi chempioni siz');
+        expect(champ.map((n) => n.user_id)).toEqual(expect.arrayContaining([102, 220, 221]));
+        expect(new Set(champ.map((n) => n.user_id)).size).toBe(champ.length);
+        const others = fake.s.notices.filter((n) => n.title === 'Kuz kubogi yakunlandi');
+        expect(others.length).toBeGreaterThan(0); expect(others[0].body).toBe('Chempion: Jamoa 2');
+        expect(others.some((n) => n.user_id === 102)).toBe(false);
+    });
+    test('the champion is listed with the number of titles', async () => {
+        await allGroups(); await startRound();
+        await finishStage((m) => m.stage === 'final', (a, b) => Math.max(a, b));
+        await view();
+        const h = await hall();
+        expect(h.champions).toHaveLength(1);
+        expect(h.champions[0]).toMatchObject({ title: 'Kuz kubogi', topic: 'Python', team_id: teams[1], team_name: 'Jamoa 2' });
+        expect(h.teams).toEqual([{ team_id: teams[1], name: 'Jamoa 2', titles: 1 }]);
+    });
+    test('needs a login', async () => {
+        expect((await request(app).get('/api/tournaments/champions')).status).toBe(401);
+    });
+});
