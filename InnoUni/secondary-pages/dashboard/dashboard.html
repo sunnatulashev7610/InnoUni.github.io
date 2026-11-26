@@ -89,18 +89,18 @@
 				<i class="fas fa-wand-magic-sparkles"></i>
 				AI vositalari
 			</button>
-			<button class="nav-item" onclick="loadPage('results', this)">
+			<button class="nav-item" data-feature="results" hidden onclick="loadPage('results', this)">
 				<i class="fas fa-chart-line"></i>
 				Natijalar
 			</button>
-			<button class="nav-item" onclick="loadPage('pricing', this)">
+			<button class="nav-item" data-feature="pricing" hidden onclick="loadPage('pricing', this)">
 				<i class="fas fa-tags"></i>
 				Narxlar
 			</button>
 		</div>
 		<div class="sidebar-section">
 			<div class="sidebar-title">O'qish</div>
-			<button class="nav-item" onclick="loadPage('vazifalar', this)">
+			<button class="nav-item" data-feature="tasks" hidden onclick="loadPage('vazifalar', this)">
 				<i class="fas fa-tasks"></i>
 				Vazifalar
 				<span class="nav-badge">12</span>
@@ -282,8 +282,8 @@
 	<script>
 		// Enhanced loadPage function with loading states
 		// Built but switched off for now. To bring a feature back, set it to true (and show its menu item).
-		var FEATURES = { teams: true, library: false, groups: false, courses: false };
-		var PAGE_FEATURE = { jamoalar: 'teams', 'team-detail': 'teams', musobaqalar: 'teams', library: 'library', groups: 'groups', 'group-detail': 'groups', courses: 'courses' };
+		var FEATURES = { teams: true, library: false, groups: false, courses: false, tasks: false, results: false, pricing: false };
+		var PAGE_FEATURE = { jamoalar: 'teams', 'team-detail': 'teams', musobaqalar: 'teams', library: 'library', groups: 'groups', 'group-detail': 'groups', courses: 'courses', vazifalar: 'tasks', results: 'results', pricing: 'pricing' };
 		// The three AI tools live in one section; old links to them open the matching tab there
 		var AI_TABS = { ai: 'ai', 'ai-courses': 'ai-courses', 'ai-materials': 'ai-materials' };
 		document.querySelectorAll('[data-feature]').forEach(function (n) { n.hidden = !FEATURES[n.dataset.feature]; });
