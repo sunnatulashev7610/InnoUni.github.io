@@ -32,7 +32,9 @@ function boot(state) {
         const body = opts.body ? JSON.parse(opts.body) : undefined;
         calls.push({ path: p, method, body });
         let r = { body: { message: 'ok' } };
-        if (/^\/tournaments$/.test(p)) {
+        if (p === '/tournaments/champions') {
+            r = state.fame === undefined ? { body: { champions: [], teams: [] } } : { body: state.fame };
+        } else if (/^\/tournaments$/.test(p)) {
             r = { body: state.tournaments === undefined ? { tournaments: [], my_admin_teams: [] } : state.tournaments };
         } else if (/^\/tournaments\/\d+\/(register|withdraw)/.test(p)) {
             r = state.regFails ? { ok: false, status: 400, body: { error: 'A team needs at least 3 active members' } } : { body: { registered: true } };
@@ -550,6 +552,22 @@ describe('project battle', () => {
         const anchors = [...bp.querySelectorAll('a')];
         expect(anchors.map((a) => a.href)).toEqual(['https://github.com/a/b']);
         expect(bp.textContent).toContain('javascript:alert(1)');
+    });
+});
+
+describe('Hall of Fame', () => {
+    test('empty at first, with an honest line', async () => {
+        const t = boot(makeState()); await t.run('musobaqalar'); await t.flush();
+        const fp = pane(t.c, 'fame'); expect(fp.hidden).toBe(true);
+        expect(fp.textContent).toContain("Hali chempion yo'q");
+    });
+    test('champions and title counts are shown as plain text', async () => {
+        const state = makeState(); state.fame = { champions: [{ id: 4, title: '<b>Kuz</b> kubogi', topic: 'Python', team_id: 1, team_name: '<i>Alfa</i>', finished_at: '2026-11-20T10:00:00Z' }], teams: [{ team_id: 1, name: '<i>Alfa</i>', titles: 2 }] };
+        const t = boot(state); await t.run('musobaqalar'); await t.flush();
+        const fp = pane(t.c, 'fame');
+        expect(fp.querySelector('[data-champion="4"]').textContent).toContain('<i>Alfa</i>');
+        expect(fp.textContent).toContain('<b>Kuz</b> kubogi'); expect(fp.textContent).toContain('2026-11-20'); expect(fp.textContent).toContain('2 ta kubok');
+        expect(fp.querySelector('i, b b')).toBeNull();
     });
 });
 

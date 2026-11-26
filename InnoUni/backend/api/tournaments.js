@@ -7,12 +7,29 @@ const { BATTLE_LIMITS } = require('../utils/battleLimits');
 const { TOURNAMENT_LIMITS, standings, STAGES, knockoutWinner } = require('../utils/tournamentDraw');
 const battles = require('./battles');
 const { getTeam, countActive } = require('../utils/teamAccess');
+const { notify } = require('../utils/notify');
 
 const router = express.Router();
 router.use(authenticateToken);
 
 const serverError = (res, e) => { console.error(e); res.status(500).json({ error: 'Server error' }); };
 const holes = (list) => list.map(() => '?').join(', ');
+const ISO = (col) => `DATE_FORMAT(${col}, '%Y-%m-%dT%H:%i:%sZ')`;
+
+// The first time we see a finished final, remember the champion and tell the teams. One UPDATE claims it, so it is sent once.
+async function announceChampion(db, t) {
+    const [claim] = await db.execute('UPDATE tournaments SET champion_team_id = ?, finished_at = UTC_TIMESTAMP() WHERE id = ? AND champion_team_id IS NULL', [t.champion.team_id, t.id]);
+    if (!claim.affectedRows) return;
+    for (const team of t.teams) {
+        const [people] = await db.execute("SELECT user_id FROM team_members WHERE team_id = ? AND status = 'active'", [team.team_id]);
+        const won = team.team_id === t.champion.team_id;
+        await Promise.all(people.map((p) => notify(db, p.user_id, {
+            kind: 'team', page: 'musobaqalar', refId: t.id,
+            title: won ? `Tabriklaymiz! ${t.title} chempioni siz` : `${t.title} yakunlandi`,
+            body: won ? "Jamoangiz Shon-sharaf zaliga yozildi." : `Chempion: ${t.champion.name}`
+        })));
+    }
+}
 
 // Everything the page needs, in a few queries. userId 0 = nobody in particular (admin view)
 async function loadTournaments(db, userId, onlyId) {
@@ -31,7 +48,7 @@ async function loadTournaments(db, userId, onlyId) {
         [states] = await db.execute(`SELECT id, status FROM battles WHERE id IN (${holes(battleIds)})`, battleIds);
         [results] = await db.execute(`SELECT battle_id, team_id, score FROM battle_results WHERE battle_id IN (${holes(battleIds)})`, battleIds);
     }
-    return list.map((t) => {
+    const out = list.map((t) => {
         const mine = teams.filter((x) => x.tournament_id === t.id);
         const name = (id) => (mine.find((x) => x.team_id === id) || {}).name;
         const ms = matches.filter((m) => m.tournament_id === t.id).map((m) => {
@@ -73,7 +90,20 @@ async function loadTournaments(db, userId, onlyId) {
             champion: champId ? { team_id: champId, name: name(champId) } : null
         };
     });
+    for (const t of out) if (t.champion) await announceChampion(db, t).catch((e) => console.error('Champion notice failed:', e.message));
+    return out;
 }
+
+// Hall of Fame: every tournament champion, newest first, and how many titles each team has
+router.get('/champions', async (req, res) => {
+    try {
+        const [rows] = await req.db.execute(`SELECT t.id, t.title, t.topic, t.champion_team_id AS team_id, tm.name AS team_name, ${ISO('t.finished_at')} AS finished_at FROM tournaments t JOIN teams tm ON tm.id = t.champion_team_id WHERE t.champion_team_id IS NOT NULL ORDER BY t.finished_at DESC, t.id DESC LIMIT 30`, []);
+        const count = {};
+        rows.forEach((r) => { count[r.team_id] = (count[r.team_id] || 0) + 1; });
+        const teams = Object.keys(count).map((id) => ({ team_id: Number(id), name: rows.find((r) => r.team_id === Number(id)).team_name, titles: count[id] })).sort((a, b) => b.titles - a.titles || a.name.localeCompare(b.name)).slice(0, 10);
+        res.json({ champions: rows, teams });
+    } catch (e) { serverError(res, e); }
+});
 
 router.get('/', async (req, res) => {
     try {
