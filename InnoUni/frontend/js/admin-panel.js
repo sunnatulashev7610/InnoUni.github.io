@@ -50,6 +50,7 @@
             grid.appendChild(statCard('fas fa-user-plus', s.new_week, 'Oxirgi 7 kunda yangi', 'var(--info-soft)', 'var(--info)'));
             todo.appendChild(el('b', '', 'Kutilayotgan ishlar'));
             const items = [];
+            if (s.appeals_open) items.push(s.appeals_open + " ta e'tiroz javob kutmoqda (Battlelar bo'limi).");
             if (s.unverified) items.push(s.unverified + ' ta foydalanuvchi emailini hali tasdiqlamagan.');
             if (!items.length) items.push('Hozircha hammasi joyida.');
             items.forEach(function (t) { const p = el('p', 'pg-muted', t); p.style.margin = '6px 0 0'; todo.appendChild(p); });

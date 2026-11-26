@@ -553,6 +553,34 @@ describe('project battle', () => {
     });
 });
 
+describe('fair play: rules and objections', () => {
+    const fin = { id: 12, title: 'Jang', topic: 'Mavzu', kind: 'quiz', status: 'finished', ends_at: new Date(Date.now() - 3600000).toISOString(), duration_days: 1, host_team_id: 3, my_team_id: 3, can_submit: false, is_host_admin: true, can_respond: false, teams: [{ team_id: 3, name: 'Host jamoa', state: 'host', result: { score: 5, correct_total: 15, participants: 3, place: 2 } }, { team_id: 1, name: 'Python Klub', state: 'accepted', result: { score: 6, correct_total: 18, participants: 3, place: 1 } }] };
+    test('the Qoidalar tab explains scoring, objections and penalties as text', async () => {
+        const t = boot(makeState()); await t.run('musobaqalar'); await t.flush();
+        const rp = pane(t.c, 'rules');
+        expect(rp).not.toBeNull(); expect(rp.hidden).toBe(true);
+        ['Hisob qanday topiladi', "E'tiroz", 'Jazolar', '48 soat'].forEach((x) => expect(rp.textContent).toContain(x));
+    });
+    test('a finished battle with can_appeal has a form; the reason is sent to the server', async () => {
+        const state = makeState(); state.battles = [Object.assign({}, fin, { can_appeal: true })];
+        const t = boot(state); await t.run('musobaqalar'); await t.flush();
+        const bp = pane(t.c, 'battle'); const f = [...bp.querySelectorAll('form')].find((x) => x.querySelector('textarea[aria-label]'));
+        expect(f.hidden).toBe(true);
+        [...bp.querySelectorAll('button')].find((x) => x.textContent === "E'tiroz bildirish").click();
+        expect(f.hidden).toBe(false);
+        f.querySelector('textarea').value = "Savol 3 noto'g'ri edi";
+        f.dispatchEvent(new t.w.Event('submit', { bubbles: true, cancelable: true })); await t.flush();
+        expect(t.calls.find((c) => c.method === 'POST' && c.path === '/battles/12/appeal').body).toEqual({ reason: "Savol 3 noto'g'ri edi" });
+    });
+    test('no button when the objection is not possible; the answer is shown as text', async () => {
+        const state = makeState(); state.battles = [Object.assign({}, fin, { can_appeal: false, appeal: { status: 'rejected', note: '<b>Natija</b> to\'g\'ri' } })];
+        const t = boot(state); await t.run('musobaqalar'); await t.flush();
+        const bp = pane(t.c, 'battle');
+        expect([...bp.querySelectorAll('button')].some((x) => x.textContent === "E'tiroz bildirish")).toBe(false);
+        expect(bp.textContent).toContain("E'tirozingiz rad etildi: <b>Natija</b> to'g'ri"); expect(bp.querySelector('p b')).toBeNull();
+    });
+});
+
 describe('battle quiz', () => {
     const live = { id: 5, title: 'Jonli', topic: 'T', kind: 'quiz', status: 'active', ends_at: new Date(Date.now() + 86400000).toISOString(), duration_days: 1, host_team_id: 3, my_team_id: 3, teams: [{ team_id: 3, name: 'Host jamoa', state: 'host' }, { team_id: 1, name: 'Python Klub', state: 'accepted' }], is_host_admin: false, can_respond: false };
     test('a player opens the quiz, answers once, and the answer is saved without grading; text is never HTML', async () => {

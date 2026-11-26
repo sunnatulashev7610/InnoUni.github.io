@@ -9,7 +9,10 @@ const BATTLE_LIMITS = {
     maxTopicLength: 200,
     maxLinkLength: 300,
     maxNoteLength: 500,
-    maxJudgeScore: 100
+    maxJudgeScore: 100,
+    appealHours: 48,       // a result can be objected to this long after the battle ended
+    minAppealLength: 10,
+    maxAppealLength: 500
 };
 const BATTLE_KINDS = ['quiz', 'project'];
 

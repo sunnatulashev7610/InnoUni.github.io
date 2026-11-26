@@ -26,7 +26,7 @@ router.get('/stats', async (req, res) => {
         const [roles] = await req.db.execute('SELECT role, COUNT(*) AS n FROM users GROUP BY role');
         const [teams] = await req.db.execute('SELECT COUNT(*) AS n FROM teams');
         const [extra] = await req.db.execute(
-            'SELECT (SELECT COUNT(*) FROM courses) AS courses, (SELECT COUNT(*) FROM users WHERE email_verified = 0) AS unverified, (SELECT COUNT(*) FROM users WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)) AS new_week');
+            'SELECT (SELECT COUNT(*) FROM courses) AS courses, (SELECT COUNT(*) FROM battle_appeals WHERE status = \'open\') AS appeals_open, (SELECT COUNT(*) FROM users WHERE email_verified = 0) AS unverified, (SELECT COUNT(*) FROM users WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)) AS new_week');
         const by = (rows, key) => Object.fromEntries(rows.map((r) => [r[key], Number(r.n)]));
         const users = by(roles, 'role');
         res.json({
@@ -34,6 +34,7 @@ router.get('/stats', async (req, res) => {
             teams: Number(teams[0]?.n || 0),
             courses: Number(extra[0]?.courses || 0),
             unverified: Number(extra[0]?.unverified || 0),
+            appeals_open: Number(extra[0]?.appeals_open || 0),
             new_week: Number(extra[0]?.new_week || 0)
         });
     } catch (e) { fail(res, e); }
@@ -178,6 +179,33 @@ router.post('/battles/:id/finish', async (req, res) => {
         }
         await battles.closeBattle(req.db, battle.id, battles.rankTable(table), 'judging');
         res.json({ status: 'finished' });
+    } catch (e) { fail(res, e); }
+});
+
+// ---- Objections to battle results: the admin reads them and answers ----
+router.get('/appeals', async (req, res) => {
+    try {
+        const status = req.query.status === 'resolved' ? 'resolved' : 'open';
+        const [rows] = await req.db.execute(
+            `SELECT a.id, a.battle_id, a.team_id, a.reason, a.status, a.admin_note, a.created_at, b.title AS battle_title, t.name AS team_name, u.full_name AS captain_name FROM battle_appeals a JOIN battles b ON b.id = a.battle_id JOIN teams t ON t.id = a.team_id JOIN users u ON u.id = a.user_id WHERE ${status === 'open' ? "a.status = 'open'" : "a.status <> 'open'"} ORDER BY a.id DESC LIMIT 50`, []);
+        res.json({ appeals: rows });
+    } catch (e) { fail(res, e); }
+});
+
+router.post('/appeals/:id/resolve', async (req, res) => {
+    try {
+        const id = parseId(req.params.id);
+        if (!id) return res.status(400).json({ error: 'Invalid appeal id' });
+        const decision = req.body && req.body.decision;
+        if (!['accepted', 'rejected'].includes(decision)) return res.status(400).json({ error: 'Decision must be accepted or rejected' });
+        const note = validateText(req.body.note, { field: 'Note', required: true, maxLength: 300 });
+        if (note.error) return res.status(400).json({ error: note.error });
+        const [rows] = await req.db.execute('SELECT a.id, a.status, a.user_id, a.battle_id, b.title FROM battle_appeals a JOIN battles b ON b.id = a.battle_id WHERE a.id = ?', [id]);
+        if (!rows.length) return res.status(404).json({ error: 'Appeal not found' });
+        const [done] = await req.db.execute("UPDATE battle_appeals SET status = ?, admin_note = ?, resolved_by = ?, resolved_at = UTC_TIMESTAMP() WHERE id = ? AND status = 'open'", [decision, note.value, req.user.userId, id]);
+        if (!done.affectedRows) return res.status(409).json({ error: 'This objection has already been answered' });
+        await notify(req.db, rows[0].user_id, { kind: 'battle', title: decision === 'accepted' ? "E'tirozingiz qabul qilindi" : "E'tirozingiz rad etildi", body: `${rows[0].title}: ${note.value}`, page: 'musobaqalar', refId: rows[0].battle_id });
+        res.json({ status: decision });
     } catch (e) { fail(res, e); }
 });
 
