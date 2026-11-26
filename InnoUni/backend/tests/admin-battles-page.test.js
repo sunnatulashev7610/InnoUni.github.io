@@ -22,6 +22,8 @@ async function boot(opts = {}) {
         if (/\/questions\/\w+$/.test(p) && method === 'PUT') return opts.qError ? { ok: false, status: 400, json: async () => ({ error: 'Question 2: choose the correct option' }) } : { ok: true, status: 200, json: async () => ({ ok: true }) };
         if (p.includes('/start-round') && opts.roundError) return { ok: false, status: 503, json: async () => ({ error: 'The AI that prepares quiz questions is not connected yet' }) };
         if (p.includes('/draw') && opts.drawError) return { ok: false, status: 400, json: async () => ({ error: 'Groups need 4, 6-8 or 12-16 teams; now there are 5' }) };
+        if (p === '/admin/appeals' && method === 'GET') return { ok: true, status: 200, json: async () => ({ appeals: opts.noAppeals ? [] : [{ id: 3, battle_id: 7, battle_title: '<b>Jang</b>', team_name: '<i>Beta</i>', captain_name: 'Ali', reason: '<u>Savol xato</u>', status: 'open' }] }) };
+        if (/^\/admin\/appeals\/\d+\/resolve$/.test(p) && opts.appealError) return { ok: false, status: 409, json: async () => ({ error: 'This objection has already been answered' }) };
         if (method === 'GET') return { ok: true, status: 200, json: async () => (opts.empty ? { battles: [], max_score: 100 } : LIST()) };
         if (p.endsWith('/finish') && opts.finishError) return { ok: false, status: 400, json: async () => ({ error: 'Score every team that handed in a project first' }) };
         return { ok: true, status: 200, json: async () => ({ ok: true }) };
@@ -212,5 +214,36 @@ describe('question editor', () => {
         const { c } = await open();
         [...c.querySelectorAll('[data-tournament="5"] button')].find((x) => x.textContent === 'Savollar').click();
         expect(c.querySelector('[data-editor]')).toBeNull();
+    });
+});
+
+describe('appeals', () => {
+    const btn = (root, t) => [...root.querySelectorAll('button')].find((x) => x.textContent.startsWith(t));
+    test('an open objection is shown as plain text', async () => {
+        const { c } = await boot();
+        const a = c.querySelector('[data-appeal="3"]');
+        expect(a.textContent).toContain('<b>Jang</b>'); expect(a.textContent).toContain('<u>Savol xato</u>'); expect(a.textContent).toContain('Ali');
+        expect(a.querySelector('b, i, u')).toBeNull();
+    });
+    test('no objections: a short note', async () => {
+        const { c } = await boot({ noAppeals: true });
+        expect(c.textContent).toContain("Javob kutayotgan e'tiroz yo'q");
+    });
+    test('a note is required, and the answer needs a second click', async () => {
+        const { c, calls } = await boot();
+        const a = c.querySelector('[data-appeal="3"]');
+        btn(a, 'Qabul').click(); await tick();
+        expect(c.textContent).toContain('Javob izohini yozing');
+        a.querySelector('textarea').value = 'Tekshirdim';
+        btn(a, 'Qabul').click(); expect(calls.find((x) => x.p.includes('/resolve'))).toBeUndefined();
+        btn(a, 'Aniqmi').click(); await tick();
+        expect(calls.find((x) => x.p === '/admin/appeals/3/resolve')).toMatchObject({ method: 'POST', body: { decision: 'accepted', note: 'Tekshirdim' } });
+    });
+    test('reject sends rejected; a server complaint is explained in Uzbek', async () => {
+        const { c, calls } = await boot({ appealError: true });
+        const a = c.querySelector('[data-appeal="3"]'); a.querySelector('textarea').value = 'Yoq';
+        btn(a, 'Rad').click(); btn(a, 'Aniqmi').click(); await tick();
+        expect(calls.find((x) => x.p.includes('/resolve')).body.decision).toBe('rejected');
+        expect(c.textContent).toContain("Bu e'tirozga allaqachon javob berilgan");
     });
 });

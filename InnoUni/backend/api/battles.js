@@ -34,6 +34,7 @@ async function loadBattles(db, ids, userId) {
     const [subs] = await db.execute(`SELECT battle_id, team_id, link, note FROM battle_submissions WHERE battle_id IN (${holes(ids)})`, ids);
     const [playing] = await db.execute(
         `SELECT bt.battle_id, bt.team_id FROM battle_teams bt JOIN team_members m ON m.team_id = bt.team_id WHERE m.user_id = ? AND m.status = 'active' AND bt.state IN ('host', 'accepted') AND bt.battle_id IN (${holes(ids)})`, [userId, ...ids]);
+    const [appeals] = await db.execute(`SELECT battle_id, team_id, status, admin_note FROM battle_appeals WHERE battle_id IN (${holes(ids)})`, ids);
     return battles.sort((a, b) => b.id - a.id).map((b) => {
         const list = teams.filter((t) => t.battle_id === b.id);
         const mineAdmin = list.filter((t) => t.captain_id === userId);
@@ -49,6 +50,10 @@ async function loadBattles(db, ids, userId) {
                 const shown = sub && (b.status === 'finished' || (myPlay && myPlay.team_id === t.team_id));
                 return Object.assign({ team_id: t.team_id, name: t.name, state: t.state, result: res(t.team_id) }, b.kind === 'project' ? { submitted: Boolean(sub) } : {}, shown ? { submission: { link: sub.link, note: sub.note } } : {});
             }),
+            // My team's objection to the result (if any) and whether one can still be sent
+            appeal: (() => { const x = appeals.find((y) => y.battle_id === b.id && mineAdmin.some((t) => t.team_id === y.team_id)); return x ? { status: x.status, note: x.admin_note || '' } : null; })(),
+            can_appeal: b.status === 'finished' && b.ends_at && Date.now() - Date.parse(b.ends_at) <= BATTLE_LIMITS.appealHours * 3600000
+                && mineAdmin.some((t) => (t.state === 'host' || t.state === 'accepted') && !appeals.some((y) => y.battle_id === b.id && y.team_id === t.team_id)),
             is_host_admin: mineAdmin.some((t) => t.team_id === b.host_team_id),
             can_submit: b.kind === 'project' && b.status === 'active' && mineAdmin.some((t) => t.state === 'host' || t.state === 'accepted'),
             can_respond: b.status === 'invited' && mineAdmin.some((t) => t.state === 'invited')
@@ -317,6 +322,29 @@ router.post('/:id/cancel', async (req, res) => {
 });
 
 // ---- Project battles: the admin of a playing team hands in a link until the time is up ----
+// The captain of a team in a finished battle can object to the result, once, within 48 hours; the platform admin answers
+router.post('/:id/appeal', async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: 'Invalid battle id' });
+    try {
+        const reason = validateText(req.body && req.body.reason, { field: 'Reason', maxLength: BATTLE_LIMITS.maxAppealLength });
+        if (reason.error) return res.status(400).json({ error: reason.error });
+        if (reason.value.length < BATTLE_LIMITS.minAppealLength) return res.status(400).json({ error: `Reason must be at least ${BATTLE_LIMITS.minAppealLength} characters` });
+        const [b] = await req.db.execute(`SELECT id, status, title, ${ISO('ends_at')} AS ends_at FROM battles WHERE id = ?`, [id]);
+        if (!b.length) return res.status(404).json({ error: 'Battle not found' });
+        const [mine] = await req.db.execute("SELECT bt.team_id FROM battle_teams bt JOIN teams t ON t.id = bt.team_id WHERE bt.battle_id = ? AND bt.state IN ('host', 'accepted') AND t.captain_id = ?", [id, req.user.userId]);
+        if (!mine.length) return res.status(403).json({ error: 'Only the admin of a team in this battle can object to the result' });
+        if (b[0].status !== 'finished') return res.status(409).json({ error: 'The result is not ready yet' });
+        if (!b[0].ends_at || Date.now() - Date.parse(b[0].ends_at) > BATTLE_LIMITS.appealHours * 3600000) return res.status(409).json({ error: `The time to object (${BATTLE_LIMITS.appealHours} hours) is over` });
+        const teamId = mine[0].team_id;
+        const [had] = await req.db.execute('SELECT id FROM battle_appeals WHERE battle_id = ? AND team_id = ?', [id, teamId]);
+        if (had.length) return res.status(409).json({ error: 'Your team has already objected to this result' });
+        try { await req.db.execute('INSERT INTO battle_appeals (battle_id, team_id, user_id, reason) VALUES (?, ?, ?, ?)', [id, teamId, req.user.userId, reason.value]); }
+        catch (e) { if (e && e.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'Your team has already objected to this result' }); throw e; }
+        res.status(201).json({ sent: true });
+    } catch (e) { serverError(res, e); }
+});
+
 router.post('/:id/submit', async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ error: 'Invalid battle id' });

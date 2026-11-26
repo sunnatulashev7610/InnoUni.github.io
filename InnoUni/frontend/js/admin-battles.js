@@ -37,6 +37,10 @@
         if ((q = m.match(/Question (\d+): choose the correct/))) return q[1] + '-savol: to\'g\'ri variantni belgilang.';
         if ((q = m.match(/Question (\d+): .*too long/))) return q[1] + '-savol: matn juda uzun.';
         if (/Round length/i.test(m)) return "Tur davomiyligi 1–7 kun bo'lsin.";
+        if (/already been answered/i.test(m)) return "Bu e'tirozga allaqachon javob berilgan.";
+        if (/Note is required/i.test(m)) return "Javob izohini yozing.";
+        if (/Note must be at most/i.test(m)) return "Izoh 300 belgidan oshmasin.";
+        if (/Appeal not found/i.test(m)) return "E'tiroz topilmadi.";
         if (/not waiting for the judge/i.test(m)) return "Bu battle endi baholanmaydi.";
         return "Amalni bajarib bo'lmadi. Keyinroq urinib ko'ring.";
     }
@@ -117,6 +121,38 @@
             const tbox = el('div'); tbox.style.cssText = 'display:grid;gap:16px;margin-top:24px'; pg.appendChild(tbox);
 
             const STATUS = { open: "Ro'yxatdan o'tish ochiq", groups: 'Guruh bosqichi', playoffs: 'Pley-off', finished: 'Tugagan' };
+            const abox = el('div'); abox.style.cssText = 'display:grid;gap:16px;margin-top:24px'; pg.insertBefore(abox, tbox);
+            async function loadAppeals() {
+                abox.textContent = '';
+                abox.appendChild(el('h2', 'pg-h3', "E'tirozlar"));
+                const msg = el('p', 'pg-muted'); msg.setAttribute('role', 'alert');
+                let r;
+                try { r = await call('GET', '/admin/appeals', token); } catch (e) { if (e.auth) { onAuthError(); return; } abox.appendChild(el('p', 'pg-muted', "E'tirozlarni yuklab bo'lmadi.")); return; }
+                if (!r.appeals.length) abox.appendChild(el('div', 'pg-card', "Javob kutayotgan e'tiroz yo'q."));
+                r.appeals.forEach(function (a) {
+                    const c = el('div', 'pg-card'); c.dataset.appeal = String(a.id);
+                    c.appendChild(el('h3', 'pg-h3', a.battle_title + ' · ' + a.team_name));
+                    c.appendChild(el('p', 'pg-muted', 'Jamoa admini: ' + (a.captain_name || '—')));
+                    c.appendChild(el('p', '', a.reason));
+                    const nt = el('textarea', 'pg-input'); nt.maxLength = 300; nt.rows = 2; nt.placeholder = 'Javob izohi (majburiy)'; nt.setAttribute('aria-label', 'Javob izohi');
+                    c.appendChild(nt);
+                    const bar = el('div'); bar.style.cssText = 'display:flex;gap:8px;margin-top:8px;flex-wrap:wrap';
+                    [['accepted', 'Qabul qilish'], ['rejected', 'Rad etish']].forEach(function (d) {
+                        const b = el('button', d[0] === 'accepted' ? 'pg-btn' : 'pg-btn ghost', d[1]); b.type = 'button'; b.dataset.decision = d[0]; let armed = false;
+                        b.addEventListener('click', async function () {
+                            msg.textContent = '';
+                            if (!nt.value.trim()) { msg.textContent = 'Javob izohini yozing.'; return; }
+                            if (!armed) { armed = true; b.textContent = 'Aniqmi? Qayta bosing'; setTimeout(function () { armed = false; b.textContent = d[1]; }, 4000); return; }
+                            b.disabled = true;
+                            try { await call('POST', '/admin/appeals/' + a.id + '/resolve', token, { decision: d[0], note: nt.value }); toast('Javob yuborildi'); await loadAppeals(); }
+                            catch (err) { if (err.auth) { onAuthError(); return; } msg.textContent = say(String(err.message)); b.disabled = false; }
+                        });
+                        bar.appendChild(b);
+                    });
+                    c.appendChild(bar); abox.appendChild(c);
+                });
+                abox.appendChild(msg);
+            }
             async function loadTournaments() {
                 tbox.textContent = '';
                 tbox.appendChild(el('h2', 'pg-h3', 'Mavsumiy turnirlar'));
@@ -250,6 +286,7 @@
                 });
             }
             await load();
+            await loadAppeals();
             await loadTournaments();
         }
     };

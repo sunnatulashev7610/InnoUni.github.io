@@ -72,6 +72,13 @@
         if (/Only the admin of a playing team/i.test(m)) return "Loyihani faqat o'ynayotgan jamoaning admini topshira oladi.";
         if (/not active any more/i.test(m)) return 'Battle vaqti tugagan. Loyiha qabul qilinmaydi.';
         if (/not active|already finished|has ended/i.test(m)) return 'Battle vaqti tugagan. Javob qabul qilinmaydi.';
+        if (/Only the admin of a team in this battle/i.test(m)) return "E'tirozni faqat battledagi jamoaning admini yubora oladi.";
+        if (/already objected/i.test(m)) return "Jamoangiz bu natijaga allaqachon e'tiroz bildirgan.";
+        if (/time to object/i.test(m)) return "E'tiroz muddati (48 soat) tugagan.";
+        if (/result is not ready/i.test(m)) return 'Natija hali tayyor emas.';
+        if (/Reason must be at least/i.test(m)) return "Sababni kamida 10 ta belgi bilan yozing.";
+        if (/Reason must be at most/i.test(m)) return "Sabab 500 belgidan oshmasin.";
+        if (/Reason is required/i.test(m)) return "Sababni yozing.";
         if (/no longer waiting/i.test(m)) return "Bu battle endi javob kutmayapti.";
         if (/have not answered/i.test(m)) return "Ba'zi jamoalar hali javob bermagan.";
         if (/At least one team must accept/i.test(m)) return "Kamida bitta jamoa qabul qilishi kerak.";
@@ -236,6 +243,25 @@
                     acts.appendChild(go); acts.appendChild(stop);
                 }
                 if (b.status === 'finished' && b.teams.some(function (x) { return x.result; })) row.appendChild(resultTable(b));
+                if (b.appeal) {
+                    const AP = { open: "E'tirozingiz ko'rib chiqilmoqda", accepted: "E'tirozingiz qabul qilindi", rejected: "E'tirozingiz rad etildi" };
+                    const ap = el('p', 'pg-muted', (AP[b.appeal.status] || "E'tiroz yuborilgan") + (b.appeal.note ? ': ' + b.appeal.note : ''));
+                    row.appendChild(ap);
+                }
+                if (b.can_appeal) {
+                    const af = el('form', 'pg-card'); af.noValidate = true; af.hidden = true; af.appendChild(el('h4', 'pg-h3', "Natijaga e'tiroz"));
+                    const why = el('textarea', 'pg-input'); why.maxLength = 500; why.rows = 3; why.placeholder = "Nima uchun natija noto'g'ri deb o'ylaysiz? (kamida 10 ta belgi)"; why.setAttribute('aria-label', "E'tiroz sababi");
+                    const am = note(); const ab = small(el('button', 'pg-btn', 'Yuborish')); ab.type = 'submit';
+                    af.appendChild(why); af.appendChild(ab); af.appendChild(am);
+                    af.appendChild(el('p', 'pg-muted', "Har bir battle uchun bitta e'tiroz. Platforma admini ko'rib chiqadi."));
+                    af.addEventListener('submit', async function (e) {
+                        e.preventDefault(); am.textContent = ''; ab.disabled = true;
+                        try { await send('POST', '/battles/' + b.id + '/appeal', session, { reason: why.value }); G.toast("E'tiroz yuborildi"); await drawList(); } catch (err) { am.textContent = problem(err); ab.disabled = false; }
+                    });
+                    const ao = small(el('button', 'pg-btn ghost', "E'tiroz bildirish")); ao.type = 'button';
+                    ao.addEventListener('click', function () { af.hidden = !af.hidden; if (!af.hidden) why.focus(); });
+                    acts.appendChild(ao); row.appendChild(af);
+                }
                 if (b.can_submit) {
                     const mine = b.teams.find(function (t) { return t.team_id === b.my_team_id; });
                     const f = el('form', 'pg-card'); f.noValidate = true; f.appendChild(el('h4', 'pg-h3', 'Loyihani topshirish'));
@@ -715,6 +741,22 @@
         return box;
     }
 
+    // ---- Rules: plain text, the same facts the server enforces
+    const RULES = [
+        ['Hisob qanday topiladi', ["Viktorina: jamoa balli = to'g'ri javoblar soni / faol o'yinchilar soni (eng kami 3 deb olinadi). Shuning uchun katta jamoa ham, kichik jamoa ham teng sharoitda.", "Har bir savolga bitta urinish. Javob berilgach, o'zgartirib bo'lmaydi.", "Loyiha battle: jamoa admini https havola topshiradi, hakam 0–100 ball qo'yadi."]],
+        ['Halol o\'yin', ["Javoblarni o'zingiz toping. Boshqa jamoaga savol va javoblarni ko'rsatmang.", "Boshqa odamning nomidan o'ynamang. Bitta hisob bitta odamga tegishli.", "Raqiblarni hurmat qiling. Haqorat va tahdid taqiqlanadi.", "Loyiha battlelarda boshqa birovning ishini o'zinikidek topshirish taqiqlanadi."]],
+        ["E'tiroz", ["Natija noto'g'ri deb hisoblasangiz, jamoa admini 48 soat ichida e'tiroz bildira oladi.", "Har bir jamoa bitta battleda faqat bitta e'tiroz yuboradi. Sababni aniq yozing (kamida 10 ta belgi).", "Platforma admini ko'rib chiqadi va javob yozadi. Javob sizga xabar sifatida keladi."]],
+        ['Jazolar', ["Qoidabuzarlik aniqlansa, admin natijani bekor qilishi yoki jamoani musobaqadan chetlatishi mumkin.", "Takroriy qoidabuzarlikda jamoa yoki o'yinchi musobaqalarga qo'yilmaydi."]]
+    ];
+    function rulesPane() {
+        const box = el('div');
+        RULES.forEach(function (r) {
+            const c = card(r[0]); const ul = el('ul'); ul.style.cssText = 'margin:0;padding-left:20px;display:grid;gap:6px';
+            r[1].forEach(function (t) { ul.appendChild(el('li', '', t)); }); c.appendChild(ul); box.appendChild(c);
+        });
+        return box;
+    }
+
     // ---- Competitions: its own section of the dashboard (battles now; seasonal tournaments are announced here)
     G.register('musobaqalar', async function (root, session) {
         let tab = G.ctx.compTab || 'battle'; G.ctx.compTab = null;
@@ -724,7 +766,7 @@
             pg.appendChild(head('Musobaqalar', "Jamoalar o'rtasida battle o'tkazing, reyting va kubok yuting."));
             const panes = {};
             tabs.onChange = function (k) { tab = k; };
-            const nav = tabs([['battle', 'Battlelar'], ['teams', 'Jamoalar'], ['season', 'Mavsumiy turnirlar']], tab, panes); nav.classList.add('pg-tabs-wrap'); pg.appendChild(nav);
+            const nav = tabs([['battle', 'Battlelar'], ['teams', 'Jamoalar'], ['season', 'Mavsumiy turnirlar'], ['rules', 'Qoidalar']], tab, panes); nav.classList.add('pg-tabs-wrap'); pg.appendChild(nav);
 
             const bt = el('div'); bt.hidden = tab !== 'battle'; bt.dataset.pane = 'battle'; panes.battle = bt;
             const battles = await battlesPane(session, data.teams, draw); bt.appendChild(battles); pg.appendChild(bt);
@@ -736,6 +778,8 @@
 
             const se = el('div'); se.hidden = tab !== 'season'; se.dataset.pane = 'season'; panes.season = se;
             se.appendChild(await tournamentsPane(session, function () { nav.querySelector('[data-tab="battle"]').click(); })); pg.appendChild(se);
+
+            const ru = el('div'); ru.hidden = tab !== 'rules'; ru.dataset.pane = 'rules'; panes.rules = ru; ru.appendChild(rulesPane()); pg.appendChild(ru);
         }
         await draw();
     });

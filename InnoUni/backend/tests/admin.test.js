@@ -66,7 +66,7 @@ test('the overview also counts courses, unconfirmed e-mails and new people, and 
 
 test('stats counts users and teams', async () => {
     const res = await request(app).get('/api/admin/stats').set(admin);
-    expect(res.body).toEqual({ users: { student: 1, teacher: 1, admin: 1 }, teams: 1, courses: 4, unverified: 2, new_week: 1 });
+    expect(res.body).toEqual({ users: { student: 1, teacher: 1, admin: 1 }, teams: 1, courses: 4, unverified: 2, appeals_open: 0, new_week: 1 });
 });
 
 test('lists and filters users', async () => {
