@@ -36,3 +36,21 @@ test('the header has no stock photo or invented name', () => {
     expect(dash).not.toContain('picsum.photos');
     expect(dash).not.toContain('Sunnat Ulashev');
 });
+
+describe('demo pages and legal texts carry no stock photo, personal name or removed features', () => {
+    const base = path.join(__dirname, '../..');
+    const all = (f) => fs.readFileSync(path.join(base, f), 'utf8');
+    test.each(['profile', 'main.dashboard', 'results'])('%s has no stock photo or invented name', (n) => {
+        const h = all(`secondary-pages/dashboard/pages/${n}.html`);
+        expect(h).not.toContain('picsum.photos'); expect(h).not.toContain('Sunnat');
+    });
+    test('the bell badge starts hidden (no invented number)', () => {
+        expect(dash).toMatch(/<span class="notification-badge" hidden/);
+    });
+    test('terms and privacy talk about competitions, not orders; the README matches the product', () => {
+        const t = all('legal/terms.html'); const p = all('legal/privacy.html'); const r = all('README.md');
+        expect(t).toContain('Musobaqalar'); expect(t).not.toMatch(/buyurtma/i);
+        expect(p).not.toMatch(/buyurtma/i); expect(p).toContain('musobaqalar');
+        expect(r).toContain('Hall of Fame'); expect(r).not.toMatch(/Real-time|Achievement System|Multer/);
+    });
+});

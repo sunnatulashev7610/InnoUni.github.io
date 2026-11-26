@@ -2,53 +2,29 @@
 
 A comprehensive online learning platform built with modern web technologies, featuring teacher-led courses, student collaboration teams, and interactive learning management.
 
-## 🚀 Features
+## Status (first version)
 
-### For Students
-- **Dashboard**: Personalized learning dashboard with statistics and progress tracking
-- **Courses**: Browse and enroll in teacher-led courses
-- **Groups**: Create and join student collaboration teams
-- **Tasks**: Manage assignments and track deadlines
-- **Profile**: Comprehensive profile management with achievements
-- **Progress Tracking**: Real-time learning analytics and streak tracking
+Gather Edu is a platform for students. The first version focuses on **teams and competitions**.
+Teacher accounts, study groups, the public course catalog, tasks, results and pricing are switched off for now
+(feature flags in `secondary-pages/dashboard/dashboard.html` and `FEATURE_*` variables on the server).
 
-### For Teachers
-- **Course Management**: Create and manage courses with rich content
-- **Student Management**: Track student progress and engagement
-- **Task Assignment**: Create and grade assignments
-- **Analytics**: Detailed course performance metrics
+## Features
 
-### Platform Features
-- **Modern UI/UX**: Responsive design with glassmorphism effects
-- **Real-time Updates**: Live notifications and activity feeds
-- **Achievement System**: Gamification with badges and rewards
-- **Search & Filter**: Advanced search across courses and groups
-- **File Upload**: Support for avatars and course materials
+- **Teams (Jamoalar)**: open or join a team, chat, resources, meetups with reminders, team profile and activity
+- **Battles**: teams challenge each other (quiz or project), automatic scoring, rating and leagues, trophies
+- **Seasonal tournaments**: groups (round robin), then playoffs and a champion; the admin runs each stage
+- **Players**: personal stats, badges and a leaderboard
+- **Fair play**: rules page, result objections within 48 hours, admin review
+- **Hall of Fame**: tournament champions
+- **AI tools**: AI courses and study materials made by the student
+- **Admin panel**: users, teams, battles, tournaments (with own questions), objections
 
-## 🛠 Technology Stack
+## Technology Stack
 
-### Frontend
-- **HTML5**: Semantic markup structure
-- **CSS3**: Modern styling with animations and transitions
-- **JavaScript ES6+**: Modern JavaScript with async/await
-- **Bootstrap 5**: Responsive grid system and components
-- **Font Awesome**: Icon library for UI elements
-
-### Backend
-- **Node.js**: JavaScript runtime environment
-- **Express.js**: Web framework for API development
-- **MySQL**: Relational database for data storage
-- **JWT**: JSON Web Tokens for authentication
-- **bcrypt**: Password hashing and security
-- **Multer**: File upload handling
-
-### Database Schema
-- **Users**: Student and teacher accounts with roles
-- **Courses**: Teacher-led courses with enrollment tracking
-- **Groups**: Student collaboration teams
-- **Tasks**: Assignments with priority and status tracking
-- **Achievements**: Gamification system with unlockable badges
-- **Progress Tracking**: Detailed learning analytics
+- **Frontend**: static HTML, CSS and plain JavaScript (no framework). User text is always set with `textContent`.
+- **Backend**: Node.js, Express, JWT, bcrypt, express-rate-limit, helmet
+- **Database**: MySQL-compatible (TiDB). Migrations in `backend/migrations` run when the server starts.
+- **Tests**: Jest, supertest, JSDOM (`npm test` in `backend`)
 
 ## 📁 Project Structure
 
@@ -216,20 +192,6 @@ A task is assigned to one student (`tasks.assigned_to`). The student submits an 
 - **Input Validation**: Server-side input sanitization
 - **CORS Configuration**: Proper cross-origin resource sharing
 - **SQL Injection Prevention**: Parameterized queries
-
-## 📊 Analytics & Tracking
-
-### User Analytics
-- Course completion rates
-- Learning streaks and engagement
-- Task completion statistics
-- Group participation metrics
-
-### Performance Metrics
-- API response times
-- Database query optimization
-- Frontend performance monitoring
-- User interaction tracking
 
 ## 🌐 Deployment
 
