@@ -210,6 +210,20 @@ function createTeamsFake() {
             return [{}];
         }
         if (q.startsWith('SELECT team_id, rating, played, wins FROM team_battle_stats WHERE team_id = ?')) return [s.stats[p[0]] ? [{ team_id: p[0], ...s.stats[p[0]] }] : []];
+        if (q.startsWith('SELECT a.battle_id, a.team_id, a.user_id, SUM(a.correct) AS ok, COUNT(*) AS n FROM battle_answers a JOIN battle_results r')) {
+            const mine = new Set(s.answers.filter((a) => a.user_id === p[0]).map((a) => a.battle_id)); const g = {};
+            s.answers.filter((a) => mine.has(a.battle_id) && s.results.some((r) => r.battle_id === a.battle_id && r.team_id === a.team_id)).forEach((a) => { const k = a.battle_id + '-' + a.team_id + '-' + a.user_id; g[k] = g[k] || { battle_id: a.battle_id, team_id: a.team_id, user_id: a.user_id, ok: 0, n: 0 }; g[k].ok += a.correct; g[k].n++; });
+            return [Object.values(g)];
+        }
+        if (q.startsWith('SELECT a.user_id, u.full_name, COUNT(*) AS n, SUM(a.correct) AS ok, COUNT(DISTINCT a.battle_id) AS battles FROM battle_answers a')) {
+            const g = {};
+            s.answers.filter((a) => s.results.some((r) => r.battle_id === a.battle_id && r.team_id === a.team_id)).forEach((a) => {
+                const m = s.members.find((x) => x.team_id === a.team_id && x.user_id === a.user_id); if (!m || Number(m.anonymous)) return;
+                const u = g[a.user_id] = g[a.user_id] || { user_id: a.user_id, full_name: s.users[a.user_id] || ('Foydalanuvchi ' + a.user_id), n: 0, ok: 0, b: new Set() };
+                u.n++; u.ok += a.correct; u.b.add(a.battle_id);
+            });
+            return [Object.values(g).map((u) => ({ user_id: u.user_id, full_name: u.full_name, n: u.n, ok: u.ok, battles: u.b.size })).sort((x, y) => y.ok - x.ok || x.n - y.n || x.user_id - y.user_id).slice(0, 20)];
+        }
         if (q.startsWith('SELECT r.battle_id, r.score, b.title, b.ends_at FROM battle_results r JOIN battles b')) return [s.results.filter((r) => r.team_id === p[0]).map((r) => { const b = s.battles.find((x) => x.id === r.battle_id); return { battle_id: r.battle_id, score: r.score, title: b.title, ends_at: b.ends_at }; }).sort((x, y) => y.ends_at - x.ends_at || y.battle_id - x.battle_id).slice(0, 5)];
         if (q.startsWith('SELECT r.battle_id, r.team_id, r.score, t.name FROM battle_results r JOIN teams t')) return [s.results.filter((r) => r.team_id !== p[0] && p.slice(1).includes(r.battle_id)).map((r) => ({ battle_id: r.battle_id, team_id: r.team_id, score: r.score, name: (s.teams.find((t) => t.id === r.team_id) || {}).name }))];
         if (q.startsWith('SELECT r.battle_id, b.title, b.ends_at FROM battle_results r JOIN battles b')) return [s.results.filter((r) => r.team_id === p[0] && r.place === 1 && r.correct_total > 0).map((r) => { const b = s.battles.find((x) => x.id === r.battle_id); return { battle_id: r.battle_id, title: b.title, ends_at: b.ends_at }; })];

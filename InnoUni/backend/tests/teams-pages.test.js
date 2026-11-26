@@ -39,6 +39,10 @@ function boot(state) {
         } else if (/^\/battles\/teams\/\d+\/record/.test(p)) {
             r = { body: { rating: 1216, league: 'Oltin', played: 4, wins: 2, badges: [{ id: 'first_win', name: "Birinchi g'alaba" }], trophies: [{ battle_id: 1, title: '<b>Kubok</b> battle', ends_at: null }],
                 recent: [{ battle_id: 8, title: 'x', ends_at: null, opponent: '<i>Beta</i>', score: 5, opponent_score: 3, result: 'win' }, { battle_id: 7, title: 'y', ends_at: null, opponent: 'Gamma', score: 4, opponent_score: 4, result: 'draw' }, { battle_id: 6, title: 'z', ends_at: null, opponent: 'Delta', score: 1, opponent_score: 2, result: 'loss' }], streak: 2 } };
+        } else if (/^\/battles\/players\/me/.test(p)) {
+            r = state.playersFail ? { ok: false, status: 500, body: { error: 'x' } } : { body: state.noStats ? { answered: 0, correct: 0, accuracy: 0, battles: 0, mvp: 0, badges: [] } : { answered: 30, correct: 24, accuracy: 80, battles: 3, mvp: 1, badges: [{ id: 'mvp', name: '<b>Jamoa MVP</b>' }] } };
+        } else if (/^\/battles\/players\/leaderboard/.test(p)) {
+            r = state.playersFail ? { ok: false, status: 500, body: { error: 'x' } } : { body: { players: state.noStats ? [] : [{ name: '<i>Ali</i> V.', correct: 24, answered: 30, accuracy: 80, battles: 3, me: true }, { name: 'Vali A.', correct: 20, answered: 30, accuracy: 67, battles: 3, me: false }] } };
         } else if (/^\/battles\/leaderboard/.test(p)) {
             r = { body: { teams: [{ team_id: 3, name: '<i>Alfa</i>', rating: 1216, league: 'Oltin', played: 4, wins: 2 }] } };
         } else if (/^\/battles\/\d+\/quiz/.test(p)) {
@@ -774,6 +778,27 @@ describe('competitions: seasonal tournaments', () => {
         expect(sp.textContent).toContain('Pley-off');
         expect(sp.textContent).toContain("Alfa — Beta (o'ynalmoqda)");
         expect(sp.textContent).toContain('Durang');
+    });
+
+    test('the players tab: my numbers, badges, and the table with me marked; all text', async () => {
+        const t = boot(makeState()); await t.run('musobaqalar'); await t.flush();
+        const pl = pane(t.c, 'players');
+        expect(t.c.querySelector('[data-tab="players"]').textContent).toBe("O'yinchilar");
+        expect(pl.querySelector('[data-my-stats]').textContent).toContain('24 / 30');
+        expect(pl.querySelector('[data-my-stats]').textContent).toContain('80%');
+        expect(pl.querySelector('[data-my-badges]').textContent).toContain('🏅 <b>Jamoa MVP</b>');
+        const rows = [...pl.querySelectorAll('table tr')].slice(1);
+        expect(rows).toHaveLength(2); expect(rows[0].dataset.me).toBe('1');
+        expect(rows[0].textContent).toContain('<i>Ali</i> V. (siz)'); expect(rows[1].textContent).toContain('Vali A.');
+        expect(pl.querySelector('b b')).toBeNull(); expect(pl.querySelector('i')).toBeNull();
+        expect(pl.textContent).toContain('anonim');
+    });
+    test('the players tab with no results yet explains what to do; a server problem does not break the page', async () => {
+        let t = boot(Object.assign(makeState(), { noStats: true })); await t.run('musobaqalar'); await t.flush();
+        expect(pane(t.c, 'players').textContent).toContain("Hali natija yo'q");
+        t = boot(Object.assign(makeState(), { playersFail: true })); await t.run('musobaqalar'); await t.flush();
+        expect(pane(t.c, 'players').textContent).toContain("yuklab bo'lmadi");
+        expect(pane(t.c, 'battle')).not.toBeNull();
     });
 
 });
