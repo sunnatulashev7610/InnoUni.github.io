@@ -7,6 +7,8 @@
     if (!G) return;
     const el = G.el; const get = G.api.get; const send = G.api.send;
     const NS = 'http://www.w3.org/2000/svg';
+    const GAME = { wheel: 'Baraban', quick: 'Tezkor viktorina', tf: "To'g'ri / noto'g'ri", pairs: 'Juftlash' };
+    const SET_KIND = { wheel: 'quiz', quick: 'quiz', tf: 'tf', pairs: 'pairs' };
     const COLORS = ['#3b82f6', '#8b5cf6', '#0ea5a4', '#f59e0b', '#ef4444', '#10b981'];
 
     function say(err) {
@@ -90,23 +92,31 @@
         }
         function row(x, label) {
             const r = el('div'); r.dataset.session = String(x.id); r.style.cssText = 'display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:6px 0';
-            r.appendChild(el('span', '', x.team_name + ' · ' + x.title + (x.mode === 'quick' ? ' (tezkor viktorina)' : ' (baraban)')));
+            r.appendChild(el('span', '', x.team_name + ' · ' + x.title + ' (' + (GAME[x.mode] || GAME.wheel).toLowerCase() + ')'));
             const b = el('button', 'pg-btn', label); b.type = 'button'; b.style.padding = '7px 12px'; b.addEventListener('click', function () { session_(x.id); });
             r.appendChild(b); return r;
         }
         function startCard(sets) {
             const c = card("Yangi o'yin boshlash");
             if (!sets || !sets.sets.length) { c.appendChild(el('p', 'pg-muted', "Platforma admini hali savollar to'plamini qo'shmagan.")); return c; }
-            c.appendChild(el('p', 'pg-muted', "Baraban: server tasodifiy a'zo va savolni tanlaydi, har kim bir marta javob beradi (" + sets.answer_seconds + ' soniya). Tezkor viktorina: a\'zolar navbat bilan javob beradi, to\'plamdagi hamma savol so\'raladi (' + (sets.quick_seconds || 30) + " soniya). Kamida " + sets.min_players + " ta faol a'zo kerak."));
+            c.appendChild(el('p', 'pg-muted', "Baraban: server tasodifiy a'zo va savolni tanlaydi, har kim bir marta javob beradi (" + sets.answer_seconds + " soniya). Tezkor viktorina, To'g'ri / noto'g'ri va Juftlash: a'zolar navbat bilan javob beradi, to'plamdagi hamma savol so'raladi. Kamida " + sets.min_players + " ta faol a'zo kerak."));
             const f = el('form'); f.noValidate = true; f.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center';
             const team = el('select', 'pg-input'); team.setAttribute('aria-label', 'Jamoa'); adminTeams.forEach(function (t) { const o = el('option', '', t.name); o.value = String(t.id); team.appendChild(o); });
-            const set = el('select', 'pg-input'); set.setAttribute('aria-label', "Savollar to'plami"); sets.sets.forEach(function (x) { const o = el('option', '', x.title + ' · ' + x.count + ' ta savol'); o.value = String(x.id); set.appendChild(o); });
+            const set = el('select', 'pg-input'); set.setAttribute('aria-label', "Savollar to'plami");
             const kind = el('select', 'pg-input'); kind.setAttribute('aria-label', "O'yin turi");
-            [['wheel', 'Baraban (tasodifiy a\'zo)'], ['quick', 'Tezkor viktorina (navbat bilan, ' + (sets.quick_seconds || 30) + ' soniya)']].forEach(function (k) { const o = el('option', '', k[1]); o.value = k[0]; kind.appendChild(o); });
-            const go = el('button', 'pg-btn', 'Boshlash'); go.type = 'submit'; const m = note();
-            f.appendChild(kind); f.appendChild(team); f.appendChild(set); f.appendChild(go); c.appendChild(f); c.appendChild(m);
+            [['wheel', "Baraban (tasodifiy a'zo)"], ['quick', 'Tezkor viktorina (navbat bilan, ' + (sets.quick_seconds || 30) + ' soniya)'], ['tf', "To'g'ri / noto'g'ri (" + (sets.tf_seconds || 20) + ' soniya)'], ['pairs', 'Juftlash (atama va ta\'rif, ' + (sets.pairs_seconds || 30) + ' soniya)']].forEach(function (k) { const o = el('option', '', k[1]); o.value = k[0]; kind.appendChild(o); });
+            // Only the sets that fit the chosen game type are offered
+            function fillSets() {
+                set.textContent = '';
+                const fit = sets.sets.filter(function (x) { return (x.kind || 'quiz') === SET_KIND[kind.value]; });
+                if (!fit.length) { const o = el('option', '', "Bu tur uchun to'plam yo'q"); o.value = ''; set.appendChild(o); go.disabled = true; return; }
+                fit.forEach(function (x) { const o = el('option', '', x.title + ' · ' + x.count + (x.kind === 'pairs' ? ' ta juft' : ' ta savol')); o.value = String(x.id); set.appendChild(o); });
+                go.disabled = false;
+            }
+            const go = el('button', 'pg-btn', 'Boshlash'); go.type = 'submit'; const m = note(); kind.addEventListener('change', fillSets);
+            f.appendChild(kind); f.appendChild(team); f.appendChild(set); f.appendChild(go); c.appendChild(f); c.appendChild(m); fillSets();
             f.addEventListener('submit', async function (e) {
-                e.preventDefault(); m.textContent = ''; go.disabled = true;
+                e.preventDefault(); m.textContent = ''; if (!set.value) return; go.disabled = true;
                 try { const r = await send('POST', '/wheel/sessions', session, { team_id: Number(team.value), set_id: Number(set.value), mode: kind.value }); session_(r.id); }
                 catch (err) { m.textContent = say(err); go.disabled = false; }
             });
@@ -137,10 +147,10 @@
 
             function apply() {
                 if (!st) return;
-                const quick = st.mode === 'quick';
+                const quick = Boolean(st.mode) && st.mode !== 'wheel'; const gname = GAME[st.mode] || GAME.wheel;
                 title.textContent = st.title;
                 const asked = st.turns.length + (st.current ? 1 : 0);
-                sub.textContent = (quick ? 'Tezkor viktorina · ' + (st.status === 'open' ? 'savollar ' + asked + ' / ' + st.total_questions : 'tugadi') : (st.status === 'open' ? "Baraban · jonli o'yin" : "Baraban · tugadi")) + " · to'g'ri javoblar: " + st.score + (st.status === 'open' ? '' : ' / ' + st.turns.length);
+                sub.textContent = (quick ? gname + ' · ' + (st.status === 'open' ? 'savollar ' + asked + ' / ' + st.total_questions : 'tugadi') : (st.status === 'open' ? "Baraban · jonli o'yin" : "Baraban · tugadi")) + " · to'g'ri javoblar: " + st.score + (st.status === 'open' ? '' : ' / ' + st.turns.length);
                 wheel.node.style.display = quick ? 'none' : 'block';
                 // The wheel shows who is still in; the chosen one is brought under the pointer
                 const names = quick ? [] : st.remaining.map(function (m) { return m.name; });
@@ -160,7 +170,7 @@
                     turn.appendChild(el('p', 'pg-h3', st.current.question.q));
                     endsAt = Date.now() + st.current.seconds_left * 1000; turn.appendChild(cd); cd.textContent = 'Qoldi: ' + st.current.seconds_left + ' soniya';
                     st.current.question.options.forEach(function (o, i) {
-                        const b = el('button', 'pg-btn ghost', 'ABCD'.charAt(i) + ') ' + o); b.type = 'button'; b.dataset.choice = String(i); b.style.cssText = 'text-align:left;justify-content:flex-start';
+                        const b = el('button', 'pg-btn ghost', (st.mode === 'tf' ? '' : 'ABCD'.charAt(i) + ') ') + o); b.type = 'button'; b.dataset.choice = String(i); b.style.cssText = 'text-align:left;justify-content:flex-start';
                         if (!st.my_turn) b.disabled = true; else b.addEventListener('click', function () { act('answer', { choice: i }); });
                         turn.appendChild(b);
                     });

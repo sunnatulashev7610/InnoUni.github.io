@@ -233,15 +233,15 @@ function createTeamsFake() {
         // ---- "Baraban" game
         {
             const W = () => { s.wsets = s.wsets || []; s.wsessions = s.wsessions || []; s.wturns = s.wturns || []; return s; };
-            if (q.startsWith('SELECT id, title, questions FROM wheel_sets ORDER BY id DESC')) return [W().wsets.slice().reverse()];
-            if (q.startsWith('SELECT id, title, questions FROM wheel_sets WHERE id = ?')) return [W().wsets.filter((x) => x.id === p[0])];
-            if (q.startsWith('INSERT INTO wheel_sets')) { W().wsets.push({ id: s.wsets.length + 1, title: p[0], questions: p[1] }); return [{ insertId: s.wsets.length }]; }
+            if (q.startsWith('SELECT id, title, kind, questions FROM wheel_sets ORDER BY id DESC')) return [W().wsets.slice().reverse()];
+            if (q.startsWith('SELECT id, title, kind, questions FROM wheel_sets WHERE id = ?')) return [W().wsets.filter((x) => x.id === p[0])];
+            if (q.startsWith('INSERT INTO wheel_sets')) { W().wsets.push({ id: s.wsets.length + 1, title: p[0], questions: p[1], kind: p[3] }); return [{ insertId: s.wsets.length }]; }
             if (q.startsWith('SELECT COUNT(*) AS n FROM wheel_sessions WHERE set_id = ?')) return [[{ n: W().wsessions.filter((x) => x.set_id === p[0]).length }]];
             if (q.startsWith('DELETE FROM wheel_sets WHERE id = ?')) { const n = W().wsets.length; s.wsets = s.wsets.filter((x) => x.id !== p[0]); return [{ affectedRows: n - s.wsets.length }]; }
             if (q === "SELECT id FROM wheel_sessions WHERE team_id = ? AND status = 'open'") return [W().wsessions.filter((x) => x.team_id === p[0] && x.status === 'open').map((x) => ({ id: x.id }))];
             if (q.startsWith('INSERT INTO wheel_sessions')) { W().wsessions.push({ id: s.wsessions.length + 1, team_id: p[0], set_id: p[1], host_id: p[2], mode: p[3], status: 'open', current_user_id: null, current_q: null, asked_at: null }); return [{ insertId: s.wsessions.length }]; }
             if (q.startsWith('SELECT s.id, s.team_id, s.host_id, s.status, s.mode, s.current_user_id')) {
-                return [W().wsessions.filter((x) => x.id === p[0]).map((x) => ({ ...x, asked_seconds: x.asked_at ? Math.floor((Date.now() - x.asked_at) / 1000) : 0, title: s.wsets.find((w) => w.id === x.set_id).title, questions: s.wsets.find((w) => w.id === x.set_id).questions }))];
+                return [W().wsessions.filter((x) => x.id === p[0]).map((x) => ({ ...x, asked_seconds: x.asked_at ? Math.floor((Date.now() - x.asked_at) / 1000) : 0, title: s.wsets.find((w) => w.id === x.set_id).title, kind: s.wsets.find((w) => w.id === x.set_id).kind, questions: s.wsets.find((w) => w.id === x.set_id).questions }))];
             }
             if (q.startsWith('SELECT t.user_id, t.q_index, t.choice, t.correct, u.full_name FROM wheel_turns t')) return [W().wturns.filter((t) => t.session_id === p[0]).map((t) => ({ ...t, full_name: s.users[t.user_id] }))];
             if (q.startsWith("SELECT m.user_id, u.full_name FROM team_members m JOIN users u ON u.id = m.user_id WHERE m.team_id = ? AND m.status = 'active' ORDER BY m.user_id")) return [s.members.filter((m) => m.team_id === p[0] && m.status === 'active').sort((x, y) => x.user_id - y.user_id).map((m) => ({ user_id: m.user_id, full_name: s.users[m.user_id] }))];
