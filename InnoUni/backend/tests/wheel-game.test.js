@@ -26,7 +26,7 @@ describe('admin question sets', () => {
     test('creates, lists and deletes; the list only shows how many questions', async () => {
         const id = await newSet(4, 'Logistika');
         const l = (await adm('get', '/wheel-sets')).body;
-        expect(l.sets).toEqual([{ id, title: 'Logistika', count: 4 }]);
+        expect(l.sets).toEqual([{ id, title: 'Logistika', kind: 'quiz', count: 4 }]);
         expect((await adm('delete', `/wheel-sets/${id}`)).status).toBe(200);
         expect((await adm('get', '/wheel-sets')).body.sets).toHaveLength(0);
         expect((await adm('delete', `/wheel-sets/${id}`)).status).toBe(404);
@@ -47,7 +47,7 @@ describe('admin question sets', () => {
     test('teams see the sets without any answers', async () => {
         await newSet(5, 'Logistika');
         const r = await w('get', '/sets', 1);
-        expect(r.body.sets).toEqual([{ id: 1, title: 'Logistika', count: 5 }]);
+        expect(r.body.sets).toEqual([{ id: 1, title: 'Logistika', kind: 'quiz', count: 5 }]);
         expect(JSON.stringify(r.body.sets)).not.toMatch(/answer|options/);
     });
 });
@@ -218,5 +218,67 @@ describe('Tezkor viktorina (members in turn, every question asked)', () => {
     test('the wheel game still ends when everybody has played', async () => {
         const id = await open(5); for (let k = 0; k < 3; k++) await play(id, true);
         expect((await state(id)).status).toBe('finished');
+    });
+});
+
+describe('true/false and pairs games', () => {
+    const tf = (n = 4) => Array.from({ length: n }, (_, i) => ({ q: `Gap ${i + 1}`, answer: i % 2, explanation: 'Izoh' }));
+    const pairs = (n = 5) => Array.from({ length: n }, (_, i) => ({ term: `Atama ${i + 1}`, definition: `Ta'rif ${i + 1}` }));
+    const mk = async (kind, list, title = 'To\'plam') => adm('post', '/wheel-sets', { title, kind, questions: list });
+    const play = async (setId, mode) => (await w('post', '/sessions', 1, { team_id: T, set_id: setId, mode })).body.id;
+
+    test('admin saves a true/false set and a pairs set, bad ones are refused', async () => {
+        expect((await mk('tf', tf())).status).toBe(201);
+        expect((await mk('pairs', pairs())).status).toBe(201);
+        expect((await mk('tf', tf(2))).status).toBe(400);
+        expect((await mk('tf', [{ q: 'a', answer: 3 }, ...tf(3)])).status).toBe(400);
+        expect((await mk('pairs', pairs(3))).status).toBe(400);
+        expect((await mk('pairs', [...pairs(4), { term: 'atama 1', definition: 'Boshqa' }])).status).toBe(400);
+        expect((await mk('pairs', [...pairs(4), { term: '', definition: 'x' }])).status).toBe(400);
+        expect((await mk('video', tf())).status).toBe(400);
+        const l = (await adm('get', '/wheel-sets')).body.sets.map((x) => x.kind).sort();
+        expect(l).toEqual(['pairs', 'tf']);
+    });
+    test('a game needs a set of its own kind', async () => {
+        const quiz = await newSet(5); const t = (await mk('tf', tf())).body.id; const p = (await mk('pairs', pairs())).body.id;
+        expect((await w('post', '/sessions', 1, { team_id: T, set_id: quiz, mode: 'tf' })).status).toBe(409);
+        expect((await w('post', '/sessions', 1, { team_id: T, set_id: t, mode: 'pairs' })).status).toBe(409);
+        expect((await w('post', '/sessions', 1, { team_id: T, set_id: p, mode: 'quick' })).status).toBe(409);
+        expect((await w('post', '/sessions', 1, { team_id: T, set_id: t, mode: 'wheel' })).status).toBe(409);
+        expect((await w('post', '/sessions', 1, { team_id: T, set_id: t, mode: 'tf' })).status).toBe(201);
+    });
+    test('true/false: members in turn, two options, the server checks, 20 seconds', async () => {
+        const id = await play((await mk('tf', tf(3))).body.id, 'tf');
+        await spin(id);
+        let s = await state(id); expect(s.mode).toBe('tf'); expect(s.answer_seconds).toBe(20);
+        expect(s.current.question.options).toEqual(["To'g'ri", "Noto'g'ri"]);
+        expect(JSON.stringify(s)).not.toContain('"answer"');
+        const who = s.current.user_id; const qi = fake.s.wsessions[0].current_q; const right = tf(3)[qi].answer;
+        expect((await w('post', `/sessions/${id}/answer`, who, { choice: 2 })).status).toBe(400);
+        const a = await w('post', `/sessions/${id}/answer`, who, { choice: right });
+        expect(a.body.correct).toBe(true);
+        await spin(id); s = await state(id); expect(s.current.user_id).not.toBe(who);
+    });
+    test('pairs: options come from the other definitions, fixed per session, answer hidden', async () => {
+        const id = await play((await mk('pairs', pairs(5))).body.id, 'pairs');
+        await spin(id);
+        const s1 = await state(id); const s2 = await state(id);
+        expect(s1.current.question).toEqual(s2.current.question);
+        const opts = s1.current.question.options;
+        expect(opts).toHaveLength(4); expect(new Set(opts).size).toBe(4);
+        expect(opts.every((o) => /^Ta'rif \d$/.test(o))).toBe(true);
+        expect(s1.total_questions).toBe(5);
+        const n = Number(/Atama (\d)/.exec(s1.current.question.q)[1]);
+        const who = s1.current.user_id; const idx = opts.indexOf(`Ta'rif ${n}`);
+        expect(idx).toBeGreaterThanOrEqual(0);
+        const wrong = (idx + 1) % 4;
+        expect((await w('post', `/sessions/${id}/answer`, who, { choice: wrong })).body.correct).toBe(false);
+        const last = (await state(id)).last;
+        expect(last.options[last.answer]).toBe(`Ta'rif ${n}`); expect(last.explanation).toContain(`Atama ${n}`);
+    });
+    test('pairs: playing to the end finishes after every pair was asked', async () => {
+        const id = await play((await mk('pairs', pairs(4))).body.id, 'pairs');
+        for (let i = 0; i < 4; i++) { await spin(id); const s = await state(id); await w('post', `/sessions/${id}/answer`, s.current.user_id, { choice: 0 }); }
+        const s = await state(id); expect(s.status).toBe('finished'); expect(s.turns).toHaveLength(4);
     });
 });

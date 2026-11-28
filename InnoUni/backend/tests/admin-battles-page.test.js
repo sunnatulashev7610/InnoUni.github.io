@@ -256,7 +256,7 @@ describe('Baraban question sets', () => {
     const btn = (root, t) => [...root.querySelectorAll('button')].find((x) => x.textContent.startsWith(t));
     test('sets are listed as plain text with their size', async () => {
         const { c } = await boot();
-        expect(box(c).textContent).toContain('<b>Logistika</b> · 8 ta savol'); expect(box(c).querySelector('[data-set] b')).toBeNull();
+        expect(box(c).textContent).toContain('<b>Logistika</b> · Viktorina (4 variant) · 8 ta savol'); expect(box(c).querySelector('[data-set] b')).toBeNull();
     });
     test('no sets: a short note', async () => {
         const { c } = await boot({ noSets: true });
@@ -273,7 +273,23 @@ describe('Baraban question sets', () => {
         blk.querySelectorAll('input[type="radio"]')[1].checked = true;
         btn(b, "To'plamni saqlash").click(); await tick();
         const post = calls.find((x) => x.p === '/admin/wheel-sets' && x.method === 'POST');
-        expect(post.body).toEqual({ title: "Yangi to'plam", questions: [{ q: 'Savol?', options: ['a', 'b', 'c', 'd'], answer: 1, explanation: '' }] });
+        expect(post.body).toEqual({ title: "Yangi to'plam", kind: 'quiz', questions: [{ q: 'Savol?', options: ['a', 'b', 'c', 'd'], answer: 1, explanation: '' }] });
+    });
+    test('a true/false set and a pairs set are sent in their own shape', async () => {
+        const { c, calls } = await boot();
+        const sel = box(c).querySelector('select[aria-label="To\'plam turi"]');
+        sel.value = 'tf'; sel.dispatchEvent(new c.ownerDocument.defaultView.Event('change')); btn(box(c), "Savol qo'shish").click();
+        const tfb = box(c).querySelector('textarea').parentNode;
+        tfb.querySelector('textarea').value = 'Gap <b>bir</b>'; tfb.querySelectorAll('input[type="radio"]')[1].checked = true;
+        btn(box(c), "To'plamni saqlash").click(); await tick();
+        let post = calls.filter((x) => x.p === '/admin/wheel-sets' && x.method === 'POST').pop();
+        expect(post.body.kind).toBe('tf'); expect(post.body.questions).toEqual([{ q: 'Gap <b>bir</b>', answer: 1, explanation: '' }]);
+        sel.value = 'pairs'; sel.dispatchEvent(new c.ownerDocument.defaultView.Event('change')); btn(box(c), "Juft qo'shish").click();
+        const pb = box(c).querySelector('input[aria-label="Atama"]').parentNode;
+        pb.querySelector('input[aria-label="Atama"]').value = 'Zaxira'; pb.querySelector('textarea').value = 'Ombordagi ehtiyot miqdor';
+        btn(box(c), "To'plamni saqlash").click(); await tick();
+        post = calls.filter((x) => x.p === '/admin/wheel-sets' && x.method === 'POST').pop();
+        expect(post.body.kind).toBe('pairs'); expect(post.body.questions).toEqual([{ term: 'Zaxira', definition: 'Ombordagi ehtiyot miqdor' }]);
     });
     test('a server complaint is explained in Uzbek', async () => {
         const { c } = await boot({ setError: true });

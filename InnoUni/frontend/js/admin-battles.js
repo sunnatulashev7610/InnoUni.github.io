@@ -42,7 +42,11 @@
         if (/Note must be at most/i.test(m)) return "Izoh 300 belgidan oshmasin.";
         if (/Appeal not found/i.test(m)) return "E'tiroz topilmadi.";
         if (/must be 3 to 120/i.test(m)) return "Nom 3 dan 120 gacha belgi bo'lsin.";
+        if (/A set needs 4 to/i.test(m)) return "Juftlash to'plamida 4 tadan 20 tagacha juft bo'lsin.";
         if (/A set needs \d+ to \d+ questions|A stage needs/i.test(m)) return "To'plamda 3 tadan 20 tagacha savol bo'lsin.";
+        if (/the pair is not filled/i.test(m)) return "Har bir juftda atama va ta'rif to'ldirilsin.";
+        if (/terms and the definitions must be different/i.test(m)) return "Atamalar va ta'riflar bir-biridan farq qilsin.";
+        if (/Unknown set kind/i.test(m)) return "To'plam turi noto'g'ri.";
         if (/already played and cannot be deleted/i.test(m)) return "Bu to'plam o'ynalgan, o'chirib bo'lmaydi.";
         if (/Question set not found/i.test(m)) return "To'plam topilmadi.";
         if (/not waiting for the judge/i.test(m)) return "Bu battle endi baholanmaydi.";
@@ -75,21 +79,58 @@
         return obj;
     }
 
+    // True / false statement: {q, answer 0 = true, 1 = false, explanation}
+    function simpleHead(onRemove, b) {
+        const head = el('div'); head.style.cssText = 'display:flex;justify-content:space-between;align-items:center';
+        const title = el('b', '', ''); const rm = el('button', 'pg-btn ghost', "O'chirish"); rm.type = 'button'; rm.style.padding = '4px 10px';
+        head.appendChild(title); head.appendChild(rm); b.appendChild(head); return { title: title, rm: rm };
+    }
+    function tfBlock(x, prefix, onRemove) {
+        const b = el('div'); b.style.cssText = 'border:1px solid var(--line,#8884);border-radius:10px;padding:10px;display:grid;gap:6px';
+        const h = simpleHead(onRemove, b);
+        const q = el('textarea', 'pg-input'); q.rows = 2; q.maxLength = 400; q.placeholder = "Gap (to'g'ri yoki noto'g'ri bo'lishi mumkin)"; q.setAttribute('aria-label', 'Gap'); q.value = x.q || ''; b.appendChild(q);
+        const name = 'tf-' + prefix + '-' + Math.random().toString(36).slice(2); const radios = [];
+        [["To'g'ri", 0], ["Noto'g'ri", 1]].forEach(function (k) {
+            const row = el('label'); row.style.cssText = 'display:flex;gap:8px;align-items:center';
+            const r = el('input'); r.type = 'radio'; r.name = name; r.checked = x.answer === k[1]; r.setAttribute('aria-label', k[0] + ' javob');
+            row.appendChild(r); row.appendChild(el('span', '', k[0])); b.appendChild(row); radios.push(r);
+        });
+        const ex = el('input', 'pg-input'); ex.type = 'text'; ex.maxLength = 300; ex.placeholder = 'Izoh (ixtiyoriy)'; ex.setAttribute('aria-label', 'Izoh'); ex.value = x.explanation || ''; b.appendChild(ex);
+        const obj = { node: b, title: h.title, read: function () { return { q: q.value, answer: radios.findIndex(function (r) { return r.checked; }), explanation: ex.value }; } };
+        h.rm.addEventListener('click', function () { b.remove(); onRemove(obj); });
+        return obj;
+    }
+    // Pair: a term and its definition
+    function pairBlock(x, prefix, onRemove) {
+        const b = el('div'); b.style.cssText = 'border:1px solid var(--line,#8884);border-radius:10px;padding:10px;display:grid;gap:6px';
+        const h = simpleHead(onRemove, b);
+        const t = el('input', 'pg-input'); t.type = 'text'; t.maxLength = 200; t.placeholder = 'Atama'; t.setAttribute('aria-label', 'Atama'); t.value = x.term || ''; b.appendChild(t);
+        const d = el('textarea', 'pg-input'); d.rows = 2; d.maxLength = 200; d.placeholder = "Ta'rif"; d.setAttribute('aria-label', "Ta'rif"); d.value = x.definition || ''; b.appendChild(d);
+        const obj = { node: b, title: h.title, read: function () { return { term: t.value, definition: d.value }; } };
+        h.rm.addEventListener('click', function () { b.remove(); onRemove(obj); });
+        return obj;
+    }
+    const KIND_NAME = { quiz: 'Viktorina (4 variant)', tf: "To'g'ri / noto'g'ri", pairs: "Juftlash (atama va ta'rif)" };
+    const KIND_BLOCK = { quiz: questionBlock, tf: tfBlock, pairs: pairBlock };
+
     // "Baraban" question sets: the platform admin writes them, team admins pick one to play
     function wheelSets(token, toast, onAuthError) {
         const box = el('div', 'pg-card'); box.dataset.wheel = 'sets';
-        box.appendChild(el('h3', 'pg-h3', "Baraban savollari"));
-        box.appendChild(el('p', 'pg-muted', "Jamoa adminlari shu to'plamlardan birini tanlab jonli o'yin boshlaydi. Savollar serverda saqlanadi, o'yinchi javobni ko'rmaydi."));
+        box.appendChild(el('h3', 'pg-h3', "O'yin savollari"));
+        box.appendChild(el('p', 'pg-muted', "Jamoa adminlari shu to'plamlardan birini tanlab jonli o'yin boshlaydi (Baraban, Tezkor viktorina, To'g'ri / noto'g'ri, Juftlash). Savollar serverda saqlanadi, o'yinchi javobni ko'rmaydi."));
         const listBox = el('div'); listBox.style.cssText = 'display:grid;gap:8px;margin:10px 0';
         const title = el('input', 'pg-input'); title.type = 'text'; title.maxLength = 120; title.placeholder = "To'plam nomi (masalan: Moddiy oqimlar)"; title.setAttribute('aria-label', "To'plam nomi");
         const list = el('div'); list.style.cssText = 'display:grid;gap:12px;margin:10px 0';
         const bar = el('div'); bar.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap';
         const msg = el('p', 'pg-muted'); msg.setAttribute('role', 'alert');
-        let blocks = []; let limits = { min: 3, max: 20 };
-        function renumber() { blocks.forEach(function (b, i) { b.title.textContent = (i + 1) + '-savol'; }); }
+        let blocks = []; let limits = { min: 3, max: 20 }; let kind = 'quiz';
+        const kindSel = el('select', 'pg-input'); kindSel.setAttribute('aria-label', "To'plam turi");
+        Object.keys(KIND_NAME).forEach(function (k) { const o = el('option', '', KIND_NAME[k]); o.value = k; kindSel.appendChild(o); });
+        kindSel.addEventListener('change', function () { kind = kindSel.value; list.textContent = ''; blocks = []; msg.textContent = kind === 'pairs' ? 'Kamida 4 ta juft kerak.' : ''; addB.textContent = kind === 'pairs' ? "Juft qo'shish" : "Savol qo'shish"; });
+        function renumber() { blocks.forEach(function (b, i) { b.title.textContent = (i + 1) + (kind === 'pairs' ? '-juft' : '-savol'); }); }
         function add() {
             if (blocks.length >= limits.max) { msg.textContent = "Eng ko'pi " + limits.max + ' ta savol.'; return; }
-            const b = questionBlock({}, 'wheel', function (o) { blocks = blocks.filter(function (z) { return z !== o; }); renumber(); });
+            const b = KIND_BLOCK[kind]({}, 'wheel', function (o) { blocks = blocks.filter(function (z) { return z !== o; }); renumber(); });
             blocks.push(b); list.appendChild(b.node); renumber();
         }
         async function load() {
@@ -100,7 +141,7 @@
             if (!r.sets.length) listBox.appendChild(el('p', 'pg-muted', "Hozircha to'plam yo'q."));
             r.sets.forEach(function (x) {
                 const row = el('div'); row.dataset.set = String(x.id); row.style.cssText = 'display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap';
-                row.appendChild(el('span', '', x.title + ' · ' + x.count + ' ta savol'));
+                row.appendChild(el('span', '', x.title + ' · ' + (KIND_NAME[x.kind || 'quiz'] || '') + ' · ' + x.count + (x.kind === 'pairs' ? ' ta juft' : ' ta savol')));
                 const del = el('button', 'pg-btn ghost', "O'chirish"); del.type = 'button'; del.style.padding = '4px 10px'; let sure = false;
                 del.addEventListener('click', async function () {
                     msg.textContent = '';
@@ -116,13 +157,13 @@
         saveB.addEventListener('click', async function () {
             msg.textContent = ''; saveB.disabled = true;
             try {
-                await call('POST', '/admin/wheel-sets', token, { title: title.value, questions: blocks.map(function (b) { return b.read(); }) });
+                await call('POST', '/admin/wheel-sets', token, { title: title.value, kind: kind, questions: blocks.map(function (b) { return b.read(); }) });
                 toast("To'plam saqlandi"); title.value = ''; list.textContent = ''; blocks = []; await load();
             } catch (err) { if (err.auth) { onAuthError(); return; } msg.textContent = say(String(err.message)); }
             saveB.disabled = false;
         });
         [addB, saveB].forEach(function (x) { bar.appendChild(x); });
-        [listBox, el('h4', 'pg-h3', "Yangi to'plam"), title, list, bar, msg].forEach(function (x) { box.appendChild(x); });
+        [listBox, el('h4', 'pg-h3', "Yangi to'plam"), kindSel, title, list, bar, msg].forEach(function (x) { box.appendChild(x); });
         load();
         return box;
     }

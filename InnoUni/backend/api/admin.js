@@ -7,6 +7,7 @@ const tournaments = require('./tournaments');
 const { TOURNAMENT_LIMITS, STAGES, STAGE_TITLE, groupCount, drawGroups, roundRobin, playoffPairs, firstStage, nextPairs } = require('../utils/tournamentDraw');
 const { notify } = require('../utils/notify');
 const { SLOTS, slotOfRound, cleanQuestions, LIMITS: QUESTION_LIMITS } = require('../utils/tournamentQuestions');
+const gameSets = require('../utils/gameSets');
 const ai = require('../utils/aiProvider');
 const { BATTLE_LIMITS } = require('../utils/battleLimits');
 
@@ -389,8 +390,8 @@ router.put('/tournaments/:id/questions/:slot', async (req, res) => {
 // ---- "Baraban" question sets ----
 router.get('/wheel-sets', async (req, res) => {
     try {
-        const [rows] = await req.db.execute('SELECT id, title, questions FROM wheel_sets ORDER BY id DESC', []);
-        res.json({ sets: rows.map((r) => { let n = 0; try { n = JSON.parse(r.questions).length; } catch (e) { n = 0; } return { id: r.id, title: r.title, count: n }; }), limits: QUESTION_LIMITS });
+        const [rows] = await req.db.execute('SELECT id, title, kind, questions FROM wheel_sets ORDER BY id DESC', []);
+        res.json({ sets: rows.map((r) => { let n = 0; try { n = JSON.parse(r.questions).length; } catch (e) { n = 0; } return { id: r.id, title: r.title, kind: r.kind || 'quiz', count: n }; }), limits: QUESTION_LIMITS, pair_limits: gameSets.PAIR_LIMITS });
     } catch (e) { fail(res, e); }
 });
 
@@ -398,10 +399,11 @@ router.post('/wheel-sets', async (req, res) => {
     try {
         const title = typeof (req.body && req.body.title) === 'string' ? req.body.title.trim() : '';
         if (title.length < 3 || title.length > 120) return res.status(400).json({ error: 'The title must be 3 to 120 characters' });
-        const clean = cleanQuestions(req.body.questions);
+        const kind = req.body.kind === undefined ? 'quiz' : req.body.kind;
+        if (!gameSets.KINDS.includes(kind)) return res.status(400).json({ error: 'Unknown set kind' });
+        const clean = gameSets.cleanSet(kind, req.body.questions);
         if (clean.error) return res.status(400).json({ error: clean.error });
-        if (!clean.questions.length) return res.status(400).json({ error: `A set needs ${QUESTION_LIMITS.min} to ${QUESTION_LIMITS.max} questions` });
-        const [ins] = await req.db.execute('INSERT INTO wheel_sets (title, questions, created_by) VALUES (?, ?, ?)', [title, JSON.stringify(clean.questions), req.user.userId]);
+        const [ins] = await req.db.execute('INSERT INTO wheel_sets (title, questions, created_by, kind) VALUES (?, ?, ?, ?)', [title, JSON.stringify(clean.questions), req.user.userId, kind]);
         res.status(201).json({ id: ins.insertId, count: clean.questions.length });
     } catch (e) { fail(res, e); }
 });

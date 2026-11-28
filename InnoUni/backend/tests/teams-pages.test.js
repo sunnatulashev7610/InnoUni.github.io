@@ -689,9 +689,33 @@ describe('Baraban (live team game)', () => {
         const st = makeState(); st.wheelSets = { ...sets, quick_seconds: 30 }; st.wheelState = live({ mode: 'quick' });
         const t = await open(st);
         const f = wp(t).querySelector('form'); const kind = f.querySelector('select[aria-label="O\'yin turi"]');
-        expect([...kind.options].map((o) => o.value)).toEqual(['wheel', 'quick']); expect(kind.options[1].textContent).toContain('30 soniya');
+        expect([...kind.options].map((o) => o.value)).toEqual(['wheel', 'quick', 'tf', 'pairs']); expect(kind.options[1].textContent).toContain('30 soniya');
         kind.value = 'quick'; f.dispatchEvent(new t.w.Event('submit', { bubbles: true, cancelable: true })); await t.flush();
         expect(t.calls.find((c) => c.method === 'POST' && c.path === '/wheel/sessions').body.mode).toBe('quick');
+    });
+    test('true/false and pairs offer only the sets of their own kind', async () => {
+        const st = makeState(); st.wheelSets = { sets: [{ id: 1, title: 'Viktorina', kind: 'quiz', count: 8 }, { id: 2, title: 'Gaplar', kind: 'tf', count: 6 }, { id: 3, title: '<b>Juftlar</b>', kind: 'pairs', count: 5 }], answer_seconds: 60, min_players: 2 };
+        st.wheelState = live({ mode: 'tf' });
+        const t = await open(st);
+        const f = wp(t).querySelector('form'); const kind = f.querySelector('select[aria-label="O\'yin turi"]'); const set = f.querySelector('select[aria-label="Savollar to\'plami"]');
+        expect([...set.options].map((o) => o.value)).toEqual(['1']);
+        kind.value = 'tf'; kind.dispatchEvent(new t.w.Event('change'));
+        expect([...set.options].map((o) => o.value)).toEqual(['2']);
+        kind.value = 'pairs'; kind.dispatchEvent(new t.w.Event('change'));
+        expect([...set.options].map((o) => o.value)).toEqual(['3']); expect(set.options[0].textContent).toBe('<b>Juftlar</b> · 5 ta juft'); expect(set.querySelector('b')).toBeNull();
+        f.dispatchEvent(new t.w.Event('submit', { bubbles: true, cancelable: true })); await t.flush();
+        expect(t.calls.find((c) => c.method === 'POST' && c.path === '/wheel/sessions').body).toEqual({ team_id: 3, set_id: 3, mode: 'pairs' });
+    });
+    test('a true/false game shows two options without letters and no wheel', async () => {
+        const board = [{ user_id: 1, name: 'Ali', answered: 0, correct: 0 }];
+        const st = makeState(); st.wheelMine = { open: [{ id: 5, team_id: 3, team_name: 'Mening jamoam', title: 'Gaplar', mode: 'tf' }], recent: [] };
+        st.wheelState = live({ mode: 'tf', board, remaining: [{ user_id: 1, name: 'Ali' }], total_questions: 6, my_turn: true, current: { user_id: 1, name: 'Ali', question: { q: 'Yer yumaloq <u>mi</u>?', options: ["To'g'ri", "Noto'g'ri"] }, seconds_left: 15 } });
+        const t = await open(st); await enter(t);
+        expect(wp(t).textContent).toContain("To'g'ri / noto'g'ri · savollar 1 / 6");
+        const opts = [...wp(t).querySelectorAll('[data-choice]')];
+        expect(opts.map((o) => o.textContent)).toEqual(["To'g'ri", "Noto'g'ri"]);
+        expect(wp(t).textContent).toContain('Yer yumaloq <u>mi</u>?'); expect(wp(t).querySelector('u')).toBeNull();
+        expect(wp(t).querySelector('svg').style.display).toBe('none');
     });
     test('the quick quiz has no wheel: progress, "Keyingi savol", the member in turn and a board', async () => {
         const board = [{ user_id: 1, name: '<i>Ali</i>', answered: 2, correct: 2 }, { user_id: 2, name: 'Vali', answered: 1, correct: 0 }, { user_id: 3, name: 'Gul', answered: 1, correct: 1 }];
