@@ -586,7 +586,7 @@ describe('Hall of Fame', () => {
 
 describe('Baraban (live team game)', () => {
     const live = (o = {}) => ({ id: 5, team_id: 3, title: '<b>Moddiy</b> oqimlar', status: 'open', is_host: true, my_turn: false, answer_seconds: 60, total_questions: 5,
-        remaining: [{ user_id: 1, name: '<i>Ali</i>' }, { user_id: 2, name: 'Vali' }, { user_id: 3, name: 'Gul' }], turns: [], score: 0, last: null, current: null, ...o });
+        remaining: [{ user_id: 1, name: '<i>Ali</i>' }, { user_id: 2, name: 'Vali' }, { user_id: 3, name: 'Gul' }], board: [], turns: [], score: 0, last: null, current: null, ...o });
     const cur = (uid, name) => ({ user_id: uid, name, question: { q: '<u>Bottleneck</u> nima?', options: ['Tezkor jarayon', 'Zaxira', 'Cheklovchi jarayon', 'Yo\'nalish'] }, seconds_left: 50 });
     const sets = { sets: [{ id: 1, title: 'Moddiy oqimlar', count: 8 }], answer_seconds: 60, min_players: 2 };
     const open = async (state) => { const t = boot(state); await t.run('musobaqalar'); await t.flush(); return t; };
@@ -609,7 +609,7 @@ describe('Baraban (live team game)', () => {
         const st = makeState(); st.wheelSets = sets; st.wheelState = live();
         const t = await open(st);
         const f = wp(t).querySelector('form'); f.dispatchEvent(new t.w.Event('submit', { bubbles: true, cancelable: true })); await t.flush();
-        expect(t.calls.find((c) => c.method === 'POST' && c.path === '/wheel/sessions').body).toEqual({ team_id: 3, set_id: 1 });
+        expect(t.calls.find((c) => c.method === 'POST' && c.path === '/wheel/sessions').body).toEqual({ team_id: 3, set_id: 1, mode: 'wheel' });
         expect(wp(t).textContent).toContain('<b>Moddiy</b> oqimlar'); expect(wp(t).querySelector('b')).toBeNull();
         expect(wp(t).querySelector('svg')).not.toBeNull(); expect(wp(t).querySelectorAll('svg path').length).toBe(3);
         expect(wp(t).querySelector('svg').textContent).toContain('<i>Ali</i>'); expect(wp(t).querySelector('svg i')).toBeNull();
@@ -669,6 +669,36 @@ describe('Baraban (live team game)', () => {
         const t = await open(st); await enter(t);
         btn(wp(t), "O'yinni tugatish").click(); expect(t.calls.some((c) => c.path.endsWith('/finish'))).toBe(false);
         btn(wp(t), 'Aniqmi').click(); await t.flush(); expect(t.calls.some((c) => c.path === '/wheel/sessions/5/finish')).toBe(true);
+    });
+    test('the admin can choose the quick quiz; it is sent as its own game type', async () => {
+        const st = makeState(); st.wheelSets = { ...sets, quick_seconds: 30 }; st.wheelState = live({ mode: 'quick' });
+        const t = await open(st);
+        const f = wp(t).querySelector('form'); const kind = f.querySelector('select[aria-label="O\'yin turi"]');
+        expect([...kind.options].map((o) => o.value)).toEqual(['wheel', 'quick']); expect(kind.options[1].textContent).toContain('30 soniya');
+        kind.value = 'quick'; f.dispatchEvent(new t.w.Event('submit', { bubbles: true, cancelable: true })); await t.flush();
+        expect(t.calls.find((c) => c.method === 'POST' && c.path === '/wheel/sessions').body.mode).toBe('quick');
+    });
+    test('the quick quiz has no wheel: progress, "Keyingi savol", the member in turn and a board', async () => {
+        const board = [{ user_id: 1, name: '<i>Ali</i>', answered: 2, correct: 2 }, { user_id: 2, name: 'Vali', answered: 1, correct: 0 }, { user_id: 3, name: 'Gul', answered: 1, correct: 1 }];
+        const st = makeState(); st.wheelMine = { open: [{ id: 5, team_id: 3, team_name: 'Mening jamoam', title: 'Moddiy oqimlar', mode: 'quick' }], recent: [] };
+        st.wheelState = live({ mode: 'quick', board, remaining: board.map((b) => ({ user_id: b.user_id, name: b.name })), total_questions: 15, turns: [1, 2, 3, 1].map((u) => ({ user_id: u, name: 'x', correct: true })), score: 3 });
+        const t = await open(st);
+        expect(wp(t).textContent).toContain('(tezkor viktorina)');
+        await enter(t);
+        const p = wp(t);
+        expect(p.querySelector('svg').style.display).toBe('none');
+        expect(p.textContent).toContain('Tezkor viktorina · savollar 4 / 15'); expect(p.textContent).toContain("«Keyingi savol» ni bosing");
+        expect(btn(p, 'Aylantirish')).toBeUndefined();
+        expect([...p.querySelectorAll('[data-board]')].map((r) => r.dataset.board)).toEqual(['1', '3', '2']);        // most correct first
+        expect(p.querySelector('[data-board="1"]').textContent).toContain('<i>Ali</i>'); expect(p.querySelector('[data-board] i')).toBeNull();
+        btn(p, 'Keyingi savol').click(); await t.flush();
+        expect(t.calls.some((c) => c.path === '/wheel/sessions/5/spin')).toBe(true);
+    });
+    test('the quick quiz shows the member in turn and the question at once (no spinning)', async () => {
+        const st = makeState(); st.wheelMine = mineOpen;
+        st.wheelState = live({ mode: 'quick', is_host: false, board: [], current: cur(2, 'Vali') });
+        const t = await open(st); await enter(t);
+        expect(wp(t).textContent).toContain('Navbat: Vali'); expect(wp(t).textContent).not.toContain('Baraban aylanmoqda');
     });
     test('no innerHTML in the game code', () => {
         expect(wheelSrc).not.toMatch(/innerHTML|insertAdjacentHTML|document\.write/);

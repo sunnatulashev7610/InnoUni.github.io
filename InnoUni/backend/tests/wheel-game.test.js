@@ -173,3 +173,50 @@ describe('playing', () => {
         expect(fake.s.notices.some((n) => n.user_id === p.picked_user_id && n.title === 'Baraban sizni tanladi')).toBe(true);
     });
 });
+
+describe('Tezkor viktorina (members in turn, every question asked)', () => {
+    const q = async (n = 5) => { const set = await newSet(n); return (await w('post', '/sessions', 1, { team_id: T, set_id: set, mode: 'quick' })).body.id; };
+    const play = async (id, correct) => {
+        const p = await spin(id); const qi = fake.s.wsessions[0].current_q; const right = JSON.parse(fake.s.wsets[0].questions)[qi].answer;
+        const r = await w('post', `/sessions/${id}/answer`, p.picked_user_id, { choice: correct ? right : (right + 1) % 4 });
+        return { p, r };
+    };
+    test('started in quick mode; fewer questions than members is fine; bad mode refused', async () => {
+        const set = await newSet(3);
+        expect((await w('post', '/sessions', 1, { team_id: T, set_id: set, mode: 'x' })).status).toBe(400);
+        expect((await w('post', '/sessions', 1, { team_id: T, set_id: set, mode: 'quick' })).status).toBe(201);
+        expect(fake.s.notices.some((n) => n.title === 'Tezkor viktorina boshlandi')).toBe(true);
+        const s = await state(1); expect(s.mode).toBe('quick'); expect(s.answer_seconds).toBe(30);
+        expect((await w('get', '/mine', 2)).body.open[0].mode).toBe('quick');
+    });
+    test('members answer in turn, a member can answer many times, and it ends after the last question', async () => {
+        const id = await q(5); const order = [];
+        for (let k = 0; k < 5; k++) { const { p, r } = await play(id, k % 2 === 0); order.push(p.picked_user_id); expect(r.body.finished).toBe(k === 4); }
+        for (let k = 1; k < 5; k++) { const prev = order[k - 1]; const ids = [1, 2, 3]; expect(order[k]).toBe(ids[(ids.indexOf(prev) + 1) % 3]); }
+        const s = await state(id);
+        expect(s.status).toBe('finished'); expect(s.turns).toHaveLength(5); expect(s.score).toBe(3);
+        expect(s.board.reduce((a, b) => a + b.answered, 0)).toBe(5); expect(s.board.reduce((a, b) => a + b.correct, 0)).toBe(3);
+        expect(s.remaining).toHaveLength(3);
+    });
+    test('thirty seconds per answer', async () => {
+        const id = await q(5); const p = await spin(id);
+        fake.s.wsessions[0].asked_at = Date.now() - 31 * 1000;
+        expect((await state(id)).current.seconds_left).toBe(0);
+        fake.s.wsessions[0].asked_at = Date.now() - 20 * 1000;
+        expect((await state(id)).current.seconds_left).toBe(10);
+        const p2 = await spin(id); expect(p2).toBeDefined();                                                  // somebody is answering: refused below
+        expect((await w('post', `/sessions/${id}/spin`, 1)).status).toBe(409);
+        fake.s.wsessions[0].asked_at = Date.now() - 31 * 1000;
+        const next = await spin(id); expect(next.picked_user_id).not.toBe(p.picked_user_id);
+    });
+    test('a double click cannot answer twice', async () => {
+        const id = await q(5); const p = await spin(id);
+        const [a, b] = await Promise.all([1, 2].map(() => w('post', `/sessions/${id}/answer`, p.picked_user_id, { choice: 0 })));
+        expect([a.status, b.status].sort()).toEqual([200, 403]);
+        expect((await state(id)).turns).toHaveLength(1);
+    });
+    test('the wheel game still ends when everybody has played', async () => {
+        const id = await open(5); for (let k = 0; k < 3; k++) await play(id, true);
+        expect((await state(id)).status).toBe('finished');
+    });
+});

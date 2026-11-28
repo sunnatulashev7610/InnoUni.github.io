@@ -827,7 +827,7 @@
             pg.appendChild(head('Musobaqalar', "Jamoalar o'rtasida battle o'tkazing, reyting va kubok yuting."));
             const panes = {};
             tabs.onChange = function (k) { tab = k; };
-            const nav = tabs([['battle', 'Battlelar'], ['teams', 'Jamoalar'], ['season', 'Mavsumiy turnirlar'], ['players', "O'yinchilar"], ['wheel', 'Baraban'], ['fame', 'Shon-sharaf'], ['rules', 'Qoidalar']], tab, panes); nav.classList.add('pg-tabs-wrap'); pg.appendChild(nav);
+            const nav = tabs([['battle', 'Battlelar'], ['teams', 'Jamoalar'], ['season', 'Mavsumiy turnirlar'], ['players', "O'yinchilar"], ['wheel', "O'yinlar"], ['fame', 'Shon-sharaf'], ['rules', 'Qoidalar']], tab, panes); nav.classList.add('pg-tabs-wrap'); pg.appendChild(nav);
 
             const bt = el('div'); bt.hidden = tab !== 'battle'; bt.dataset.pane = 'battle'; panes.battle = bt;
             const battles = await battlesPane(session, data.teams, draw); bt.appendChild(battles); pg.appendChild(bt);

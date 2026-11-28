@@ -90,22 +90,24 @@
         }
         function row(x, label) {
             const r = el('div'); r.dataset.session = String(x.id); r.style.cssText = 'display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:6px 0';
-            r.appendChild(el('span', '', x.team_name + ' · ' + x.title));
+            r.appendChild(el('span', '', x.team_name + ' · ' + x.title + (x.mode === 'quick' ? ' (tezkor viktorina)' : ' (baraban)')));
             const b = el('button', 'pg-btn', label); b.type = 'button'; b.style.padding = '7px 12px'; b.addEventListener('click', function () { session_(x.id); });
             r.appendChild(b); return r;
         }
         function startCard(sets) {
             const c = card("Yangi o'yin boshlash");
             if (!sets || !sets.sets.length) { c.appendChild(el('p', 'pg-muted', "Platforma admini hali savollar to'plamini qo'shmagan.")); return c; }
-            c.appendChild(el('p', 'pg-muted', 'Server tasodifiy a\'zo va savolni tanlaydi. Kamida ' + sets.min_players + " ta faol a'zo kerak, har bir javobga " + sets.answer_seconds + ' soniya beriladi.'));
+            c.appendChild(el('p', 'pg-muted', "Baraban: server tasodifiy a'zo va savolni tanlaydi, har kim bir marta javob beradi (" + sets.answer_seconds + ' soniya). Tezkor viktorina: a\'zolar navbat bilan javob beradi, to\'plamdagi hamma savol so\'raladi (' + (sets.quick_seconds || 30) + " soniya). Kamida " + sets.min_players + " ta faol a'zo kerak."));
             const f = el('form'); f.noValidate = true; f.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center';
             const team = el('select', 'pg-input'); team.setAttribute('aria-label', 'Jamoa'); adminTeams.forEach(function (t) { const o = el('option', '', t.name); o.value = String(t.id); team.appendChild(o); });
             const set = el('select', 'pg-input'); set.setAttribute('aria-label', "Savollar to'plami"); sets.sets.forEach(function (x) { const o = el('option', '', x.title + ' · ' + x.count + ' ta savol'); o.value = String(x.id); set.appendChild(o); });
+            const kind = el('select', 'pg-input'); kind.setAttribute('aria-label', "O'yin turi");
+            [['wheel', 'Baraban (tasodifiy a\'zo)'], ['quick', 'Tezkor viktorina (navbat bilan, ' + (sets.quick_seconds || 30) + ' soniya)']].forEach(function (k) { const o = el('option', '', k[1]); o.value = k[0]; kind.appendChild(o); });
             const go = el('button', 'pg-btn', 'Boshlash'); go.type = 'submit'; const m = note();
-            f.appendChild(team); f.appendChild(set); f.appendChild(go); c.appendChild(f); c.appendChild(m);
+            f.appendChild(kind); f.appendChild(team); f.appendChild(set); f.appendChild(go); c.appendChild(f); c.appendChild(m);
             f.addEventListener('submit', async function (e) {
                 e.preventDefault(); m.textContent = ''; go.disabled = true;
-                try { const r = await send('POST', '/wheel/sessions', session, { team_id: Number(team.value), set_id: Number(set.value) }); session_(r.id); }
+                try { const r = await send('POST', '/wheel/sessions', session, { team_id: Number(team.value), set_id: Number(set.value), mode: kind.value }); session_(r.id); }
                 catch (err) { m.textContent = say(err); go.disabled = false; }
             });
             return c;
@@ -120,7 +122,7 @@
             const turn = el('div'); turn.dataset.turn = '1'; turn.style.cssText = 'margin-top:12px;display:grid;gap:10px'; stage.appendChild(turn);
             const ctl = el('div'); ctl.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap'; const msg = note(); stage.appendChild(ctl); stage.appendChild(msg);
             const lastC = card('Oxirgi javob'); lastC.dataset.last = '1'; lastC.hidden = true;
-            const tableC = card("Ishtirokchilar"); const tbl = el('div'); tableC.appendChild(tbl);
+            const tableC = card('Natijalar'); const tbl = el('div'); tableC.appendChild(tbl);
             [back, head, stage, lastC, tableC].forEach(function (n) { box.appendChild(n); });
 
             let st = null; let seen = null; let first = true; let animating = false; let endsAt = 0; let sure = false;
@@ -135,15 +137,19 @@
 
             function apply() {
                 if (!st) return;
-                title.textContent = st.title; sub.textContent = st.status === 'open' ? "Jonli o'yin · to'g'ri javoblar: " + st.score : "O'yin tugadi · to'g'ri javoblar: " + st.score + ' / ' + st.turns.length;
+                const quick = st.mode === 'quick';
+                title.textContent = st.title;
+                const asked = st.turns.length + (st.current ? 1 : 0);
+                sub.textContent = (quick ? 'Tezkor viktorina · ' + (st.status === 'open' ? 'savollar ' + asked + ' / ' + st.total_questions : 'tugadi') : (st.status === 'open' ? "Baraban · jonli o'yin" : "Baraban · tugadi")) + " · to'g'ri javoblar: " + st.score + (st.status === 'open' ? '' : ' / ' + st.turns.length);
+                wheel.node.style.display = quick ? 'none' : 'block';
                 // The wheel shows who is still in; the chosen one is brought under the pointer
-                const names = st.remaining.map(function (m) { return m.name; });
+                const names = quick ? [] : st.remaining.map(function (m) { return m.name; });
                 const same = JSON.stringify(names) === JSON.stringify(wheel.names());
                 if (!same) wheel.draw(names);
-                const idx = st.current ? st.remaining.findIndex(function (m) { return m.user_id === st.current.user_id; }) : -1;
+                const idx = st.current && !quick ? st.remaining.findIndex(function (m) { return m.user_id === st.current.user_id; }) : -1;
                 if (st.current && st.current.user_id !== seen) {
                     seen = st.current.user_id;
-                    if (!first && idx >= 0) { wheel.land(idx, true); animating = true; setTimeout(function () { animating = false; apply(); }, spinMs()); } else wheel.land(idx, false);
+                    if (!first && idx >= 0) { wheel.land(idx, true); animating = true; setTimeout(function () { animating = false; apply(); }, spinMs()); } else if (idx >= 0) wheel.land(idx, false);
                 } else if (!st.current) seen = null;
                 first = false;
                 turn.textContent = ''; ctl.textContent = '';
@@ -158,9 +164,9 @@
                         if (!st.my_turn) b.disabled = true; else b.addEventListener('click', function () { act('answer', { choice: i }); });
                         turn.appendChild(b);
                     });
-                } else turn.appendChild(el('p', 'pg-muted', st.is_host ? "«Aylantirish» ni bosing: server a'zo va savolni tanlaydi." : 'Admin barabanni aylantirishini kuting.'));
+                } else turn.appendChild(el('p', 'pg-muted', quick ? (st.is_host ? "«Keyingi savol» ni bosing: navbatdagi a'zoga savol beriladi." : 'Admin keyingi savolni berishini kuting.') : (st.is_host ? "«Aylantirish» ni bosing: server a'zo va savolni tanlaydi." : 'Admin barabanni aylantirishini kuting.')));
                 if (st.status === 'open' && st.is_host) {
-                    if (!st.current) { const sp = button('Aylantirish', 'pg-btn', function () { act('spin'); }); sp.dataset.act = 'spin'; ctl.appendChild(sp); }
+                    if (!st.current) { const sp = button(quick ? 'Keyingi savol' : 'Aylantirish', 'pg-btn', function () { act('spin'); }); sp.dataset.act = 'spin'; ctl.appendChild(sp); }
                     else { const sk = button("O'tkazib yuborish", 'pg-btn ghost', function () { act('skip'); }); sk.dataset.act = 'skip'; ctl.appendChild(sk); }
                     const fin = button("O'yinni tugatish", 'pg-btn ghost', function () {
                         if (!sure) { sure = true; fin.textContent = 'Aniqmi? Qayta bosing'; setTimeout(function () { sure = false; fin.textContent = "O'yinni tugatish"; }, 4000); return; }
@@ -176,6 +182,15 @@
                     if (st.last.explanation) lastC.appendChild(el('p', 'pg-muted', st.last.explanation));
                 }
                 tbl.textContent = '';
+                if (quick) {
+                    st.board.slice().sort(function (a, b) { return b.correct - a.correct || a.answered - b.answered; }).forEach(function (m) {
+                        const r = el('div'); r.dataset.board = String(m.user_id); r.style.cssText = 'display:flex;justify-content:space-between;padding:4px 0';
+                        r.appendChild(el('span', '', m.name + (st.current && st.current.user_id === m.user_id ? ' (javob bermoqda)' : '')));
+                        r.appendChild(el('b', '', m.correct + ' / ' + m.answered)); tbl.appendChild(r);
+                    });
+                    if (st.status !== 'open') stop();
+                    return;
+                }
                 st.turns.forEach(function (t) { const r = el('div'); r.style.cssText = 'display:flex;justify-content:space-between;padding:4px 0'; r.appendChild(el('span', '', t.name)); r.appendChild(el('b', '', t.correct ? "✓ to'g'ri" : "✗ xato")); tbl.appendChild(r); });
                 st.remaining.forEach(function (m) { const r = el('div', 'pg-muted'); r.style.cssText = 'display:flex;justify-content:space-between;padding:4px 0'; r.appendChild(el('span', '', m.name)); r.appendChild(el('span', '', st.current && st.current.user_id === m.user_id ? 'javob bermoqda' : 'kutmoqda')); tbl.appendChild(r); });
                 if (st.status !== 'open') stop();
