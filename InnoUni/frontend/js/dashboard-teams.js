@@ -888,7 +888,14 @@
 
             // Top: who it is
             const top = el('div', 'pg-card pg-file tt-id'); if (!isMember) top.style.marginBottom = '18px';
-            top.appendChild(cover(team, 64));
+            const av = cover(team, 64);
+            if (isMember) {
+                // On a phone only the avatar shows; a tap opens the team facts above the chat (CSS: .tt-open)
+                const ab = el('button', 'tt-avatar'); ab.type = 'button'; ab.setAttribute('aria-label', "Jamoa ma'lumotlari"); ab.setAttribute('aria-expanded', 'false'); ab.appendChild(av);
+                ab.addEventListener('click', function (e) { e.stopPropagation(); const o = side.classList.toggle('tt-open'); ab.setAttribute('aria-expanded', String(o)); });
+                main.addEventListener('click', function () { if (side.classList.contains('tt-open')) { side.classList.remove('tt-open'); ab.setAttribute('aria-expanded', 'false'); } });
+                top.appendChild(ab);
+            } else top.appendChild(av);
             const d = el('div'); d.style.minWidth = '0'; const n = el('h2', '', team.name); n.style.margin = '0'; d.appendChild(n);
             const pills = el('div', 'tt-pills'); pills.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:6px';
             pills.appendChild(el('span', 'pg-pill', team.direction || 'Boshqa'));
@@ -933,8 +940,14 @@
                 return facts;
             }
             const facts = factsNode(isMember ? 'tt-facts' : ''); if (!isMember) facts.style.cssText = 'grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:18px';
-            side.appendChild(facts);
-            const rec = await recordCard(session, team.id); if (rec) side.appendChild(rec);
+            let pop = side;
+            if (isMember) {
+                pop = el('div', 'tt-pop'); pop.dataset.pop = '1';
+                const ph = el('div', 'tt-pophead'); ph.appendChild(el('h3', 'pg-h3', team.name)); ph.appendChild(el('div', 'pg-muted', (team.direction || 'Boshqa') + ' · ' + team.members + " a'zo · " + (team.rating || 0) + ' ball'));
+                pop.appendChild(ph); side.appendChild(pop);
+            }
+            pop.appendChild(facts);
+            const rec = await recordCard(session, team.id); if (rec) pop.appendChild(rec);
 
             const labels = { chat: 'Chat', resources: 'Resurslar', events: 'Tadbirlar', members: "A'zolar", about: 'Haqida', settings: 'Sozlamalar' };
             const panes = {};
