@@ -488,6 +488,21 @@ describe('team workspace layout', () => {
         expect(side.querySelector('.tt-line').textContent).toContain("a'zo");
         expect(main.querySelector('.tt-facts')).toBeNull();
     });
+    test('a member sees only the avatar on a phone; tapping it opens the facts popup', async () => {
+        const state = makeState(); state.teams[1].my_status = 'active'; state.members = [];
+        const t = boot(state); t.w.GEData.ctx.teamId = 2; await t.run('team-detail'); await t.flush();
+        const side = t.c.querySelector('.tt-side'); const btn = side.querySelector('button.tt-avatar');
+        expect(btn).not.toBeNull(); expect(btn.getAttribute('aria-expanded')).toBe('false');
+        const pop = side.querySelector('.tt-pop');
+        expect(pop).not.toBeNull(); expect(pop.querySelector('.tt-facts')).not.toBeNull();
+        expect(pop.textContent).toContain('Ochilgan sana');
+        expect(side.classList.contains('tt-open')).toBe(false);
+        btn.click();
+        expect(side.classList.contains('tt-open')).toBe(true); expect(btn.getAttribute('aria-expanded')).toBe('true');
+        t.c.querySelector('.tt-main').click();
+        expect(side.classList.contains('tt-open')).toBe(false); expect(btn.getAttribute('aria-expanded')).toBe('false');
+        expect(pop.querySelector('.tt-pophead h3')).not.toBeNull();
+    });
     test('a visitor keeps the plain page: no workspace grid', async () => {
         const t = boot(makeState()); t.w.GEData.ctx.teamId = 1; await t.run('team-detail'); await t.flush();
         expect(t.c.querySelector('.tt-grid')).toBeNull();
