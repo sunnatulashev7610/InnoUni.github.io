@@ -230,6 +230,30 @@ function createTeamsFake() {
         if (q.startsWith('SELECT r.battle_id, b.title, b.ends_at FROM battle_results r JOIN battles b')) return [s.results.filter((r) => r.team_id === p[0] && r.place === 1 && r.correct_total > 0).map((r) => { const b = s.battles.find((x) => x.id === r.battle_id); return { battle_id: r.battle_id, title: b.title, ends_at: b.ends_at }; })];
         if (q.startsWith('SELECT s.team_id, s.rating, s.played, s.wins, t.name FROM team_battle_stats s')) return [Object.keys(s.stats).filter((k) => s.stats[k].played > 0).map((k) => ({ team_id: Number(k), ...s.stats[k], name: (s.teams.find((t) => t.id === Number(k)) || {}).name })).sort((a, b) => b.rating - a.rating || b.wins - a.wins)];
         // ---- seasonal tournaments
+        // ---- "Baraban" game
+        {
+            const W = () => { s.wsets = s.wsets || []; s.wsessions = s.wsessions || []; s.wturns = s.wturns || []; return s; };
+            if (q.startsWith('SELECT id, title, questions FROM wheel_sets ORDER BY id DESC')) return [W().wsets.slice().reverse()];
+            if (q.startsWith('SELECT id, title, questions FROM wheel_sets WHERE id = ?')) return [W().wsets.filter((x) => x.id === p[0])];
+            if (q.startsWith('INSERT INTO wheel_sets')) { W().wsets.push({ id: s.wsets.length + 1, title: p[0], questions: p[1] }); return [{ insertId: s.wsets.length }]; }
+            if (q.startsWith('SELECT COUNT(*) AS n FROM wheel_sessions WHERE set_id = ?')) return [[{ n: W().wsessions.filter((x) => x.set_id === p[0]).length }]];
+            if (q.startsWith('DELETE FROM wheel_sets WHERE id = ?')) { const n = W().wsets.length; s.wsets = s.wsets.filter((x) => x.id !== p[0]); return [{ affectedRows: n - s.wsets.length }]; }
+            if (q === "SELECT id FROM wheel_sessions WHERE team_id = ? AND status = 'open'") return [W().wsessions.filter((x) => x.team_id === p[0] && x.status === 'open').map((x) => ({ id: x.id }))];
+            if (q.startsWith('INSERT INTO wheel_sessions')) { W().wsessions.push({ id: s.wsessions.length + 1, team_id: p[0], set_id: p[1], host_id: p[2], status: 'open', current_user_id: null, current_q: null, asked_at: null }); return [{ insertId: s.wsessions.length }]; }
+            if (q.startsWith('SELECT s.id, s.team_id, s.host_id, s.status, s.current_user_id')) {
+                return [W().wsessions.filter((x) => x.id === p[0]).map((x) => ({ ...x, asked_seconds: x.asked_at ? Math.floor((Date.now() - x.asked_at) / 1000) : 0, title: s.wsets.find((w) => w.id === x.set_id).title, questions: s.wsets.find((w) => w.id === x.set_id).questions }))];
+            }
+            if (q.startsWith('SELECT t.user_id, t.q_index, t.choice, t.correct, u.full_name FROM wheel_turns t')) return [W().wturns.filter((t) => t.session_id === p[0]).map((t) => ({ ...t, full_name: s.users[t.user_id] }))];
+            if (q.startsWith("SELECT m.user_id, u.full_name FROM team_members m JOIN users u ON u.id = m.user_id WHERE m.team_id = ? AND m.status = 'active' ORDER BY m.user_id")) return [s.members.filter((m) => m.team_id === p[0] && m.status === 'active').sort((x, y) => x.user_id - y.user_id).map((m) => ({ user_id: m.user_id, full_name: s.users[m.user_id] }))];
+            if (q.startsWith('INSERT INTO wheel_turns')) { if (W().wturns.some((t) => t.session_id === p[0] && t.user_id === p[1])) throw Object.assign(new Error('dup'), { code: 'ER_DUP_ENTRY' }); s.wturns.push({ session_id: p[0], user_id: p[1], q_index: p[2], choice: p[3], correct: p[4] }); return [{ insertId: s.wturns.length }]; }
+            if (q.startsWith('UPDATE wheel_sessions SET current_user_id = NULL, current_q = NULL, asked_at = NULL WHERE id = ? AND current_user_id = ?')) { const x = W().wsessions.find((z) => z.id === p[0] && z.current_user_id === p[1]); if (x) { x.current_user_id = null; x.current_q = null; x.asked_at = null; } return [{ affectedRows: x ? 1 : 0 }]; }
+            if (q.startsWith("UPDATE wheel_sessions SET current_user_id = ?, current_q = ?, asked_at = NOW() WHERE id = ? AND status = 'open' AND current_user_id IS NULL")) { const x = W().wsessions.find((z) => z.id === p[2] && z.status === 'open' && z.current_user_id === null); if (x) { x.current_user_id = p[0]; x.current_q = p[1]; x.asked_at = Date.now(); } return [{ affectedRows: x ? 1 : 0 }]; }
+            if (q.startsWith("UPDATE wheel_sessions SET status = 'finished', finished_at = NOW()")) { const x = W().wsessions.find((z) => z.id === p[0] && z.status === 'open'); if (x) { x.status = 'finished'; if (q.includes('current_user_id = NULL')) { x.current_user_id = null; x.current_q = null; x.asked_at = null; } } return [{ affectedRows: x ? 1 : 0 }]; }
+            if (q.startsWith('SELECT s.id, s.team_id, t.name AS team_name, w.title FROM wheel_sessions s')) {
+                const open = q.includes("s.status = 'open'");
+                return [W().wsessions.filter((x) => (x.status === 'open') === open && s.members.some((m) => m.team_id === x.team_id && m.user_id === p[0] && m.status === 'active')).reverse().slice(0, open ? 99 : 5).map((x) => ({ id: x.id, team_id: x.team_id, team_name: s.teams.find((t) => t.id === x.team_id).name, title: s.wsets.find((w) => w.id === x.set_id).title }))];
+            }
+        }
         if (q === 'UPDATE tournaments SET champion_team_id = ?, finished_at = UTC_TIMESTAMP() WHERE id = ? AND champion_team_id IS NULL') { const t = s.tournaments.find((x) => x.id === p[1] && !x.champion_team_id); if (t) { t.champion_team_id = p[0]; t.finished_at = new Date(); } return [{ affectedRows: t ? 1 : 0 }]; }
         if (q.startsWith('SELECT t.id, t.title, t.topic, t.champion_team_id AS team_id')) return [s.tournaments.filter((t) => t.champion_team_id).slice().reverse().map((t) => ({ id: t.id, title: t.title, topic: t.topic, team_id: t.champion_team_id, team_name: (s.teams.find((x) => x.id === t.champion_team_id) || {}).name, finished_at: new Date(t.finished_at).toISOString() }))];
         if (q.startsWith('INSERT INTO tournaments (')) { const t = { id: s.tid++, title: p[0], topic: p[1], round_days: p[2], status: 'open' }; s.tournaments.push(t); return [{ insertId: t.id }]; }

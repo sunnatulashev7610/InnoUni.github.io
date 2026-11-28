@@ -6,6 +6,7 @@ const root = path.join(__dirname, '../..');
 const dataSrc = fs.readFileSync(path.join(root, 'frontend/js/dashboard-data.js'), 'utf8');
 const chatSrc = fs.readFileSync(path.join(root, 'frontend/js/dashboard-team-chat.js'), 'utf8');
 const teamsSrc = fs.readFileSync(path.join(root, 'frontend/js/dashboard-teams.js'), 'utf8');
+const wheelSrc = fs.readFileSync(path.join(root, 'frontend/js/dashboard-wheel.js'), 'utf8');
 
 const DIRS = ['Dasturlash', 'Dizayn', 'Til', 'Fan', 'Biznes', 'Boshqa'];
 const base = { description: null, captain_id: 5, captain_name: 'Sardor Aliyev', created_at: '2026-11-10T09:00:00.000Z', members: 3, my_status: null, is_captain: false, pending_requests: 0, recruiting: true, rating: 0, rank: null, activity: { writers: 0, messages: 0 } };
@@ -32,7 +33,17 @@ function boot(state) {
         const body = opts.body ? JSON.parse(opts.body) : undefined;
         calls.push({ path: p, method, body });
         let r = { body: { message: 'ok' } };
-        if (p === '/tournaments/champions') {
+        if (p === '/wheel/mine') {
+            r = { body: state.wheelMine || { open: [], recent: [] } };
+        } else if (p === '/wheel/sets') {
+            r = { body: state.wheelSets || { sets: [], answer_seconds: 60, min_players: 2 } };
+        } else if (p === '/wheel/sessions' && method === 'POST') {
+            r = state.wheelStartFails ? { ok: false, status: 409, body: { error: 'The team already has a game in progress' } } : { status: 201, body: { id: 5 } };
+        } else if (/^\/wheel\/sessions\/\d+$/.test(p)) {
+            r = { body: typeof state.wheelState === 'function' ? state.wheelState() : state.wheelState };
+        } else if (/^\/wheel\/sessions\/\d+\/(spin|skip|finish|answer)$/.test(p)) {
+            r = state.wheelActFails ? { ok: false, status: 409, body: { error: 'It is not your turn' } } : { body: { correct: true } };
+        } else if (p === '/tournaments/champions') {
             r = state.fame === undefined ? { body: { champions: [], teams: [] } } : { body: state.fame };
         } else if (/^\/tournaments$/.test(p)) {
             r = { body: state.tournaments === undefined ? { tournaments: [], my_admin_teams: [] } : state.tournaments };
@@ -86,7 +97,7 @@ function boot(state) {
         else if (method === 'POST' && /\/join$/.test(p)) state.teams.find((x) => '/teams/' + x.id + '/join' === p).my_status = 'pending';
         return { ok: r.ok !== false, status: r.status || 200, json: async () => r.body };
     });
-    w.eval(dataSrc); w.eval(chatSrc); w.eval(teamsSrc);
+    w.eval(dataSrc); w.eval(chatSrc); w.eval(wheelSrc); w.eval(teamsSrc);
     const c = w.document.getElementById('c');
     const session = { id: 7, token: 't', name: 'Sam Test', role: 'student' };
     const tick = () => new Promise((r) => setTimeout(r, 5));
@@ -336,6 +347,8 @@ describe('wiring', () => {
         expect(html).toContain('frontend/js/dashboard-teams.js');
         expect(html.indexOf('dashboard-team-chat.js')).toBeGreaterThan(-1);
         expect(html.indexOf('dashboard-team-chat.js')).toBeLessThan(html.indexOf('dashboard-teams.js'));
+        expect(html.indexOf('dashboard-wheel.js')).toBeGreaterThan(-1);
+        expect(html.indexOf('dashboard-wheel.js')).toBeLessThan(html.indexOf('dashboard-teams.js'));
         expect(html).toMatch(/var FEATURES = \{ teams: true, library: false, groups: false, courses: false, tasks: false, results: false, pricing: false \}/);
     });
 
@@ -568,6 +581,97 @@ describe('Hall of Fame', () => {
         expect(fp.querySelector('[data-champion="4"]').textContent).toContain('<i>Alfa</i>');
         expect(fp.textContent).toContain('<b>Kuz</b> kubogi'); expect(fp.textContent).toContain('2026-11-20'); expect(fp.textContent).toContain('2 ta kubok');
         expect(fp.querySelector('i, b b')).toBeNull();
+    });
+});
+
+describe('Baraban (live team game)', () => {
+    const live = (o = {}) => ({ id: 5, team_id: 3, title: '<b>Moddiy</b> oqimlar', status: 'open', is_host: true, my_turn: false, answer_seconds: 60, total_questions: 5,
+        remaining: [{ user_id: 1, name: '<i>Ali</i>' }, { user_id: 2, name: 'Vali' }, { user_id: 3, name: 'Gul' }], turns: [], score: 0, last: null, current: null, ...o });
+    const cur = (uid, name) => ({ user_id: uid, name, question: { q: '<u>Bottleneck</u> nima?', options: ['Tezkor jarayon', 'Zaxira', 'Cheklovchi jarayon', 'Yo\'nalish'] }, seconds_left: 50 });
+    const sets = { sets: [{ id: 1, title: 'Moddiy oqimlar', count: 8 }], answer_seconds: 60, min_players: 2 };
+    const open = async (state) => { const t = boot(state); await t.run('musobaqalar'); await t.flush(); return t; };
+    const wp = (t) => pane(t.c, 'wheel');
+    const btn = (root, text) => [...root.querySelectorAll('button')].find((x) => x.textContent.startsWith(text));
+    const enter = async (t) => { btn(wp(t), 'Kirish').click(); await t.flush(); };
+    const mineOpen = { open: [{ id: 5, team_id: 3, team_name: 'Mening jamoam', title: 'Moddiy oqimlar' }], recent: [] };
+
+    test('the tab is there and empty at first; a team admin is told when there are no sets', async () => {
+        const t = await open(makeState());
+        expect(wp(t).hidden).toBe(true);
+        expect(wp(t).textContent).toContain("Hozir ochiq o'yin yo'q"); expect(wp(t).textContent).toContain("hali savollar to'plamini qo'shmagan");
+    });
+    test('a plain member sees no start form', async () => {
+        const st = makeState(); st.teams[2].is_captain = false;
+        const t = await open(st);
+        expect(wp(t).textContent).not.toContain('Yangi'); expect(t.calls.some((c) => c.path === '/wheel/sets')).toBe(false);
+    });
+    test('the admin starts a game and lands in it', async () => {
+        const st = makeState(); st.wheelSets = sets; st.wheelState = live();
+        const t = await open(st);
+        const f = wp(t).querySelector('form'); f.dispatchEvent(new t.w.Event('submit', { bubbles: true, cancelable: true })); await t.flush();
+        expect(t.calls.find((c) => c.method === 'POST' && c.path === '/wheel/sessions').body).toEqual({ team_id: 3, set_id: 1 });
+        expect(wp(t).textContent).toContain('<b>Moddiy</b> oqimlar'); expect(wp(t).querySelector('b')).toBeNull();
+        expect(wp(t).querySelector('svg')).not.toBeNull(); expect(wp(t).querySelectorAll('svg path').length).toBe(3);
+        expect(wp(t).querySelector('svg').textContent).toContain('<i>Ali</i>'); expect(wp(t).querySelector('svg i')).toBeNull();
+    });
+    test('a start refused by the server is explained in Uzbek', async () => {
+        const st = makeState(); st.wheelSets = sets; st.wheelStartFails = true;
+        const t = await open(st);
+        wp(t).querySelector('form').dispatchEvent(new t.w.Event('submit', { bubbles: true, cancelable: true })); await t.flush();
+        expect(wp(t).textContent).toContain("Jamoada o'yin allaqachon davom etmoqda");
+    });
+    test('the admin spins; the others only wait', async () => {
+        const st = makeState(); st.wheelMine = mineOpen; st.wheelState = live();
+        const t = await open(st); await enter(t);
+        expect(wp(t).textContent).toContain("«Aylantirish» ni bosing");
+        btn(wp(t), 'Aylantirish').click(); await t.flush();
+        expect(t.calls.some((c) => c.method === 'POST' && c.path === '/wheel/sessions/5/spin')).toBe(true);
+        st.wheelState = live({ is_host: false });
+        const t2 = await open(st); await enter(t2);
+        expect(btn(wp(t2), 'Aylantirish')).toBeUndefined(); expect(wp(t2).textContent).toContain('Admin barabanni aylantirishini kuting');
+    });
+    test('the question appears after the wheel stops spinning; text only', async () => {
+        const st = makeState(); st.wheelMine = mineOpen; let spun = false;
+        st.wheelState = () => live({ my_turn: false, current: spun ? cur(2, 'Vali') : null });
+        const t = await open(st); t.w.GEWheel.spinMs = 400; await enter(t);
+        spun = true; btn(wp(t), 'Aylantirish').click(); await t.flush();
+        expect(wp(t).textContent).toContain('Baraban aylanmoqda');
+        await new Promise((r) => setTimeout(r, 600));
+        expect(wp(t).textContent).toContain('Navbat: Vali'); expect(wp(t).textContent).toContain('<u>Bottleneck</u> nima?');
+        expect(wp(t).querySelector('u')).toBeNull();
+        const opts = [...wp(t).querySelectorAll('[data-choice]')]; expect(opts).toHaveLength(4); expect(opts.every((b) => b.disabled)).toBe(true);
+        expect(btn(wp(t), "O'tkazib yuborish")).toBeDefined();
+    });
+    test('joining late shows the question at once, and only the chosen member can answer', async () => {
+        const st = makeState(); st.wheelMine = mineOpen; st.wheelState = live({ is_host: false, my_turn: true, current: cur(1, '<i>Ali</i>') });
+        const t = await open(st); await enter(t);
+        expect(wp(t).textContent).not.toContain('Baraban aylanmoqda'); expect(wp(t).textContent).toContain('Navbat sizda!');
+        wp(t).querySelector('[data-choice="2"]').click(); await t.flush();
+        expect(t.calls.find((c) => c.path === '/wheel/sessions/5/answer').body).toEqual({ choice: 2 });
+    });
+    test('a refused action shows a clear message', async () => {
+        const st = makeState(); st.wheelMine = mineOpen; st.wheelState = live({ is_host: false, my_turn: true, current: cur(1, 'Ali') }); st.wheelActFails = true;
+        const t = await open(st); await enter(t);
+        wp(t).querySelector('[data-choice="0"]').click(); await t.flush();
+        expect(wp(t).textContent).toContain('Hozir sizning navbatingiz emas');
+    });
+    test('the last answer, the right option and the table are shown; a finished game has no controls', async () => {
+        const st = makeState(); st.wheelMine = { open: [], recent: [{ id: 5, team_id: 3, team_name: 'Mening jamoam', title: 'Moddiy oqimlar' }] };
+        st.wheelState = live({ status: 'finished', remaining: [], score: 1, turns: [{ user_id: 1, name: '<i>Ali</i>', correct: true }, { user_id: 2, name: 'Vali', correct: false }],
+            last: { name: 'Vali', correct: false, timed_out: false, q: 'Savol?', options: ['a', 'b', 'c', 'd'], answer: 2, choice: 0, explanation: 'Izoh matni' } });
+        const t = await open(st); btn(wp(t), 'Natija').click(); await t.flush();
+        const p = wp(t).textContent;
+        expect(p).toContain("O'yin tugadi"); expect(p).toContain("To'g'ri javob: c"); expect(p).toContain('Izoh matni'); expect(p).toContain("Vali: noto'g'ri javob");
+        expect(p).toContain('<i>Ali</i>'); expect(wp(t).querySelector('[data-act]')).toBeNull();
+    });
+    test('the finish button needs a second click', async () => {
+        const st = makeState(); st.wheelMine = mineOpen; st.wheelState = live();
+        const t = await open(st); await enter(t);
+        btn(wp(t), "O'yinni tugatish").click(); expect(t.calls.some((c) => c.path.endsWith('/finish'))).toBe(false);
+        btn(wp(t), 'Aniqmi').click(); await t.flush(); expect(t.calls.some((c) => c.path === '/wheel/sessions/5/finish')).toBe(true);
+    });
+    test('no innerHTML in the game code', () => {
+        expect(wheelSrc).not.toMatch(/innerHTML|insertAdjacentHTML|document\.write/);
     });
 });
 

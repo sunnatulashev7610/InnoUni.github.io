@@ -41,6 +41,10 @@
         if (/Note is required/i.test(m)) return "Javob izohini yozing.";
         if (/Note must be at most/i.test(m)) return "Izoh 300 belgidan oshmasin.";
         if (/Appeal not found/i.test(m)) return "E'tiroz topilmadi.";
+        if (/must be 3 to 120/i.test(m)) return "Nom 3 dan 120 gacha belgi bo'lsin.";
+        if (/A set needs \d+ to \d+ questions|A stage needs/i.test(m)) return "To'plamda 3 tadan 20 tagacha savol bo'lsin.";
+        if (/already played and cannot be deleted/i.test(m)) return "Bu to'plam o'ynalgan, o'chirib bo'lmaydi.";
+        if (/Question set not found/i.test(m)) return "To'plam topilmadi.";
         if (/not waiting for the judge/i.test(m)) return "Bu battle endi baholanmaydi.";
         return "Amalni bajarib bo'lmadi. Keyinroq urinib ko'ring.";
     }
@@ -52,6 +56,77 @@
     // The admin writes the questions of one stage (own questions are used instead of the AI). Everything is set with textContent / .value.
     const SLOT_NAME = { quarter: 'Chorak final', semi: 'Yarim final', final: 'Final' };
     const slotLabel = function (k) { return SLOT_NAME[k] || k.slice(1) + '-tur'; };
+    function questionBlock(x, prefix, onRemove) {
+        const b = el('div'); b.style.cssText = 'border:1px solid var(--line,#8884);border-radius:10px;padding:10px;display:grid;gap:6px';
+        const head = el('div'); head.style.cssText = 'display:flex;justify-content:space-between;align-items:center';
+        const title = el('b', '', ''); const rm = el('button', 'pg-btn ghost', "O'chirish"); rm.type = 'button'; rm.style.padding = '4px 10px';
+        head.appendChild(title); head.appendChild(rm); b.appendChild(head);
+        const q = el('textarea', 'pg-input'); q.rows = 2; q.maxLength = 400; q.placeholder = 'Savol matni'; q.setAttribute('aria-label', 'Savol matni'); q.value = x.q || ''; b.appendChild(q);
+        const name = 'ans-' + prefix + '-' + Math.random().toString(36).slice(2); const opts = []; const radios = [];
+        for (let i = 0; i < 4; i++) {
+            const row = el('label'); row.style.cssText = 'display:flex;gap:8px;align-items:center';
+            const r = el('input'); r.type = 'radio'; r.name = name; r.checked = x.answer === i; r.setAttribute('aria-label', (i + 1) + '-variant to\'g\'ri');
+            const o = el('input', 'pg-input'); o.type = 'text'; o.maxLength = 200; o.placeholder = (i + 1) + '-variant'; o.setAttribute('aria-label', (i + 1) + '-variant'); o.value = (x.options && x.options[i]) || ''; o.style.flex = '1';
+            row.appendChild(r); row.appendChild(o); b.appendChild(row); opts.push(o); radios.push(r);
+        }
+        const ex = el('input', 'pg-input'); ex.type = 'text'; ex.maxLength = 300; ex.placeholder = 'Izoh (ixtiyoriy)'; ex.setAttribute('aria-label', 'Izoh'); ex.value = x.explanation || ''; b.appendChild(ex);
+        const obj = { node: b, title: title, read: function () { const a = radios.findIndex(function (r) { return r.checked; }); return { q: q.value, options: opts.map(function (o) { return o.value; }), answer: a, explanation: ex.value }; } };
+        rm.addEventListener('click', function () { b.remove(); onRemove(obj); });
+        return obj;
+    }
+
+    // "Baraban" question sets: the platform admin writes them, team admins pick one to play
+    function wheelSets(token, toast, onAuthError) {
+        const box = el('div', 'pg-card'); box.dataset.wheel = 'sets';
+        box.appendChild(el('h3', 'pg-h3', "Baraban savollari"));
+        box.appendChild(el('p', 'pg-muted', "Jamoa adminlari shu to'plamlardan birini tanlab jonli o'yin boshlaydi. Savollar serverda saqlanadi, o'yinchi javobni ko'rmaydi."));
+        const listBox = el('div'); listBox.style.cssText = 'display:grid;gap:8px;margin:10px 0';
+        const title = el('input', 'pg-input'); title.type = 'text'; title.maxLength = 120; title.placeholder = "To'plam nomi (masalan: Moddiy oqimlar)"; title.setAttribute('aria-label', "To'plam nomi");
+        const list = el('div'); list.style.cssText = 'display:grid;gap:12px;margin:10px 0';
+        const bar = el('div'); bar.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap';
+        const msg = el('p', 'pg-muted'); msg.setAttribute('role', 'alert');
+        let blocks = []; let limits = { min: 3, max: 20 };
+        function renumber() { blocks.forEach(function (b, i) { b.title.textContent = (i + 1) + '-savol'; }); }
+        function add() {
+            if (blocks.length >= limits.max) { msg.textContent = "Eng ko'pi " + limits.max + ' ta savol.'; return; }
+            const b = questionBlock({}, 'wheel', function (o) { blocks = blocks.filter(function (z) { return z !== o; }); renumber(); });
+            blocks.push(b); list.appendChild(b.node); renumber();
+        }
+        async function load() {
+            listBox.textContent = '';
+            let r;
+            try { r = await call('GET', '/admin/wheel-sets', token); } catch (e) { if (e.auth) { onAuthError(); return; } listBox.appendChild(el('p', 'pg-muted', "To'plamlarni yuklab bo'lmadi.")); return; }
+            limits = r.limits || limits;
+            if (!r.sets.length) listBox.appendChild(el('p', 'pg-muted', "Hozircha to'plam yo'q."));
+            r.sets.forEach(function (x) {
+                const row = el('div'); row.dataset.set = String(x.id); row.style.cssText = 'display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap';
+                row.appendChild(el('span', '', x.title + ' · ' + x.count + ' ta savol'));
+                const del = el('button', 'pg-btn ghost', "O'chirish"); del.type = 'button'; del.style.padding = '4px 10px'; let sure = false;
+                del.addEventListener('click', async function () {
+                    msg.textContent = '';
+                    if (!sure) { sure = true; del.textContent = 'Aniqmi? Qayta bosing'; setTimeout(function () { sure = false; del.textContent = "O'chirish"; }, 4000); return; }
+                    try { await call('DELETE', '/admin/wheel-sets/' + x.id, token); toast("To'plam o'chirildi"); await load(); }
+                    catch (err) { if (err.auth) { onAuthError(); return; } msg.textContent = say(String(err.message)); }
+                });
+                row.appendChild(del); listBox.appendChild(row);
+            });
+        }
+        const addB = el('button', 'pg-btn ghost', "Savol qo'shish"); addB.type = 'button'; addB.addEventListener('click', add);
+        const saveB = el('button', 'pg-btn', "To'plamni saqlash"); saveB.type = 'button';
+        saveB.addEventListener('click', async function () {
+            msg.textContent = ''; saveB.disabled = true;
+            try {
+                await call('POST', '/admin/wheel-sets', token, { title: title.value, questions: blocks.map(function (b) { return b.read(); }) });
+                toast("To'plam saqlandi"); title.value = ''; list.textContent = ''; blocks = []; await load();
+            } catch (err) { if (err.auth) { onAuthError(); return; } msg.textContent = say(String(err.message)); }
+            saveB.disabled = false;
+        });
+        [addB, saveB].forEach(function (x) { bar.appendChild(x); });
+        [listBox, el('h4', 'pg-h3', "Yangi to'plam"), title, list, bar, msg].forEach(function (x) { box.appendChild(x); });
+        load();
+        return box;
+    }
+
     function questionEditor(t, token, toast, onAuthError) {
         const box = el('div', 'pg-card'); box.dataset.editor = String(t.id); box.style.marginTop = '10px';
         box.appendChild(el('h4', 'pg-h3', 'Savollar'));
@@ -61,24 +136,7 @@
         const bar = el('div'); bar.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap';
         let data = { slots: {}, all_slots: [], limits: { min: 3, max: 20 } }; let blocks = [];
 
-        function block(x, n) {
-            const b = el('div'); b.style.cssText = 'border:1px solid var(--line,#8884);border-radius:10px;padding:10px;display:grid;gap:6px';
-            const head = el('div'); head.style.cssText = 'display:flex;justify-content:space-between;align-items:center';
-            const title = el('b', '', ''); const rm = el('button', 'pg-btn ghost', "O'chirish"); rm.type = 'button'; rm.style.padding = '4px 10px';
-            head.appendChild(title); head.appendChild(rm); b.appendChild(head);
-            const q = el('textarea', 'pg-input'); q.rows = 2; q.maxLength = 400; q.placeholder = 'Savol matni'; q.setAttribute('aria-label', 'Savol matni'); q.value = x.q || ''; b.appendChild(q);
-            const name = 'ans-' + t.id + '-' + Math.random().toString(36).slice(2); const opts = []; const radios = [];
-            for (let i = 0; i < 4; i++) {
-                const row = el('label'); row.style.cssText = 'display:flex;gap:8px;align-items:center';
-                const r = el('input'); r.type = 'radio'; r.name = name; r.checked = x.answer === i; r.setAttribute('aria-label', (i + 1) + '-variant to\'g\'ri');
-                const o = el('input', 'pg-input'); o.type = 'text'; o.maxLength = 200; o.placeholder = (i + 1) + '-variant'; o.setAttribute('aria-label', (i + 1) + '-variant'); o.value = (x.options && x.options[i]) || ''; o.style.flex = '1';
-                row.appendChild(r); row.appendChild(o); b.appendChild(row); opts.push(o); radios.push(r);
-            }
-            const ex = el('input', 'pg-input'); ex.type = 'text'; ex.maxLength = 300; ex.placeholder = 'Izoh (ixtiyoriy)'; ex.setAttribute('aria-label', 'Izoh'); ex.value = x.explanation || ''; b.appendChild(ex);
-            const obj = { node: b, title: title, read: function () { const a = radios.findIndex(function (r) { return r.checked; }); return { q: q.value, options: opts.map(function (o) { return o.value; }), answer: a, explanation: ex.value }; } };
-            rm.addEventListener('click', function () { blocks = blocks.filter(function (z) { return z !== obj; }); b.remove(); renumber(); });
-            return obj;
-        }
+        function block(x) { return questionBlock(x, t.id, function (obj) { blocks = blocks.filter(function (z) { return z !== obj; }); renumber(); }); }
         function renumber() { blocks.forEach(function (b, i) { b.title.textContent = (i + 1) + '-savol'; }); info.textContent = blocks.length ? blocks.length + ' ta savol yozilgan.' : "Savol yo'q: bu bosqich uchun AI tuzadi."; }
         function show() {
             list.textContent = ''; blocks = [];
@@ -121,6 +179,7 @@
             const tbox = el('div'); tbox.style.cssText = 'display:grid;gap:16px;margin-top:24px'; pg.appendChild(tbox);
 
             const STATUS = { open: "Ro'yxatdan o'tish ochiq", groups: 'Guruh bosqichi', playoffs: 'Pley-off', finished: 'Tugagan' };
+            const wbox = wheelSets(token, toast, onAuthError); wbox.style.marginTop = '24px'; pg.insertBefore(wbox, tbox);
             const abox = el('div'); abox.style.cssText = 'display:grid;gap:16px;margin-top:24px'; pg.insertBefore(abox, tbox);
             async function loadAppeals() {
                 abox.textContent = '';

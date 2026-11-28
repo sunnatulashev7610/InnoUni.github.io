@@ -827,7 +827,7 @@
             pg.appendChild(head('Musobaqalar', "Jamoalar o'rtasida battle o'tkazing, reyting va kubok yuting."));
             const panes = {};
             tabs.onChange = function (k) { tab = k; };
-            const nav = tabs([['battle', 'Battlelar'], ['teams', 'Jamoalar'], ['season', 'Mavsumiy turnirlar'], ['players', "O'yinchilar"], ['fame', 'Shon-sharaf'], ['rules', 'Qoidalar']], tab, panes); nav.classList.add('pg-tabs-wrap'); pg.appendChild(nav);
+            const nav = tabs([['battle', 'Battlelar'], ['teams', 'Jamoalar'], ['season', 'Mavsumiy turnirlar'], ['players', "O'yinchilar"], ['wheel', 'Baraban'], ['fame', 'Shon-sharaf'], ['rules', 'Qoidalar']], tab, panes); nav.classList.add('pg-tabs-wrap'); pg.appendChild(nav);
 
             const bt = el('div'); bt.hidden = tab !== 'battle'; bt.dataset.pane = 'battle'; panes.battle = bt;
             const battles = await battlesPane(session, data.teams, draw); bt.appendChild(battles); pg.appendChild(bt);
@@ -839,6 +839,8 @@
 
             const se = el('div'); se.hidden = tab !== 'season'; se.dataset.pane = 'season'; panes.season = se;
             se.appendChild(await tournamentsPane(session, function () { nav.querySelector('[data-tab="battle"]').click(); })); pg.appendChild(se);
+
+            const wh = el('div'); wh.hidden = tab !== 'wheel'; wh.dataset.pane = 'wheel'; panes.wheel = wh; wh.appendChild(window.GEWheel ? await window.GEWheel.pane(session, data.teams) : empty('Baraban hozircha mavjud emas.')); pg.appendChild(wh);
 
             const fm = el('div'); fm.hidden = tab !== 'fame'; fm.dataset.pane = 'fame'; panes.fame = fm; fm.appendChild(await famePane(session)); pg.appendChild(fm);
 
