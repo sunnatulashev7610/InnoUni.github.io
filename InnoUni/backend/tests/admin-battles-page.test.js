@@ -22,6 +22,9 @@ async function boot(opts = {}) {
         if (/\/questions\/\w+$/.test(p) && method === 'PUT') return opts.qError ? { ok: false, status: 400, json: async () => ({ error: 'Question 2: choose the correct option' }) } : { ok: true, status: 200, json: async () => ({ ok: true }) };
         if (p.includes('/start-round') && opts.roundError) return { ok: false, status: 503, json: async () => ({ error: 'The AI that prepares quiz questions is not connected yet' }) };
         if (p.includes('/draw') && opts.drawError) return { ok: false, status: 400, json: async () => ({ error: 'Groups need 4, 6-8 or 12-16 teams; now there are 5' }) };
+        if (p === '/admin/wheel-sets' && method === 'GET') return { ok: true, status: 200, json: async () => ({ sets: opts.noSets ? [] : [{ id: 2, title: '<b>Logistika</b>', count: 8 }], limits: { min: 3, max: 20 } }) };
+        if (p === '/admin/wheel-sets' && method === 'POST' && opts.setError) return { ok: false, status: 400, json: async () => ({ error: 'A set needs 3 to 20 questions' }) };
+        if (/^\/admin\/wheel-sets\/\d+$/.test(p) && method === 'DELETE' && opts.setError) return { ok: false, status: 409, json: async () => ({ error: 'This set was already played and cannot be deleted' }) };
         if (p === '/admin/appeals' && method === 'GET') return { ok: true, status: 200, json: async () => ({ appeals: opts.noAppeals ? [] : [{ id: 3, battle_id: 7, battle_title: '<b>Jang</b>', team_name: '<i>Beta</i>', captain_name: 'Ali', reason: '<u>Savol xato</u>', status: 'open' }] }) };
         if (/^\/admin\/appeals\/\d+\/resolve$/.test(p) && opts.appealError) return { ok: false, status: 409, json: async () => ({ error: 'This objection has already been answered' }) };
         if (method === 'GET') return { ok: true, status: 200, json: async () => (opts.empty ? { battles: [], max_score: 100 } : LIST()) };
@@ -245,5 +248,44 @@ describe('appeals', () => {
         btn(a, 'Rad').click(); btn(a, 'Aniqmi').click(); await tick();
         expect(calls.find((x) => x.p.includes('/resolve')).body.decision).toBe('rejected');
         expect(c.textContent).toContain("Bu e'tirozga allaqachon javob berilgan");
+    });
+});
+
+describe('Baraban question sets', () => {
+    const box = (c) => c.querySelector('[data-wheel="sets"]');
+    const btn = (root, t) => [...root.querySelectorAll('button')].find((x) => x.textContent.startsWith(t));
+    test('sets are listed as plain text with their size', async () => {
+        const { c } = await boot();
+        expect(box(c).textContent).toContain('<b>Logistika</b> · 8 ta savol'); expect(box(c).querySelector('[data-set] b')).toBeNull();
+    });
+    test('no sets: a short note', async () => {
+        const { c } = await boot({ noSets: true });
+        expect(box(c).textContent).toContain("Hozircha to'plam yo'q");
+    });
+    test('a new set is sent with its title and questions', async () => {
+        const { c, calls } = await boot();
+        const b = box(c);
+        b.querySelector('input[aria-label="To\'plam nomi"]').value = 'Yangi to\'plam';
+        btn(b, "Savol qo'shish").click();
+        const blk = b.querySelector('textarea').parentNode;
+        blk.querySelector('textarea').value = 'Savol?';
+        const ins = [...blk.querySelectorAll('input[type="text"]')]; ['a', 'b', 'c', 'd'].forEach((v, i) => { ins[i].value = v; });
+        blk.querySelectorAll('input[type="radio"]')[1].checked = true;
+        btn(b, "To'plamni saqlash").click(); await tick();
+        const post = calls.find((x) => x.p === '/admin/wheel-sets' && x.method === 'POST');
+        expect(post.body).toEqual({ title: "Yangi to'plam", questions: [{ q: 'Savol?', options: ['a', 'b', 'c', 'd'], answer: 1, explanation: '' }] });
+    });
+    test('a server complaint is explained in Uzbek', async () => {
+        const { c } = await boot({ setError: true });
+        btn(box(c), "To'plamni saqlash").click(); await tick();
+        expect(box(c).textContent).toContain("To'plamda 3 tadan 20 tagacha savol bo'lsin");
+    });
+    test('deleting needs a second click; a played set is explained', async () => {
+        const { c, calls } = await boot({ setError: true });
+        const b = box(c);
+        btn(b, "O'chirish").click(); expect(calls.some((x) => x.method === 'DELETE')).toBe(false);
+        btn(b, 'Aniqmi').click(); await tick();
+        expect(calls.find((x) => x.method === 'DELETE').p).toBe('/admin/wheel-sets/2');
+        expect(b.textContent).toContain("Bu to'plam o'ynalgan");
     });
 });

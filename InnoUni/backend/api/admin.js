@@ -386,6 +386,37 @@ router.put('/tournaments/:id/questions/:slot', async (req, res) => {
     } catch (e) { fail(res, e); }
 });
 
+// ---- "Baraban" question sets ----
+router.get('/wheel-sets', async (req, res) => {
+    try {
+        const [rows] = await req.db.execute('SELECT id, title, questions FROM wheel_sets ORDER BY id DESC', []);
+        res.json({ sets: rows.map((r) => { let n = 0; try { n = JSON.parse(r.questions).length; } catch (e) { n = 0; } return { id: r.id, title: r.title, count: n }; }), limits: QUESTION_LIMITS });
+    } catch (e) { fail(res, e); }
+});
+
+router.post('/wheel-sets', async (req, res) => {
+    try {
+        const title = typeof (req.body && req.body.title) === 'string' ? req.body.title.trim() : '';
+        if (title.length < 3 || title.length > 120) return res.status(400).json({ error: 'The title must be 3 to 120 characters' });
+        const clean = cleanQuestions(req.body.questions);
+        if (clean.error) return res.status(400).json({ error: clean.error });
+        if (!clean.questions.length) return res.status(400).json({ error: `A set needs ${QUESTION_LIMITS.min} to ${QUESTION_LIMITS.max} questions` });
+        const [ins] = await req.db.execute('INSERT INTO wheel_sets (title, questions, created_by) VALUES (?, ?, ?)', [title, JSON.stringify(clean.questions), req.user.userId]);
+        res.status(201).json({ id: ins.insertId, count: clean.questions.length });
+    } catch (e) { fail(res, e); }
+});
+
+router.delete('/wheel-sets/:id', async (req, res) => {
+    try {
+        const id = parseId(req.params.id); if (!id) return res.status(400).json({ error: 'Invalid set id' });
+        const [used] = await req.db.execute('SELECT COUNT(*) AS n FROM wheel_sessions WHERE set_id = ?', [id]);
+        if (Number(used[0].n) > 0) return res.status(409).json({ error: 'This set was already played and cannot be deleted' });
+        const [del] = await req.db.execute('DELETE FROM wheel_sets WHERE id = ?', [id]);
+        if (!del.affectedRows) return res.status(404).json({ error: 'Question set not found' });
+        res.json({ deleted: true });
+    } catch (e) { fail(res, e); }
+});
+
 router.post('/tournaments/:id/cancel', async (req, res) => {
     try {
         const t = await tournamentIn(req, res, ['open', 'groups', 'playoffs']); if (!t) return;
